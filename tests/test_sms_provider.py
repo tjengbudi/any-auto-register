@@ -336,7 +336,9 @@ class TestHeroSmsProvider:
 
         assert activation.activation_id == "act_1"
         assert activation.phone_number == "+15551234"
-        assert calls[0]["action"] == "getNumberV2"
+        # 取号前会先查价（智能选国），只断言取号调用本身的顺序
+        number_calls = [c["action"] for c in calls if c["action"].startswith("getNumber")]
+        assert number_calls[0] == "getNumberV2"
 
     def test_get_number_falls_back_to_v1_text(self, monkeypatch, tmp_path):
         monkeypatch.setattr(sms_module, "hero_sms_cache_file", lambda: tmp_path / ".herosms_phone_cache.json")
@@ -365,7 +367,7 @@ class TestHeroSmsProvider:
 
         assert activation.activation_id == "act_2"
         assert activation.phone_number == "+15557654321"
-        assert calls == ["getNumberV2", "getNumber"]
+        assert [c for c in calls if c.startswith("getNumber")] == ["getNumberV2", "getNumber"]
 
     def test_get_code_skips_attempted_sms_event(self, monkeypatch, tmp_path):
         monkeypatch.setattr(sms_module, "hero_sms_cache_file", lambda: tmp_path / ".herosms_phone_cache.json")
