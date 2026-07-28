@@ -28,9 +28,10 @@ jobs:
         # 守护 customer_portal_api 的导入前缀：出现裸 `from app.` 会在此失败
         run: python -c "from customer_portal_api.main import app; print(app.title, app.version)"
 
-      - name: 测试可收集
-        # 只做收集，不执行。任一模块导入失败会让整个测试套件归零
-        run: pytest --collect-only -q
+      - name: 运行测试
+        # 收集失败同样会在这里暴露：任一模块导入失败会让整个套件归零
+        run: pytest -q
+        timeout-minutes: 15
 
   frontend:
     name: 前端构建
