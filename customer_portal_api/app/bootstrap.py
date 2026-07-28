@@ -4,10 +4,10 @@ import json
 
 from sqlmodel import Session, select
 
-from app.catalog import CONFIG_DEFAULTS, PERMISSION_SEEDS, PLATFORM_SEEDS, ROLE_SEEDS
-from app.config import settings
-from app.db import engine, init_portal_db, utcnow
-from app.models import (
+from customer_portal_api.app.catalog import CONFIG_DEFAULTS, PERMISSION_SEEDS, PLATFORM_SEEDS, ROLE_SEEDS
+from customer_portal_api.app.config import settings
+from customer_portal_api.app.db import engine, init_portal_db, utcnow
+from customer_portal_api.app.models import (
     PortalConfig,
     PortalPermission,
     PortalPlatform,
@@ -16,7 +16,7 @@ from app.models import (
     PortalRolePermission,
     PortalUser,
 )
-from app.security import hash_password
+from customer_portal_api.app.security import hash_password
 
 
 def initialize_runtime() -> None:

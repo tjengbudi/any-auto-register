@@ -12,9 +12,9 @@ from fastapi import HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlmodel import Session, select
 
-from app.catalog import collect_platform_choice_options, platform_payload
-from app.db import utcnow
-from app.models import (
+from customer_portal_api.app.catalog import collect_platform_choice_options, platform_payload
+from customer_portal_api.app.db import utcnow
+from customer_portal_api.app.models import (
     PortalAccount,
     PortalConfig,
     PortalOrder,
@@ -32,7 +32,7 @@ from app.models import (
     PortalUser,
     UserPlatformAccess,
 )
-from app.security import hash_password
+from customer_portal_api.app.security import hash_password
 
 
 TASK_TERMINAL_STATUSES = {"succeeded", "failed", "cancelled"}

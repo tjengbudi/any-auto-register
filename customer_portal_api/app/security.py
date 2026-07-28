@@ -10,8 +10,8 @@ from typing import Any
 
 from fastapi import HTTPException, status
 
-from app.config import settings
-from app.db import utcnow
+from customer_portal_api.app.config import settings
+from customer_portal_api.app.db import utcnow
 
 
 def _b64url_encode(data: bytes) -> str:
