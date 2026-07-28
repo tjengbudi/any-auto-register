@@ -18,7 +18,7 @@ export default function UpdateBanner() {
     let cancelled = false
     const fetchVersion = async () => {
       try {
-        const data: VersionResp = await apiFetch('/system/version')
+        const data: VersionResp = await apiFetch('/version')
         if (cancelled) return
         const dismissedTag = localStorage.getItem(DISMISS_KEY) || ''
         if (data.has_update && data.latest && data.latest.tag === dismissedTag) {

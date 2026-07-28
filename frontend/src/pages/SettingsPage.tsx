@@ -248,7 +248,7 @@ function AboutTab() {
   const fetchVersion = async () => {
     setChecking(true)
     try {
-      setInfo(await apiFetch('/system/version'))
+      setInfo(await apiFetch('/version'))
     } catch {
       setInfo({ current: '', latest: null, has_update: false })
     } finally {
