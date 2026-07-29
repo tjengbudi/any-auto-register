@@ -11,6 +11,11 @@ class TavilyPlatform(BasePlatform):
     name = "tavily"
     display_name = "Tavily"
     version = "1.0.0"
+    # 平台能力：首次启动时写入 platform_capability_overrides 表；
+    # 后续启动做增量合并，不会覆盖运维在 DB 中禁用的项。
+    supported_executors = ["protocol", "headless", "headed"]
+    supported_identity_modes = ["mailbox", "oauth_browser"]
+    supported_oauth_providers = ["google", "github", "linkedin", "microsoft"]
 
     def __init__(self, config: RegisterConfig = None, mailbox: BaseMailbox = None):
         super().__init__(config)

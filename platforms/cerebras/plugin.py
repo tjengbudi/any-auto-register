@@ -10,6 +10,10 @@ class CerebrasPlatform(BasePlatform):
     name = "cerebras"
     display_name = "Cerebras"
     version = "1.0.0"
+    # 平台能力：首次启动时写入 platform_capability_overrides 表；
+    # 后续启动做增量合并，不会覆盖运维在 DB 中禁用的项。
+    supported_executors = ["protocol"]
+    supported_identity_modes = ["mailbox"]
 
     def __init__(self, config: RegisterConfig = None, mailbox: BaseMailbox = None):
         super().__init__(config)
