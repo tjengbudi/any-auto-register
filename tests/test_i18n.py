@@ -73,6 +73,18 @@ class TestRenderFailureDegrades:
         # neither the en value nor the zh fallback can render without `name`
         assert i18n.t("chatgpt.a3f21c8e", "en") == "chatgpt.a3f21c8e"
 
+    def test_render_failure_leaves_a_debug_trail(self, monkeypatch, caplog):
+        # A raw key on screen with no log line anywhere gives an operator no
+        # route back to the call site.
+        _set_catalogs(monkeypatch, en={"chatgpt": {"a3f21c8e": "Hi {name}"}})
+
+        with caplog.at_level("DEBUG", logger="i18n"):
+            assert i18n.t("chatgpt.a3f21c8e", "en") == "chatgpt.a3f21c8e"
+
+        assert any(
+            "chatgpt.a3f21c8e" in rec.getMessage() for rec in caplog.records
+        ), [rec.getMessage() for rec in caplog.records]
+
 
 class TestExtraAndLiteralInterpolation:
     def test_extra_params_are_ignored(self, monkeypatch):
@@ -199,7 +211,9 @@ class TestLoad:
 
     def test_degraded_target_catalog_is_logged(self, tmp_path, monkeypatch, caplog):
         # An en.json that silently becomes {} makes every English user see
-        # Chinese; the only way to diagnose that later is a log line.
+        # Chinese; the only way to diagnose that later is a log line. Assert the
+        # level and the offending path too — a substring match on "en" alone
+        # passes on almost any message, at any level.
         monkeypatch.setattr(i18n, "__file__", str(tmp_path / "__init__.py"))
         (tmp_path / "zh.json").write_text("{}", encoding="utf-8")
         (tmp_path / "en.json").write_text("not valid json", encoding="utf-8")
@@ -207,7 +221,31 @@ class TestLoad:
         with caplog.at_level("WARNING", logger="i18n"):
             i18n.load()
 
-        assert any("en" in rec.getMessage() for rec in caplog.records)
+        warnings = [
+            rec for rec in caplog.records
+            if rec.levelname == "WARNING" and str(tmp_path / "en.json") in rec.getMessage()
+        ]
+        assert len(warnings) == 1, [rec.getMessage() for rec in caplog.records]
+        assert "JSON" in warnings[0].getMessage()
+
+    def test_invalid_utf8_zh_reports_encoding_not_json(self, tmp_path, monkeypatch):
+        # UnicodeDecodeError subclasses ValueError, so without its own branch a
+        # mis-encoded save aborts startup pointing at a JSON syntax error that
+        # does not exist.
+        monkeypatch.setattr(i18n, "__file__", str(tmp_path / "__init__.py"))
+        (tmp_path / "zh.json").write_bytes(b'{"a": {"b": "\xff\xfe"}}')
+
+        with pytest.raises(i18n.CatalogError) as exc_info:
+            i18n.load()
+
+        assert "UTF-8" in str(exc_info.value)
+
+    def test_invalid_utf8_en_treated_as_empty_catalog(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(i18n, "__file__", str(tmp_path / "__init__.py"))
+        (tmp_path / "zh.json").write_text("{}", encoding="utf-8")
+        (tmp_path / "en.json").write_bytes(b'{"a": {"b": "\xff\xfe"}}')
+
+        assert i18n.load()["en"] == {}
 
 
 class TestSourceLocaleLookup:
@@ -275,6 +313,16 @@ class TestPlaceholderRestrictions:
         )
         assert i18n.t("a.b", "en", x="hi") == "中文"
 
+    def test_nested_format_spec_is_rejected(self, monkeypatch):
+        # "{x:{y}}" resolves its spec before format_field ever sees it, so a
+        # spec that resolves to empty slipped past the format_field guard.
+        _set_catalogs(
+            monkeypatch,
+            zh={"a": {"b": "中文"}},
+            en={"a": {"b": "{x:{y}}"}},
+        )
+        assert i18n.t("a.b", "en", x="hi", y="") == "中文"
+
     def test_positional_placeholder_is_rejected(self, monkeypatch):
         _set_catalogs(
             monkeypatch,
@@ -338,16 +386,44 @@ class TestShippedPackage:
     def test_imports_no_application_packages(self):
         # NFR9/AD-3: the portal must be able to import this without pulling in
         # the desktop backend. Enforced here rather than by a manual command.
+        # Every .py in the package, not just __init__.py — Story 1.6 plans to
+        # add selfcheck() here, and a forbidden import in a new module must fail
+        # this test too.
         import ast
         import pathlib
 
-        source = pathlib.Path(i18n.__file__).read_text(encoding="utf-8")
-        modules = []
-        for node in ast.walk(ast.parse(source)):
-            if isinstance(node, ast.ImportFrom):
-                modules.append(node.module)
-            elif isinstance(node, ast.Import):
-                modules.extend(alias.name for alias in node.names)
+        package_dir = pathlib.Path(i18n.__file__).parent
+        sources = sorted(package_dir.glob("*.py"))
+        assert sources, "expected at least i18n/__init__.py"
 
         forbidden = {"core", "application", "api", "customer_portal_api"}
-        assert not [m for m in modules if m and m.split(".")[0] in forbidden], modules
+        for source_path in sources:
+            modules = []
+            for node in ast.walk(ast.parse(source_path.read_text(encoding="utf-8"))):
+                if isinstance(node, ast.ImportFrom):
+                    modules.append(node.module)
+                elif isinstance(node, ast.Import):
+                    modules.extend(alias.name for alias in node.names)
+
+            offenders = [m for m in modules if m and m.split(".")[0] in forbidden]
+            assert not offenders, (source_path.name, offenders)
+
+
+class TestUntranslatedEmptyValue:
+    """catalog-conventions.md:11 — vi ships "structure only, values not populated"."""
+
+    def test_empty_value_falls_back_to_zh(self, monkeypatch):
+        # The TypeScript half of the same convention types the catalog as
+        # `Record<Lang, Catalog>`, so every key must be *present* in vi. The
+        # natural representation of "present but untranslated" is "", and it
+        # must render zh rather than a blank screen.
+        _set_catalogs(
+            monkeypatch,
+            zh={"chatgpt": {"a3f21c8e": "邮箱验证码获取成功"}},
+            vi={"chatgpt": {"a3f21c8e": ""}},
+        )
+        assert i18n.t("chatgpt.a3f21c8e", "vi") == "邮箱验证码获取成功"
+
+    def test_empty_value_in_zh_degrades_to_raw_key(self, monkeypatch):
+        _set_catalogs(monkeypatch, zh={"chatgpt": {"a3f21c8e": ""}})
+        assert i18n.t("chatgpt.a3f21c8e", "zh") == "chatgpt.a3f21c8e"
