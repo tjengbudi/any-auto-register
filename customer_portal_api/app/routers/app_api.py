@@ -83,7 +83,7 @@ def list_tasks(
     user: PortalUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
 ):
-    return PortalService(session).list_app_tasks(user, platform=platform, status=status, page=page, page_size=page_size)
+    return PortalService(session).list_app_tasks(user, platform=platform, status_value=status, page=page, page_size=page_size)
 
 
 @router.get("/tasks/{task_id}")
