@@ -45,5 +45,7 @@ jobs:
 
       - name: 构建前端
         # `npm run build` 先跑 tsc -b，类型错误会导致构建失败
-        # 注意：不跑 `npm run lint`，当前有 186 个既存 error（151 个 no-explicit-any）
+        # 注意：不跑 `npm run lint`，它从未通过。2026-07-29 实测 160 error，
+        # 其中 151 个是 no-explicit-any。总数会随 eslint-plugin-react-hooks
+        # 的 caret 版本重新解析而浮动，不要把它当作固定值。
         run: cd frontend && npm ci --legacy-peer-deps && npm run build

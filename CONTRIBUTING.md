@@ -39,7 +39,11 @@ pytest tests/test_api_health.py -v
 2. 实现 `plugin.py`（继承 `BasePlatform`，用 `@register` 装饰器注册）
 3. 实现 `protocol_mailbox.py`（协议模式注册逻辑）
 4. 可选：实现 `browser_register.py` 和 `browser_oauth.py`
-5. 在 `resources/platform_capabilities.json` 中添加平台能力声明
+5. 在插件类上声明平台能力（类属性）：`supported_executors`、`supported_identity_modes`、
+   可选的 `supported_oauth_providers` 和 `capabilities`。首次启动会据此写入
+   `platform_capability_overrides` 表；后续启动做增量合并。
+   **不要**再写 `resources/platform_capabilities.json` —— 该文件已在 `da2bbb3` 删除。
+   漏掉这一步，插件仍会注册并出现在界面上，但用户一启动任务就会失败。
 6. 添加对应的测试
 
 ## 代码风格
