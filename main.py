@@ -61,11 +61,35 @@ from api.task_logs import router as task_logs_router
 from api.tasks import router as tasks_router
 from core.db import init_db
 from core.registry import load_all
+from i18n import CatalogError
+from i18n import load as load_i18n
 from providers.registry import load_all as load_providers
+
+# PyInstaller 打包必须携带这三个目录文件，否则 zh 目录缺失会在启动时中止 —
+# PyInstaller must bundle these three catalog files, or a missing `zh` aborts startup.
+_I18N_BUNDLE_FILES = "i18n/zh.json、i18n/en.json、i18n/vi.json"
+
+
+def _ensure_i18n_ready() -> None:
+    """启动前预加载 i18n 目录；zh 缺失/损坏时中止启动 —
+    Preload the i18n catalogs before startup; abort if `zh` is missing or broken.
+    """
+    try:
+        load_i18n()
+    except CatalogError as exc:
+        # exc 的文本已经以 "i18n: " 开头，这里不再重复加 [i18n] 标签 —
+        # exc's own text already starts with "i18n: "; no need for a second tag here.
+        message = f"{exc}；PyInstaller 打包需要通过 --add-data 携带：{_I18N_BUNDLE_FILES}"
+        try:
+            print(message)
+        except Exception:
+            pass
+        raise CatalogError(message) from exc
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    _ensure_i18n_ready()
     init_db()
     load_all()
     load_providers()
