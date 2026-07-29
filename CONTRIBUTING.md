@@ -50,4 +50,6 @@ pytest tests/test_api_health.py -v
 
 - Python 代码遵循 PEP 8
 - 类型注解尽量完整
-- 中文注释和日志
+- 新增的注释和文档字符串遵循"中文在前，英文在后"的双语格式（与 `catalog-conventions.md` 的双语约定一致）；新增的用户可见日志改用带 key 的路径（`i18n_key`/`i18n_params`，格式见 `catalog-conventions.md` 的 "Task log records" 一节），不再新增硬编码中文日志；仅供控制台/内部使用、不面向用户的日志（`print()`/`logging`）不受此项影响，继续使用中文；通过上游合并（upstream merge）引入的代码，在下次被修改前豁免以上要求。
+
+  New comments and docstrings are Chinese first, then English (matching `catalog-conventions.md`'s bilingual format); new user-visible log lines use the keyed path (`i18n_key`/`i18n_params`, format specified in `catalog-conventions.md`'s "Task log records" section) instead of a new hardcoded Chinese string; console-only/internal logging (`print()`/`logging`, invisible to users) is unaffected and stays Chinese; code arriving via an upstream merge is exempt from this rule until it is next touched.
