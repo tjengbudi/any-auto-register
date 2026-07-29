@@ -115,9 +115,11 @@ app.include_router(provider_settings_router, prefix="/api")
 app.include_router(proxies_router, prefix="/api")
 app.include_router(sms_router, prefix="/api")
 app.include_router(stats_router, prefix="/api")
+# task_logs_router 必须在 tasks_router 之前挂载：Starlette 按注册顺序匹配，
+# 若 /tasks/{task_id} 先注册，它会以 task_id="logs" 捕获 /tasks/logs 并返回 404。
+app.include_router(task_logs_router, prefix="/api")
 app.include_router(tasks_router, prefix="/api")
 app.include_router(task_commands_router, prefix="/api")
-app.include_router(task_logs_router, prefix="/api")
 app.include_router(system_router, prefix="/api")
 
 
