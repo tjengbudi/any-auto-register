@@ -60,7 +60,7 @@ function getValidityStatus(acc: any) {
   return getDisplaySummary(acc)?.status?.validity || acc?.validity_status || acc?.overview?.validity_status || 'unknown'
 }
 
-function getCompactStatusMeta(acc: any) {
+function getCompactStatusMeta(acc: any, catalog: Catalog) {
   const summary = getDisplaySummary(acc)
   const primaryMetrics = Array.isArray(summary?.primary_metrics) ? summary.primary_metrics : []
   if (primaryMetrics.length > 0) {
@@ -71,14 +71,14 @@ function getCompactStatusMeta(acc: any) {
   }
   const overview = getAccountOverview(acc)
   const parts = [
-    `生命周期:${getLifecycleStatus(acc)}`,
-    `套餐:${getPlanState(acc)}`,
-    `有效:${getValidityStatus(acc)}`,
+    `${catalog.accounts.lifecycleBoxLabel}:${getLifecycleStatus(acc)}`,
+    `${catalog.accounts.statPlan}:${getPlanState(acc)}`,
+    `${catalog.accounts.compactValidityLabel}:${getValidityStatus(acc)}`,
   ]
   const remainingCredits = overview?.remaining_credits
   const usageTotal = overview?.usage_total
   if (remainingCredits || usageTotal) {
-    parts.push(`额度:${remainingCredits || '-'} / 已用:${usageTotal || '-'}`)
+    parts.push(`${catalog.accounts.compactCreditsLabel}:${remainingCredits || '-'} / ${catalog.accounts.compactUsedLabel}:${usageTotal || '-'}`)
   }
   return parts.join(' / ')
 }
@@ -1528,6 +1528,7 @@ function ExportMenu({
 
 // ── Main ────────────────────────────────────────────────────
 export default function Accounts() {
+  const { catalog } = useLanguage()
   const { platform } = useParams<{ platform: string }>()
   const [tab, setTab] = useState(platform || '')
   useEffect(() => { if (platform) { setTab(platform) } }, [platform])
@@ -1676,23 +1677,23 @@ export default function Accounts() {
             </h1>
             <div className="h-4 w-[1px] bg-[var(--border)]"></div>
             <div className="flex items-center gap-1.5 text-xs">
-              <span className="text-[var(--text-muted)]">共 {total} 个</span>
-              {visibleTrial > 0 && <span className="flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 font-medium text-emerald-500 ring-1 ring-inset ring-emerald-500/20">试用 {visibleTrial}</span>}
-              {visibleSubscribed > 0 && <span className="flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 font-medium text-blue-500 ring-1 ring-inset ring-blue-500/20">订阅 {visibleSubscribed}</span>}
-              {linkedCashier > 0 && <span className="flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 font-medium text-amber-500 ring-1 ring-inset ring-amber-500/20">链接 {linkedCashier}</span>}
-              {visibleInvalid > 0 && <span className="flex items-center rounded-full bg-red-500/10 px-2 py-0.5 font-medium text-red-500 ring-1 ring-inset ring-red-500/20">失效 {visibleInvalid}</span>}
-              {selectedCount > 0 && <span className="flex items-center rounded-full bg-[var(--text-primary)]/10 px-2 py-0.5 font-medium text-[var(--text-primary)] ring-1 ring-inset ring-[var(--text-primary)]/20">已选 {selectedCount}</span>}
+              <span className="text-[var(--text-muted)]">{catalog.accounts.totalCountLabel.replace('{count}', String(total))}</span>
+              {visibleTrial > 0 && <span className="flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 font-medium text-emerald-500 ring-1 ring-inset ring-emerald-500/20">{catalog.accounts.chipTrialLabel.replace('{count}', String(visibleTrial))}</span>}
+              {visibleSubscribed > 0 && <span className="flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 font-medium text-blue-500 ring-1 ring-inset ring-blue-500/20">{catalog.accounts.chipSubscribedLabel.replace('{count}', String(visibleSubscribed))}</span>}
+              {linkedCashier > 0 && <span className="flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 font-medium text-amber-500 ring-1 ring-inset ring-amber-500/20">{catalog.accounts.chipLinkedLabel.replace('{count}', String(linkedCashier))}</span>}
+              {visibleInvalid > 0 && <span className="flex items-center rounded-full bg-red-500/10 px-2 py-0.5 font-medium text-red-500 ring-1 ring-inset ring-red-500/20">{catalog.accounts.chipInvalidLabel.replace('{count}', String(visibleInvalid))}</span>}
+              {selectedCount > 0 && <span className="flex items-center rounded-full bg-[var(--text-primary)]/10 px-2 py-0.5 font-medium text-[var(--text-primary)] ring-1 ring-inset ring-[var(--text-primary)]/20">{catalog.accounts.chipSelectedLabel.replace('{count}', String(selectedCount))}</span>}
             </div>
           </div>
           <div className="flex items-center gap-2">
             <Button size="sm" onClick={() => setShowRegister(true)} className="h-8 shadow-sm">
               <Plus className="mr-1.5 h-3.5 w-3.5" />
-              自动注册
+              {catalog.accounts.autoRegisterButton}
             </Button>
             <div className="h-4 w-[1px] bg-[var(--border)]"></div>
             <Button size="sm" variant="outline" onClick={() => setShowImport(true)} className="h-8 bg-transparent">
               <Upload className="mr-1.5 h-3.5 w-3.5" />
-              导入
+              {catalog.accounts.importButton}
             </Button>
             {tab === 'chatgpt' ? (
               <ExportMenu
@@ -1705,12 +1706,12 @@ export default function Accounts() {
             ) : (
               <Button size="sm" variant="outline" onClick={exportCsv} disabled={accounts.length === 0} className="h-8 bg-transparent">
                 <Download className="mr-1.5 h-3.5 w-3.5" />
-                导出
+                {catalog.accounts.exportButton}
               </Button>
             )}
             <Button size="sm" variant="outline" onClick={() => setShowAdd(true)} className="h-8 bg-transparent">
               <Plus className="mr-1.5 h-3.5 w-3.5" />
-              手动新增
+              {catalog.accounts.manualAddButton}
             </Button>
           </div>
         </div>
@@ -1724,7 +1725,7 @@ export default function Accounts() {
               </div>
               <input
                 type="text"
-                placeholder="搜索账号邮箱..."
+                placeholder={catalog.accounts.searchPlaceholder}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 className="w-full rounded-md border border-[var(--border)] bg-transparent py-1.5 pl-8 pr-3 text-sm text-[var(--text-primary)] transition-colors placeholder:text-[var(--text-muted)] focus:border-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--text-primary)]"
@@ -1736,14 +1737,14 @@ export default function Accounts() {
               className="rounded-md border border-[var(--border)] bg-transparent py-1.5 pl-3 pr-8 text-sm text-[var(--text-primary)] transition-colors focus:border-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--text-primary)] appearance-none"
               style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`, backgroundPosition: 'right 8px center', backgroundRepeat: 'no-repeat' }}
             >
-              <option value="">全部状态</option>
-              <option value="registered">已注册</option>
-              <option value="trial">试用中</option>
-              <option value="subscribed">已订阅</option>
-              <option value="free">免费</option>
-              <option value="eligible">可试用</option>
-              <option value="expired">已过期</option>
-              <option value="invalid">已失效</option>
+              <option value="">{catalog.accounts.filterAllStatusOption}</option>
+              <option value="registered">{catalog.accounts.lifecycleRegisteredOption}</option>
+              <option value="trial">{catalog.accounts.lifecycleTrialOption}</option>
+              <option value="subscribed">{catalog.accounts.lifecycleSubscribedOption}</option>
+              <option value="free">{catalog.accounts.filterFreeOption}</option>
+              <option value="eligible">{catalog.accounts.filterEligibleOption}</option>
+              <option value="expired">{catalog.accounts.filterExpiredOption}</option>
+              <option value="invalid">{catalog.accounts.filterInvalidOption}</option>
             </select>
           </div>
           
@@ -1753,13 +1754,13 @@ export default function Accounts() {
               size="sm"
               disabled={batchRefreshing || loading}
               className="h-7 px-2.5 text-[var(--text-muted)] hover:text-amber-500 hover:bg-amber-500/10"
-              title="一键刷新全部账号额度"
+              title={catalog.accounts.batchRefreshTitle}
               onClick={async () => {
                 setBatchRefreshing(true)
                 try {
                   const res = await apiFetch(`/accounts/check-all?platform=${tab}`, { method: 'POST' })
                   if (res?.task_id) {
-                    setBatchTask({ taskId: res.task_id, title: `刷新全部 ${platformLabel} 账号额度` })
+                    setBatchTask({ taskId: res.task_id, title: catalog.accounts.batchRefreshTaskTitle.replace('{platform}', () => platformLabel) })
                     setBatchTaskStatus(null)
                   }
                 } catch (e) {
@@ -1769,7 +1770,7 @@ export default function Accounts() {
               }}
             >
               <Zap className={`mr-1 h-3.5 w-3.5 ${batchRefreshing ? 'animate-pulse' : ''}`} />
-              {batchRefreshing ? '刷新中...' : '刷新额度'}
+              {batchRefreshing ? catalog.accounts.refreshingLabel : catalog.accounts.refreshCreditsButton}
             </Button>
             <Button variant="ghost" size="sm" onClick={() => load()} disabled={loading} className="h-7 w-7 p-0 text-[var(--text-muted)] hover:text-[var(--text-primary)]">
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -1781,7 +1782,10 @@ export default function Accounts() {
                 disabled={bulkDeleting}
                 className="h-7 px-2.5 text-red-500 hover:bg-red-500/10 hover:text-red-600"
                 onClick={async () => {
-                  if (!confirm(`确认删除选中的 ${selectedCount} 个账号？此操作不可撤销。`)) return
+                  const deleteConfirmText = selectedCount === 1
+                    ? catalog.accounts.bulkDeleteConfirmSingular
+                    : catalog.accounts.bulkDeleteConfirmPlural.replace('{count}', String(selectedCount))
+                  if (!confirm(deleteConfirmText)) return
                   setBulkDeleting(true)
                   try {
                     await Promise.allSettled(
@@ -1795,7 +1799,7 @@ export default function Accounts() {
                 }}
               >
                 <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-                {bulkDeleting ? '删除中...' : `删除`}
+                {bulkDeleting ? catalog.accounts.deletingLabel : catalog.accounts.deleteButton}
               </Button>
             )}
           </div>
@@ -1825,12 +1829,12 @@ export default function Accounts() {
                   className="checkbox-accent rounded-[3px] border-[var(--border)] focus:ring-[var(--text-primary)] focus:ring-offset-0 bg-transparent text-[var(--text-primary)]"
                 />
               </th>
-              <th className="px-3 py-2 text-left">邮箱 (Email)</th>
-              <th className="px-3 py-2 text-left">密码 (Pwd)</th>
-              <th className="px-3 py-2 text-left">状态 (Status)</th>
-              <th className="px-3 py-2 text-left">试用链接 (Link)</th>
-              <th className="px-3 py-2 text-left">注册时间 (Date)</th>
-              <th className="px-3 py-2 text-right">操作 (Action)</th>
+              <th className="px-3 py-2 text-left">{catalog.accounts.tableHeaderEmail}</th>
+              <th className="px-3 py-2 text-left">{catalog.accounts.tableHeaderPassword}</th>
+              <th className="px-3 py-2 text-left">{catalog.accounts.tableHeaderStatus}</th>
+              <th className="px-3 py-2 text-left">{catalog.accounts.tableHeaderLink}</th>
+              <th className="px-3 py-2 text-left">{catalog.accounts.tableHeaderDate}</th>
+              <th className="px-3 py-2 text-right">{catalog.accounts.tableHeaderAction}</th>
             </tr>
           </thead>
           <tbody>
@@ -1841,8 +1845,8 @@ export default function Accounts() {
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--bg-pane)] border border-[var(--border)] shadow-sm">
                       <svg className="h-6 w-6 text-[var(--text-muted)]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
                     </div>
-                    <h3 className="text-sm font-medium text-[var(--text-primary)]">暂无数据</h3>
-                    <p className="text-xs text-[var(--text-muted)] max-w-sm">当前平台没有找到任何账号记录。您可以手动新增或通过导入文件批量添加账号。</p>
+                    <h3 className="text-sm font-medium text-[var(--text-primary)]">{catalog.accounts.emptyStateTitle}</h3>
+                    <p className="text-xs text-[var(--text-muted)] max-w-sm">{catalog.accounts.emptyStateDescription}</p>
                   </div>
                 </td>
               </tr>
@@ -1872,15 +1876,17 @@ export default function Accounts() {
                   {verificationMailbox && (verificationMailbox.email || verificationMailbox.account_id || verificationMailbox.provider) && (
                     <div
                       className="mt-1 truncate text-xs text-[var(--text-muted)] flex items-center gap-1"
-                      title={`验证邮箱: ${verificationMailbox.email || '-'} · ${verificationMailbox.provider || '-'}`}
+                      title={catalog.accounts.verificationMailboxRowTitle.replace(/\{email\}|\{provider\}/g, token =>
+                        token === '{email}' ? (verificationMailbox.email || '-') : (verificationMailbox.provider || '-')
+                      )}
                     >
                       <svg className="w-3 h-3 opacity-60 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>
                       <span className="truncate">{verificationMailbox.email || '-'}</span>
                     </div>
                   )}
                   {overview?.remote_email && overview.remote_email !== acc.email && (
-                    <div className="mt-1 truncate text-xs text-[var(--text-muted)]" title={`远端邮箱: ${overview.remote_email}`}>
-                      远端邮箱: {overview.remote_email}
+                    <div className="mt-1 truncate text-xs text-[var(--text-muted)]" title={catalog.accounts.remoteEmailRowTitle.replace('{email}', () => overview.remote_email)}>
+                      {catalog.accounts.remoteEmailRowTitle.replace('{email}', () => overview.remote_email)}
                     </div>
                   )}
                   {displayBadges.length > 0 && (
@@ -1934,9 +1940,9 @@ export default function Accounts() {
                     ) : (
                       <div
                         className="truncate text-xs text-[var(--text-muted)]"
-                        title={getCompactStatusMeta(acc)}
+                        title={getCompactStatusMeta(acc, catalog)}
                       >
-                        {getCompactStatusMeta(acc)}
+                        {getCompactStatusMeta(acc, catalog)}
                       </div>
                     )}
                   </div>
@@ -1944,8 +1950,8 @@ export default function Accounts() {
                 <td className="px-3 py-2.5 align-top">
                   {getCashierUrl(acc) ? (
                     <div className="flex items-center gap-1.5 whitespace-nowrap opacity-70 group-hover:opacity-100 transition-opacity">
-                      <button onClick={e => { e.stopPropagation(); copy(getCashierUrl(acc)) }} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors p-0.5 rounded hover:bg-[var(--bg-pane)]" title="复制链接"><Copy className="h-3 w-3" /></button>
-                      <a href={getCashierUrl(acc)} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors p-0.5 rounded hover:bg-[var(--bg-pane)]" title="打开收银台"><ExternalLink className="h-3 w-3" /></a>
+                      <button onClick={e => { e.stopPropagation(); copy(getCashierUrl(acc)) }} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors p-0.5 rounded hover:bg-[var(--bg-pane)]" title={catalog.accounts.copyLinkTitle}><Copy className="h-3 w-3" /></button>
+                      <a href={getCashierUrl(acc)} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors p-0.5 rounded hover:bg-[var(--bg-pane)]" title={catalog.accounts.openCashierTitle}><ExternalLink className="h-3 w-3" /></a>
                     </div>
                   ) : <span className="text-[var(--text-muted)]/50 text-xs">-</span>}
                 </td>
