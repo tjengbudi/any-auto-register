@@ -1,3 +1,5 @@
+import type { Catalog } from '@/i18n'
+
 type ChoiceOption = {
   value: string
   label: string
@@ -31,7 +33,7 @@ export function pickOAuthExecutor(
   return supportedExecutors[0] || ''
 }
 
-export function buildRegistrationOptions(platformMeta: any) {
+export function buildRegistrationOptions(platformMeta: any, catalog: Catalog) {
   const supportedModes: string[] = platformMeta?.supported_identity_modes || []
   const supportedOAuth: string[] = platformMeta?.supported_oauth_providers || []
   const identityModeOptions: ChoiceOption[] = platformMeta?.supported_identity_mode_options || []
@@ -48,7 +50,7 @@ export function buildRegistrationOptions(platformMeta: any) {
     options.push({
       key: 'mailbox',
       label: getOptionLabel('mailbox', identityModeOptions),
-      description: `使用${getOptionLabel('mailbox', identityModeOptions)}自动收验证码并完成注册`,
+      description: catalog.register.mailboxOptionDescription.replace('{label}', getOptionLabel('mailbox', identityModeOptions)),
       identityProvider: 'mailbox',
       oauthProvider: '',
     })
@@ -60,7 +62,7 @@ export function buildRegistrationOptions(platformMeta: any) {
       options.push({
         key: `oauth:${provider}`,
         label: providerLabel,
-        description: `使用 ${providerLabel} 账号自动创建平台账号`,
+        description: catalog.register.oauthOptionDescription.replace('{label}', providerLabel),
         identityProvider: 'oauth_browser',
         oauthProvider: provider,
       })
@@ -74,6 +76,7 @@ export function buildExecutorOptions(
   identityProvider: string,
   supportedExecutors: string[],
   reusableBrowser: boolean,
+  catalog: Catalog,
   executorOptions: ChoiceOption[] = [],
 ) {
   return supportedExecutors.map((executor) => {
@@ -86,26 +89,26 @@ export function buildExecutorOptions(
     }
 
     if (executor === 'protocol') {
-      option.description = '不打开浏览器，直接通过协议流程自动注册'
+      option.description = catalog.register.executorProtocolDescription
       if (identityProvider !== 'mailbox') {
         option.disabled = true
-        option.reason = '第三方账号注册必须通过浏览器自动化完成'
+        option.reason = catalog.register.executorProtocolDisabledReason
       }
       return option
     }
 
     if (executor === 'headless') {
       option.description = identityProvider === 'mailbox'
-        ? '浏览器在后台自动执行，界面不可见'
-        : '复用本机浏览器登录态，在后台自动完成第三方登录'
+        ? catalog.register.executorHeadlessMailboxDescription
+        : catalog.register.executorHeadlessOauthDescription
       if (identityProvider === 'oauth_browser' && !reusableBrowser) {
         option.disabled = true
-        option.reason = '需要先在全局配置里填写 Chrome Profile 路径或 Chrome CDP 地址'
+        option.reason = catalog.register.executorHeadlessDisabledReason
       }
       return option
     }
 
-    option.description = '会打开浏览器窗口，但系统仍自动执行，无需额外交互'
+    option.description = catalog.register.executorHeadedDescription
     return option
   })
 }

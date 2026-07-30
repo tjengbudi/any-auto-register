@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import { API_BASE, apiFetch } from '@/lib/utils'
 import { getTaskStatusText, isTerminalTaskStatus } from '@/lib/tasks'
+import { useLanguage } from '@/i18n'
 
 export function TaskLogPanel({
   taskId,
@@ -10,6 +11,7 @@ export function TaskLogPanel({
   taskId: string
   onDone: (status: string) => void
 }) {
+  const { catalog } = useLanguage()
   const [lines, setLines] = useState<string[]>([])
   const [task, setTask] = useState<any | null>(null)
   const [doneStatus, setDoneStatus] = useState<string | null>(null)
@@ -132,7 +134,7 @@ export function TaskLogPanel({
       <div className="grid gap-3 md:grid-cols-3">
         <div className={`rounded-2xl border px-4 py-3 ${statusTone}`}>
           <div className="text-[11px] uppercase tracking-[0.18em] opacity-70">Status</div>
-          <div className="mt-1 text-sm font-semibold">{getTaskStatusText(currentStatus)}</div>
+          <div className="mt-1 text-sm font-semibold">{getTaskStatusText(currentStatus, catalog)}</div>
         </div>
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-3">
           <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-muted)]">Progress</div>

@@ -137,11 +137,12 @@ export default function Register() {
   const currentPlatform = platforms.find((p: any) => p.name === form.platform) || null
   const platformOptions = platforms.map((p: any) => [p.name, p.display_name])
   const supportedExecutors = currentPlatform?.supported_executors || []
-  const registrationOptions = buildRegistrationOptions(currentPlatform)
+  const registrationOptions = buildRegistrationOptions(currentPlatform, catalog)
   const executorOptions = buildExecutorOptions(
     form.identity_provider,
     supportedExecutors,
     hasReusableOAuthBrowser(form),
+    catalog,
     currentPlatform?.supported_executor_options || [],
   )
   const mailboxProviderOptions = getProviderSelectOptions(configOptions.mailbox_providers || [])
@@ -355,9 +356,9 @@ export default function Register() {
 
   const summaryRegistration = registrationOptions.find(option => option.identityProvider === form.identity_provider && option.oauthProvider === form.oauth_provider)?.label || '-'
   const summaryExecutor = executorOptions.find(option => option.value === form.executor_type)?.label || '-'
-  const summaryVerification = getCaptchaStrategyLabel(form.executor_type, configOptions.captcha_policy, configOptions.captcha_providers)
+  const summaryVerification = getCaptchaStrategyLabel(form.executor_type, catalog, configOptions.captcha_policy, configOptions.captcha_providers)
   const activeTaskStats = task ? [
-    { label: catalog.register.statusLabel, value: getTaskStatusText(task.status), icon: Orbit },
+    { label: catalog.register.statusLabel, value: getTaskStatusText(task.status, catalog), icon: Orbit },
     { label: catalog.register.progressLabel, value: task.progress || '0/0', icon: Workflow },
     { label: catalog.register.successLabel, value: String(task.success ?? 0), icon: CheckCircle },
     { label: catalog.register.failureLabel, value: String(task.error_count ?? task.errors?.length ?? 0), icon: XCircle },
@@ -532,7 +533,7 @@ export default function Register() {
                   <CardTitle className="flex items-center gap-2">
                     {catalog.register.executionStatusTitle}
                     <Badge variant={TASK_STATUS_VARIANTS[task.status] || 'secondary'}>
-                      {getTaskStatusText(task.status)}
+                      {getTaskStatusText(task.status, catalog)}
                     </Badge>
                   </CardTitle>
                 </CardHeader>

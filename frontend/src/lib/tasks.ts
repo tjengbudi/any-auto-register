@@ -1,3 +1,5 @@
+import type { Catalog } from '@/i18n'
+
 export const TASK_STATUS_VARIANTS: Record<string, any> = {
   pending: 'secondary',
   claimed: 'secondary',
@@ -20,24 +22,24 @@ export function isTerminalTaskStatus(status: string) {
   return TERMINAL_TASK_STATUSES.has(status)
 }
 
-export function getTaskStatusText(status: string) {
+export function getTaskStatusText(status: string, catalog: Catalog) {
   switch (status) {
     case 'succeeded':
-      return '已完成'
+      return catalog.tasks.statusSucceeded
     case 'failed':
-      return '失败'
+      return catalog.tasks.statusFailed
     case 'interrupted':
-      return '已中断'
+      return catalog.tasks.statusInterrupted
     case 'cancelled':
-      return '已取消'
+      return catalog.tasks.statusCancelled
     case 'cancel_requested':
-      return '取消中'
+      return catalog.tasks.statusCancelRequested
     case 'running':
-      return '执行中'
+      return catalog.tasks.statusRunning
     case 'claimed':
-      return '已领取'
+      return catalog.tasks.statusClaimed
     case 'pending':
-      return '排队中'
+      return catalog.tasks.statusPending
     default:
       return status
   }

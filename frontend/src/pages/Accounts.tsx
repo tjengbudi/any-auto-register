@@ -209,12 +209,13 @@ function RegisterModal({
   const [starting, setStarting] = useState(false)
 
   const supportedExecutors: string[] = platformMeta?.supported_executors || []
-  const registrationOptions = buildRegistrationOptions(platformMeta)
+  const registrationOptions = buildRegistrationOptions(platformMeta, catalog)
   const reusableBrowser = hasReusableOAuthBrowser(config || {})
   const executorOptions = buildExecutorOptions(
     selection.identityProvider,
     supportedExecutors,
     reusableBrowser,
+    catalog,
     platformMeta?.supported_executor_options || [],
   )
   const selectedRegistration = registrationOptions.find(option =>
@@ -272,6 +273,7 @@ function RegisterModal({
         identityProvider,
         supportedExecutors,
         hasReusableOAuthBrowser(cfg),
+        catalog,
         platformMeta?.supported_executor_options || [],
       )
         .filter(option => !option.disabled)
@@ -298,6 +300,7 @@ function RegisterModal({
       selection.identityProvider,
       supportedExecutors,
       reusableBrowser,
+      catalog,
       platformMeta?.supported_executor_options || [],
     )
       .filter(option => !option.disabled)
@@ -450,7 +453,7 @@ function RegisterModal({
                 <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-3 text-xs text-[var(--text-secondary)]">
                   <div>{catalog.accounts.summaryIdentityLabel}<span className="text-[var(--text-primary)]">{selectedRegistration?.label || '-'}</span></div>
                   <div className="mt-1">{catalog.accounts.summaryExecutorLabel}<span className="text-[var(--text-primary)]">{selectedExecutor?.label || '-'}</span></div>
-                  <div className="mt-1">{catalog.accounts.summaryCaptchaStrategyLabel}<span className="text-[var(--text-primary)]">{getCaptchaStrategyLabel(selection.executorType)}</span></div>
+                  <div className="mt-1">{catalog.accounts.summaryCaptchaStrategyLabel}<span className="text-[var(--text-primary)]">{getCaptchaStrategyLabel(selection.executorType, catalog)}</span></div>
                   {selection.identityProvider === 'oauth_browser' && !reusableBrowser && (
                     <div className="mt-2 text-amber-400">{catalog.accounts.oauthBrowserWarning}</div>
                   )}
@@ -833,7 +836,7 @@ function ActionTaskModal({
             <div className="flex items-center gap-2">
               {taskStatus ? (
                 <Badge variant={TASK_STATUS_VARIANTS[taskStatus] || 'secondary'}>
-                  {getTaskStatusText(taskStatus)}
+                  {getTaskStatusText(taskStatus, catalog)}
                 </Badge>
               ) : null}
               <button onClick={onClose} className="rounded-full border border-[var(--border)] bg-[var(--bg-hover)] p-2 text-[var(--text-muted)] hover:text-[var(--text-primary)]">
@@ -1088,7 +1091,7 @@ function ActionMenu({
       const task = await apiFetch(`/tasks/${actionTask.taskId}`)
       const data = task?.data ?? task?.result?.data
       if (status !== 'succeeded') {
-        setToast({ type: 'error', text: task?.error || getTaskStatusText(status) })
+        setToast({ type: 'error', text: task?.error || getTaskStatusText(status, catalog) })
         return
       }
       onChanged()

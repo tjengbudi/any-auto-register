@@ -1202,8 +1202,8 @@ export default function Settings({ embedded, defaultTab }: { embedded?: boolean;
             <div className="mb-2">
               <h3 className="text-sm font-semibold text-[var(--text-primary)]">{catalog.settings.currentStrategyTitle}</h3>
             </div>
-            <div className="text-sm text-[var(--text-secondary)]">{getCaptchaStrategyLabel('protocol', configOptions.captcha_policy, configOptions.captcha_providers)}</div>
-            <div className="text-sm text-[var(--text-secondary)] mt-2">{getCaptchaStrategyLabel('headless', configOptions.captcha_policy, configOptions.captcha_providers)}</div>
+            <div className="text-sm text-[var(--text-secondary)]">{getCaptchaStrategyLabel('protocol', catalog, configOptions.captcha_policy, configOptions.captcha_providers)}</div>
+            <div className="text-sm text-[var(--text-secondary)] mt-2">{getCaptchaStrategyLabel('headless', catalog, configOptions.captcha_policy, configOptions.captcha_providers)}</div>
           </div>
         )}
         <UntranslatedNotice />

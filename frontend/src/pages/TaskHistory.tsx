@@ -204,7 +204,7 @@ export default function TaskHistory() {
                     </td>
                     <td className="px-4 py-3">
                       <Badge variant={TASK_STATUS_VARIANTS[task.status] || 'secondary'}>
-                        {getTaskStatusText(task.status)}
+                        {getTaskStatusText(task.status, catalog)}
                       </Badge>
                     </td>
                     <td className="px-4 py-3 text-xs text-[var(--text-secondary)]">
