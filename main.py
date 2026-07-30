@@ -59,6 +59,7 @@ from api.system import router as system_router
 from api.task_commands import router as task_commands_router
 from api.task_logs import router as task_logs_router
 from api.tasks import router as tasks_router
+import i18n
 from core.db import init_db
 from core.registry import load_all
 from i18n import CatalogError
@@ -69,13 +70,14 @@ from providers.registry import load_all as load_providers
 
 def _i18n_bundle_files() -> str:
     """渲染 PyInstaller 打包提示里的目录文件列表；每次调用都读取 i18n.LOCALES
-    的当前值，而不是在导入时冻结一份副本 — 这正是本次修复要解决的问题 —
+    的当前值（属性访问，而不是导入语句本身），不在模块导入时冻结一份副本 —
+    这正是本次修复要解决的问题 —
     Render the PyInstaller bundle-file hint. Reads `i18n.LOCALES` fresh on
-    every call instead of freezing a value at import time -- a stale
-    hard-coded copy is exactly the bug this helper fixes.
+    every call via attribute access (the import itself already happened at
+    module load, same as this file's other `i18n` imports) instead of
+    freezing a copy at import time -- a stale hard-coded copy is exactly the
+    bug this helper fixes.
     """
-    import i18n
-
     return "、".join(f"i18n/{locale}.json" for locale in i18n.LOCALES)
 
 
