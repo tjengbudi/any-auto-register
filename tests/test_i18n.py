@@ -346,7 +346,24 @@ class TestPlaceholderRestrictions:
 
     def test_json_scalar_params_are_rendered(self, monkeypatch):
         _set_catalogs(monkeypatch, en={"a": {"b": "n={n} ok={flag}"}})
-        assert i18n.t("a.b", "en", n=3, flag=True) == "n=3 ok=True"
+        assert i18n.t("a.b", "en", n=3, flag=True) == "n=3 ok=true"
+
+    def test_none_param_renders_as_json_null(self, monkeypatch):
+        _set_catalogs(monkeypatch, en={"a": {"b": "x={x}"}})
+        assert i18n.t("a.b", "en", x=None) == "x=null"
+
+    def test_bool_params_render_as_json_lowercase(self, monkeypatch):
+        _set_catalogs(monkeypatch, en={"a": {"b": "x={x}"}})
+        assert i18n.t("a.b", "en", x=True) == "x=true"
+        assert i18n.t("a.b", "en", x=False) == "x=false"
+
+    def test_integral_float_param_renders_without_trailing_zero(self, monkeypatch):
+        _set_catalogs(monkeypatch, en={"a": {"b": "x={x}"}})
+        assert i18n.t("a.b", "en", x=1.0) == "x=1"
+
+    def test_non_integral_float_param_renders_unchanged(self, monkeypatch):
+        _set_catalogs(monkeypatch, en={"a": {"b": "x={x}"}})
+        assert i18n.t("a.b", "en", x=2.5) == "x=2.5"
 
     def test_non_scalar_param_degrades_instead_of_leaking_a_repr(self, monkeypatch):
         # AD-7 restricts params to JSON scalars; str(obj) would otherwise print

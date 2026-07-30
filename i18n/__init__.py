@@ -82,6 +82,17 @@ class _StrictFormatter(string.Formatter):
         # would render an object's repr — memory address included — as UI text.
         if value is not None and not isinstance(value, (str, int, float, bool)):
             raise ValueError(f"i18n: 参数值必须是 JSON 标量，收到 {type(value).__name__}")
+        # 渲染沿用 JSON 自身的拼写，因为该值最终会被持久化为 JSON 再读出 —
+        # Render using JSON's own spelling, since the value round-trips through
+        # JSON storage: None -> null, bool -> true/false (checked before any
+        # numeric branch, since bool is an int subclass), integral float ->
+        # without its trailing .0. Everything else keeps today's str(value).
+        if value is None:
+            return "null"
+        if isinstance(value, bool):
+            return "true" if value else "false"
+        if isinstance(value, float) and value.is_integer():
+            return str(int(value))
         return str(value)
 
 
