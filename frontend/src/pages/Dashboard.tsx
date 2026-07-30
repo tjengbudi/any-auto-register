@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Users, CheckCircle, Clock, XCircle, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useLanguage } from '@/i18n'
 
 const PLATFORM_COLORS: Record<string, string> = {
   trae: 'text-blue-400',
@@ -24,22 +25,22 @@ const STATUS_VARIANT: Record<string, any> = {
   valid: 'success',
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  registered: '已注册',
-  trial: '试用',
-  subscribed: '订阅',
-  expired: '过期',
-  invalid: '失效',
-  free: '空闲',
-  eligible: '可用',
-  unknown: '未知',
-  valid: '有效',
-  active: '活跃',
-  inactive: '未激活',
-  pending: '待处理',
-}
-
 export default function Dashboard() {
+  const { catalog } = useLanguage()
+  const STATUS_LABELS: Record<string, string> = {
+    registered: catalog.dashboard.statusRegistered,
+    trial: catalog.dashboard.statusTrial,
+    subscribed: catalog.dashboard.statusSubscribed,
+    expired: catalog.dashboard.statusExpired,
+    invalid: catalog.dashboard.statusInvalid,
+    free: catalog.dashboard.statusFree,
+    eligible: catalog.dashboard.statusEligible,
+    unknown: catalog.dashboard.statusUnknown,
+    valid: catalog.dashboard.statusValid,
+    active: catalog.dashboard.statusActive,
+    inactive: catalog.dashboard.statusInactive,
+    pending: catalog.dashboard.statusPending,
+  }
   const [stats, setStats] = useState<any>(null)
   const [desktopStates, setDesktopStates] = useState<Record<string, any>>({})
   const [loading, setLoading] = useState(false)
@@ -70,15 +71,15 @@ export default function Dashboard() {
   useEffect(() => { load() }, [])
 
   const statCards = [
-    { label: '总账号数', value: stats?.total ?? '-', icon: Users, color: 'text-[var(--text-accent)]' },
-    { label: '试用中', value: stats?.by_plan_state?.trial ?? 0, icon: Clock, color: 'text-amber-400' },
-    { label: '已订阅', value: stats?.by_plan_state?.subscribed ?? 0, icon: CheckCircle, color: 'text-emerald-400' },
-    { label: '已失效', value: (stats?.by_display_status?.expired ?? 0) + (stats?.by_validity_status?.invalid ?? 0), icon: XCircle, color: 'text-red-400' },
+    { label: catalog.dashboard.statTotalAccounts, value: stats?.total ?? '-', icon: Users, color: 'text-[var(--text-accent)]' },
+    { label: catalog.dashboard.statTrialing, value: stats?.by_plan_state?.trial ?? 0, icon: Clock, color: 'text-amber-400' },
+    { label: catalog.dashboard.statSubscribed, value: stats?.by_plan_state?.subscribed ?? 0, icon: CheckCircle, color: 'text-emerald-400' },
+    { label: catalog.dashboard.statInvalidated, value: (stats?.by_display_status?.expired ?? 0) + (stats?.by_validity_status?.invalid ?? 0), icon: XCircle, color: 'text-red-400' },
   ]
   const platformEntries = Object.entries(stats?.by_platform || {})
   const totalCount = Math.max(Number(stats?.total || 0), 0)
 
-  const renderStatusGroup = (title: string, values: Record<string, number> | undefined, emptyCopy = '暂无数据') => (
+  const renderStatusGroup = (title: string, values: Record<string, number> | undefined, emptyCopy = catalog.dashboard.emptyNoData) => (
     <div className="space-y-2">
       <div className="px-1 text-sm font-medium text-[var(--text-primary)]">{title}</div>
       {values && Object.keys(values).length > 0 ? Object.entries(values).map(([status, count]) => (
@@ -113,10 +114,10 @@ export default function Dashboard() {
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(300px,0.55fr)]">
         <Card>
           <CardHeader className="flex-row items-center justify-between space-y-0">
-            <CardTitle>平台分布</CardTitle>
+            <CardTitle>{catalog.dashboard.platformDistribution}</CardTitle>
             <Button variant="outline" size="sm" onClick={load} disabled={loading}>
               <RefreshCw className={`mr-1 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              刷新
+              {catalog.dashboard.refresh}
             </Button>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -137,23 +138,23 @@ export default function Dashboard() {
                 </div>
               )
             }) : (
-              <div className="empty-state-panel">{stats ? '暂无平台分布数据' : '正在加载统计数据...'}</div>
+              <div className="empty-state-panel">{stats ? catalog.dashboard.emptyNoPlatformData : catalog.dashboard.loadingStats}</div>
             )}
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>桌面应用状态</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{catalog.dashboard.desktopAppStatus}</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             {desktopPlatforms.map((platform) => {
               const state = desktopStates[platform]
               const label = state?.app_name || state?.display_name || platform
               const badges = state
                 ? [
-                    { label: state.installed ? '已安装' : '未安装', variant: state.installed ? 'success' : 'secondary' },
-                    { label: state.configured ? '已配置' : '未配置', variant: state.configured ? 'success' : 'warning' },
-                    { label: state.running ? '已打开' : '未打开', variant: state.running ? 'success' : 'secondary' },
-                    { label: state.ready ? '已就绪' : '未就绪', variant: state.ready ? 'success' : 'warning' },
+                    { label: state.installed ? catalog.dashboard.installed : catalog.dashboard.notInstalled, variant: state.installed ? 'success' : 'secondary' },
+                    { label: state.configured ? catalog.dashboard.configured : catalog.dashboard.notConfigured, variant: state.configured ? 'success' : 'warning' },
+                    { label: state.running ? catalog.dashboard.opened : catalog.dashboard.notOpened, variant: state.running ? 'success' : 'secondary' },
+                    { label: state.ready ? catalog.dashboard.ready : catalog.dashboard.notReady, variant: state.ready ? 'success' : 'warning' },
                   ]
                 : []
               return (
@@ -163,19 +164,19 @@ export default function Dashboard() {
                       <div className="text-sm font-semibold text-[var(--text-primary)]">{label}</div>
                       <div className="mt-1 text-xs leading-5 text-[var(--text-muted)]">
                         {state?.available === false
-                          ? (state?.message || '当前平台暂未接入桌面状态探测')
-                          : (state?.ready_label || state?.status_label || '桌面账号切换与本地就绪状态')}
+                          ? (state?.message || catalog.dashboard.desktopStateUnavailable)
+                          : (state?.ready_label || state?.status_label || catalog.dashboard.desktopStateDefault)}
                       </div>
                     </div>
                     <Badge variant={state?.ready ? 'success' : 'secondary'}>
-                      {state?.ready ? '就绪' : '待命'}
+                      {state?.ready ? catalog.dashboard.readyBadge : catalog.dashboard.standbyBadge}
                     </Badge>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {badges.length > 0 ? badges.map((badge) => (
                       <Badge key={`${platform}-${badge.label}`} variant={badge.variant as any}>{badge.label}</Badge>
                     )) : (
-                      <span className="text-xs text-[var(--text-muted)]">加载中...</span>
+                      <span className="text-xs text-[var(--text-muted)]">{catalog.dashboard.loadingEllipsis}</span>
                     )}
                   </div>
                 </div>
@@ -186,11 +187,11 @@ export default function Dashboard() {
       </div>
 
       <Card>
-        <CardHeader><CardTitle>状态分布</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{catalog.dashboard.statusDistribution}</CardTitle></CardHeader>
         <CardContent className="grid gap-4 xl:grid-cols-3">
-          {renderStatusGroup('套餐', stats?.by_plan_state, '暂无套餐分布数据')}
-          {renderStatusGroup('生命周期', stats?.by_lifecycle_status, '暂无生命周期分布数据')}
-          {renderStatusGroup('有效性', stats?.by_validity_status, '暂无有效性分布数据')}
+          {renderStatusGroup(catalog.dashboard.groupPlan, stats?.by_plan_state, catalog.dashboard.emptyNoPlanData)}
+          {renderStatusGroup(catalog.dashboard.groupLifecycle, stats?.by_lifecycle_status, catalog.dashboard.emptyNoLifecycleData)}
+          {renderStatusGroup(catalog.dashboard.groupValidity, stats?.by_validity_status, catalog.dashboard.emptyNoValidityData)}
         </CardContent>
       </Card>
     </div>

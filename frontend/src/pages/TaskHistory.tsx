@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { getTaskStatusText, TASK_STATUS_VARIANTS } from '@/lib/tasks'
 import { RefreshCw, Activity, CheckCircle2, AlertTriangle, Clock3, ChevronDown } from 'lucide-react'
+import { useLanguage } from '@/i18n'
 
 function shortId(id: string) {
   if (!id) return '-'
@@ -32,6 +33,7 @@ function formatError(error: string | null | undefined): string {
 }
 
 export default function TaskHistory() {
+  const { catalog } = useLanguage()
   const [tasks, setTasks] = useState<any[]>([])
   const [platform, setPlatform] = useState('')
   const [status, setStatus] = useState('')
@@ -68,20 +70,20 @@ export default function TaskHistory() {
   ).length
 
   const metricCards = [
-    { label: '任务数', value: tasks.length, icon: Activity, tone: 'text-[var(--accent)]' },
-    { label: '成功', value: succeeded, icon: CheckCircle2, tone: 'text-emerald-500' },
-    { label: '失败', value: failed, icon: AlertTriangle, tone: 'text-red-500' },
-    { label: '进行中', value: running, icon: Clock3, tone: 'text-amber-500' },
+    { label: catalog.taskHistory.metricTaskCount, value: tasks.length, icon: Activity, tone: 'text-[var(--accent)]' },
+    { label: catalog.taskHistory.metricSucceeded, value: succeeded, icon: CheckCircle2, tone: 'text-emerald-500' },
+    { label: catalog.taskHistory.metricFailed, value: failed, icon: AlertTriangle, tone: 'text-red-500' },
+    { label: catalog.taskHistory.metricRunning, value: running, icon: Clock3, tone: 'text-amber-500' },
   ]
 
   return (
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-[var(--text-primary)]">任务记录</h1>
+        <h1 className="text-xl font-semibold text-[var(--text-primary)]">{catalog.taskHistory.pageTitle}</h1>
         <Button variant="outline" size="sm" onClick={load} disabled={loading}>
           <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
-          刷新
+          {catalog.taskHistory.refreshButton}
         </Button>
       </div>
 
@@ -106,7 +108,7 @@ export default function TaskHistory() {
       {/* Filters — inline with table header */}
       <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] overflow-hidden">
         <div className="flex items-center gap-3 border-b border-[var(--border)] px-4 py-2.5">
-          <span className="text-sm font-medium text-[var(--text-primary)]">最近任务</span>
+          <span className="text-sm font-medium text-[var(--text-primary)]">{catalog.taskHistory.recentTasksLabel}</span>
           <div className="flex-1" />
           <div className="flex items-center gap-2">
             <div className="relative">
@@ -115,7 +117,7 @@ export default function TaskHistory() {
                 onChange={(e) => setPlatform(e.target.value)}
                 className="h-8 appearance-none rounded-md border border-[var(--border)] bg-[var(--bg-input)] pl-3 pr-7 text-xs text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] focus:border-[var(--accent)]"
               >
-                <option value="">全部平台</option>
+                <option value="">{catalog.taskHistory.allPlatformsOption}</option>
                 {platforms.map((item: any) => (
                   <option key={item.name} value={item.name}>{item.display_name}</option>
                 ))}
@@ -128,12 +130,12 @@ export default function TaskHistory() {
                 onChange={(e) => setStatus(e.target.value)}
                 className="h-8 appearance-none rounded-md border border-[var(--border)] bg-[var(--bg-input)] pl-3 pr-7 text-xs text-[var(--text-secondary)] transition-colors hover:border-[var(--accent)] focus:border-[var(--accent)]"
               >
-                <option value="">全部状态</option>
-                <option value="running">运行中</option>
-                <option value="succeeded">成功</option>
-                <option value="failed">失败</option>
-                <option value="cancelled">已取消</option>
-                <option value="interrupted">已中断</option>
+                <option value="">{catalog.taskHistory.allStatusesOption}</option>
+                <option value="running">{catalog.taskHistory.statusRunningOption}</option>
+                <option value="succeeded">{catalog.taskHistory.statusSucceededOption}</option>
+                <option value="failed">{catalog.taskHistory.statusFailedOption}</option>
+                <option value="cancelled">{catalog.taskHistory.statusCancelledOption}</option>
+                <option value="interrupted">{catalog.taskHistory.statusInterruptedOption}</option>
               </select>
               <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-[var(--text-muted)]" />
             </div>
@@ -142,7 +144,7 @@ export default function TaskHistory() {
                 onClick={() => { setPlatform(''); setStatus('') }}
                 className="text-xs text-[var(--text-muted)] hover:text-[var(--accent)]"
               >
-                清除
+                {catalog.taskHistory.clearFilters}
               </button>
             )}
           </div>
@@ -151,20 +153,20 @@ export default function TaskHistory() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[var(--border)] bg-[var(--bg-pane)]">
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-[var(--text-muted)]">时间</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-[var(--text-muted)]">任务 ID</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-[var(--text-muted)]">平台</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-[var(--text-muted)]">状态</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-[var(--text-muted)]">进度</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-[var(--text-muted)]">成功/失败</th>
-                <th className="px-4 py-2.5 text-left text-xs font-medium text-[var(--text-muted)]">错误</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-[var(--text-muted)]">{catalog.taskHistory.columnTime}</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-[var(--text-muted)]">{catalog.taskHistory.columnTaskId}</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-[var(--text-muted)]">{catalog.taskHistory.columnPlatform}</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-[var(--text-muted)]">{catalog.taskHistory.columnStatus}</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-[var(--text-muted)]">{catalog.taskHistory.columnProgress}</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-[var(--text-muted)]">{catalog.taskHistory.columnSuccessFail}</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-[var(--text-muted)]">{catalog.taskHistory.columnError}</th>
               </tr>
             </thead>
             <tbody>
               {tasks.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-4 py-12 text-center text-sm text-[var(--text-muted)]">
-                    暂无任务记录
+                    {catalog.taskHistory.emptyTasks}
                   </td>
                 </tr>
               )}
