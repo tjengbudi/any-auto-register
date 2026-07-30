@@ -12,6 +12,8 @@ import json
 import textwrap
 from pathlib import Path
 
+import pytest
+
 from tools import i18n_mint
 
 
@@ -84,6 +86,15 @@ class TestOwnerDerivation:
         # No platform subdirectory: platforms/foo.py, not platforms/foo/bar.py.
         path = tmp_path / "platforms" / "foo.py"
         assert i18n_mint._owner_for(path, tmp_path) == "foo"
+
+    def test_invalid_derived_owner_raises_mint_error_not_a_bare_assert(self, tmp_path):
+        # A leading-underscore top-level segment folds to a name starting
+        # with an uppercase letter, which _OWNER_RE rejects. This must raise
+        # the tool's own operator-facing error, not a bare AssertionError
+        # that -O/PYTHONOPTIMIZE would strip away entirely.
+        path = tmp_path / "_private_pkg" / "mod.py"
+        with pytest.raises(i18n_mint.MintError):
+            i18n_mint._owner_for(path, tmp_path)
 
 
 # ---------------------------------------------------------------------------
@@ -245,6 +256,28 @@ class TestFullyAlreadyMigratedFile:
         after = (tmp_path / "i18n" / "zh.json").read_text(encoding="utf-8")
         assert after == before
 
+    def test_file_with_no_remaining_chinese_literals_makes_no_changes(self, monkeypatch, tmp_path):
+        # A file actually migrated to call sites: the raw Chinese literal is
+        # gone, replaced by a call carrying the already-minted key. There is
+        # no candidate left for the scanner to find at all.
+        _set_root(monkeypatch, tmp_path)
+        hash8 = i18n_mint._hash8("你好世界")
+        _write_zh(tmp_path, {"main": {hash8: "你好世界"}})
+        _write_source(tmp_path, "main.py", f'''\
+            from i18n import t
+
+            x = t("main.{hash8}", "zh")
+        ''')
+        before = (tmp_path / "i18n" / "zh.json").read_text(encoding="utf-8")
+
+        with monkeypatch.context() as m:
+            _guard_write_text(m, "zh.json must not be written for an already-migrated file")
+            exit_code = i18n_mint.main(["main.py"])
+
+        assert exit_code == 0
+        after = (tmp_path / "i18n" / "zh.json").read_text(encoding="utf-8")
+        assert after == before
+
 
 # ---------------------------------------------------------------------------
 # Same string twice in one owner
@@ -361,6 +394,62 @@ class TestFStringNotScanned:
 
         assert exit_code == 0
         assert _read_zh(tmp_path) == {}
+
+
+# ---------------------------------------------------------------------------
+# Operator-facing errors: bad input instead of a raw traceback
+# ---------------------------------------------------------------------------
+
+
+class TestOperatorFacingErrors:
+    def test_missing_source_file_exits_1_with_a_clean_message(self, monkeypatch, tmp_path, capsys):
+        _set_root(monkeypatch, tmp_path)
+        _write_zh(tmp_path, {})
+
+        exit_code = i18n_mint.main(["does_not_exist.py"])
+
+        assert exit_code == 1
+        assert "does_not_exist.py" in capsys.readouterr().err
+
+    def test_syntax_error_source_file_exits_1_with_a_clean_message(self, monkeypatch, tmp_path, capsys):
+        _set_root(monkeypatch, tmp_path)
+        _write_zh(tmp_path, {})
+        _write_source(tmp_path, "main.py", '''\
+            def broken(:
+        ''')
+
+        exit_code = i18n_mint.main(["main.py"])
+
+        assert exit_code == 1
+        assert "main.py" in capsys.readouterr().err
+
+    def test_corrupt_zh_json_exits_1_with_a_clean_message(self, monkeypatch, tmp_path, capsys):
+        _set_root(monkeypatch, tmp_path)
+        _write_source(tmp_path, "main.py", '''\
+            x = "你好世界"
+        ''')
+        zh_path = tmp_path / "i18n" / "zh.json"
+        zh_path.parent.mkdir(parents=True, exist_ok=True)
+        zh_path.write_text("{not valid json", encoding="utf-8")
+
+        exit_code = i18n_mint.main(["main.py"])
+
+        assert exit_code == 1
+        assert "zh.json" in capsys.readouterr().err
+
+    def test_missing_i18n_directory_is_created_before_first_write(self, monkeypatch, tmp_path):
+        _set_root(monkeypatch, tmp_path)
+        _write_source(tmp_path, "main.py", '''\
+            x = "你好世界"
+        ''')
+        assert not (tmp_path / "i18n").exists()
+
+        exit_code = i18n_mint.main(["main.py"])
+
+        assert exit_code == 0
+        assert _read_zh(tmp_path) == {
+            "main": {i18n_mint._hash8("你好世界"): "你好世界"}
+        }
 
 
 # ---------------------------------------------------------------------------

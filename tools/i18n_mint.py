@@ -44,6 +44,14 @@ from typing import Iterator
 
 __all__ = ["main"]
 
+
+class MintError(Exception):
+    """一个可预期的、面向操作者的错误 —— 由 main() 打印到 stderr 并以退出码 1 结束，
+    而不是暴露一条裸的 traceback ——
+    An expected, operator-facing error -- caught by main(), printed to
+    stderr, and turned into exit code 1 instead of a raw traceback.
+    """
+
 # U+4E00-U+9FFF：中日韩统一表意文字基本区，本工具的"候选"判定标准 —
 # The CJK Unified Ideographs basic block; this is the candidate test.
 _HAN_RE = re.compile("[一-鿿]")
@@ -109,7 +117,8 @@ def _owner_for(path: Path, root: Path) -> str:
         segment = parts[0]
 
     owner = _fold_snake_to_camel(segment)
-    assert _OWNER_RE.fullmatch(owner), f"i18n_mint: 派生的 owner 不合法 (invalid owner): {owner!r}"
+    if not _OWNER_RE.fullmatch(owner):
+        raise MintError(f"派生的 owner 不合法 (invalid derived owner): {owner!r}")
     return owner
 
 
@@ -145,13 +154,12 @@ def _walk_skip_fstring_fragments(node: ast.AST) -> Iterator[ast.AST]:
         yield from _walk_skip_fstring_fragments(child)
 
 
-def _iter_candidates(tree: ast.AST, source_path: Path) -> Iterator[tuple[int, str]]:
+def _iter_candidates(tree: ast.AST) -> Iterator[tuple[int, str]]:
     """扫描 AST，产出含至少一个汉字的字符串字面量候选 (行号, 文本)；跳过
     f-string 片段与文档字符串 ——
     Walk the AST and yield (lineno, text) for every Han-bearing string
     literal candidate, skipping f-string fragments and docstrings.
     """
-    del source_path  # 仅用于接口对齐，本函数不需要读取源文件 —— interface parity only
     docstring_ids = _docstring_constant_ids(tree)
     for node in _walk_skip_fstring_fragments(tree):
         if not isinstance(node, ast.Constant) or not isinstance(node.value, str):
@@ -170,7 +178,13 @@ def _load_existing_zh(path: Path) -> dict:
         text = path.read_text(encoding="utf-8-sig")
     except FileNotFoundError:
         return {}
-    return json.loads(text)
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise MintError(f"{path} 不是合法的 JSON (not valid JSON): {exc}") from exc
+    if not isinstance(data, dict):
+        raise MintError(f"{path} 的顶层结构不是一个对象 (top level is not an object): {type(data).__name__}")
+    return data
 
 
 def _hash8(text: str) -> str:
@@ -213,11 +227,15 @@ def main(argv: list[str] | None = None) -> int:
         except ValueError:
             rel_display = str(resolved)
 
-        source = resolved.read_text(encoding="utf-8")
-        tree = ast.parse(source, filename=rel_display)
-        owner = _owner_for(resolved, root)
+        try:
+            source = resolved.read_text(encoding="utf-8")
+            tree = ast.parse(source, filename=rel_display)
+            owner = _owner_for(resolved, root)
+        except (OSError, UnicodeDecodeError, SyntaxError, MintError) as exc:
+            print(f"错误：无法处理 {rel_display} (failed to process {rel_display}): {exc}", file=sys.stderr)
+            return 1
 
-        for lineno, text in _iter_candidates(tree, resolved):
+        for lineno, text in _iter_candidates(tree):
             hash8 = _hash8(text)
             by_text = groups.setdefault((owner, hash8), {})
             by_text.setdefault(text, []).append(f"{rel_display}:{lineno}")
@@ -237,22 +255,32 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"    {text!r} @ {locations}", file=sys.stderr)
         return 1
 
-    existing = _load_existing_zh(zh_path)
+    try:
+        existing = _load_existing_zh(zh_path)
 
-    minted = 0
-    already_present = 0
-    for (owner, hash8), by_text in groups.items():
-        # 碰撞已经在上面排除，这里 by_text 必然只有一个 text ——
-        # Collisions were already excluded above, so by_text has exactly one text.
-        (text,) = by_text.keys()
-        owner_map = existing.get(owner)
-        if isinstance(owner_map, dict) and hash8 in owner_map:
-            already_present += 1
-            continue
-        existing.setdefault(owner, {})[hash8] = text
-        minted += 1
+        minted = 0
+        already_present = 0
+        for (owner, hash8), by_text in groups.items():
+            # 碰撞已经在上面排除，这里 by_text 必然只有一个 text ——
+            # Collisions were already excluded above, so by_text has exactly one text.
+            (text,) = by_text.keys()
+            owner_map = existing.setdefault(owner, {})
+            if not isinstance(owner_map, dict):
+                raise MintError(
+                    f"{zh_path} 中 owner {owner!r} 对应的值不是一个对象 "
+                    f"(the value for owner {owner!r} is not an object): {type(owner_map).__name__}"
+                )
+            if hash8 in owner_map:
+                already_present += 1
+                continue
+            owner_map[hash8] = text
+            minted += 1
+    except MintError as exc:
+        print(f"错误 (error): {exc}", file=sys.stderr)
+        return 1
 
     if minted:
+        zh_path.parent.mkdir(parents=True, exist_ok=True)
         zh_path.write_text(
             json.dumps(existing, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
