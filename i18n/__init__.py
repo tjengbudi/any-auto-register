@@ -12,7 +12,7 @@ import string
 from pathlib import Path
 from typing import Any
 
-__all__ = ["t", "load", "CatalogError"]
+__all__ = ["t", "load", "selfcheck", "CatalogError"]
 
 _logger = logging.getLogger(__name__)
 
@@ -159,6 +159,21 @@ def load() -> dict[str, dict[str, Any]]:
 
     _catalogs = catalogs
     return _catalogs
+
+
+def selfcheck() -> None:
+    """自检目录可加载性；委托给 load() —
+    Verify the catalogs are loadable; delegates to `load()`.
+
+    zh 目录缺失/损坏时抛出 CatalogError（与 load() 一致）；en/vi 缺失时静默降级，
+    与 load() 今天的行为一致。供 main.py 的 --selfcheck-i18n 以及未来 customer
+    portal 的自检复用 —
+    Raises CatalogError when `zh` is missing/broken, matching `load()`; `en`/`vi`
+    degrade silently, also matching `load()`'s current behavior. Reused by
+    main.py's `--selfcheck-i18n` flag and, eventually, the customer portal's own
+    self-check.
+    """
+    load()
 
 
 def _lookup(catalog: dict[str, Any], owner: str, subkey: str) -> str | None:

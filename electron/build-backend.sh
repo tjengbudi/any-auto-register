@@ -25,6 +25,7 @@ echo "[2/3] 打包后端..."
   --add-data="infrastructure:infrastructure" \
   --add-data="domain:domain" \
   --add-data="static:static" \
+  --add-data="i18n:i18n" \
   --add-binary="${DRIVER_DIR}/node:playwright/driver" \
   --add-data="${DRIVER_DIR}/package:playwright/driver/package" \
   --hidden-import=uvicorn.logging \

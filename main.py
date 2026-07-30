@@ -63,6 +63,7 @@ from core.db import init_db
 from core.registry import load_all
 from i18n import CatalogError
 from i18n import load as load_i18n
+from i18n import selfcheck as selfcheck_i18n
 from providers.registry import load_all as load_providers
 
 # PyInstaller 打包必须携带这三个目录文件，否则 zh 目录缺失会在启动时中止 —
@@ -85,6 +86,33 @@ def _ensure_i18n_ready() -> None:
         except Exception:
             pass
         raise CatalogError(message) from exc
+
+
+def _run_selfcheck_i18n() -> int:
+    """`--selfcheck-i18n` 的实现；加载三个目录并打印结果，从不启动 lifespan —
+    Implementation of `--selfcheck-i18n`; loads the three catalogs and prints
+    the result, never touching the lifespan.
+
+    与 _ensure_i18n_ready() 不同，这里捕获 CatalogError 并转换成退出码而不是
+    重新抛出，供 CLI/CI 直接判断成功与否 —
+    Unlike `_ensure_i18n_ready()`, this catches `CatalogError` and turns it into
+    an exit code instead of re-raising, so a CLI/CI caller can branch on it
+    directly.
+    """
+    try:
+        selfcheck_i18n()
+    except CatalogError as exc:
+        message = f"[selfcheck] FAIL: {exc}；PyInstaller 打包需要通过 --add-data 携带：{_I18N_BUNDLE_FILES}"
+        try:
+            print(message)
+        except Exception:
+            pass
+        return 1
+    try:
+        print("[selfcheck] OK")
+    except Exception:
+        pass
+    return 0
 
 
 @asynccontextmanager
@@ -167,5 +195,11 @@ if __name__ == "__main__":
         from services.turnstile_solver.start import main as solver_main
         solver_main()
         sys.exit(0)
+
+    # 打包产物的自检入口：加载 i18n 目录后立即退出，不启动 FastAPI 服务/lifespan —
+    # Self-check entry point for packaged builds: loads the i18n catalogs then
+    # exits immediately, never starting the FastAPI service/lifespan.
+    if len(sys.argv) > 1 and sys.argv[1] == "--selfcheck-i18n":
+        sys.exit(_run_selfcheck_i18n())
 
     uvicorn.run(app, host="0.0.0.0", port=8000)

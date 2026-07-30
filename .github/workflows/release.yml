@@ -46,6 +46,7 @@ jobs:
             --add-data "api:api" \
             --add-data "services:services" \
             --add-data "static:static" \
+            --add-data "i18n:i18n" \
             --collect-all browserforge \
             --collect-all camoufox \
             --collect-all apify_fingerprint_datapoints \
@@ -59,6 +60,9 @@ jobs:
             main.py
           mkdir -p electron/backend
           cp -r dist/backend electron/backend/
+
+      - name: Self-check i18n bundle
+        run: electron/backend/backend/backend --selfcheck-i18n
 
       - name: Build Electron (macOS)
         run: |
@@ -125,6 +129,7 @@ jobs:
             --add-data "api;api" `
             --add-data "services;services" `
             --add-data "static;static" `
+            --add-data "i18n;i18n" `
             --collect-all browserforge `
             --collect-all camoufox `
             --collect-all apify_fingerprint_datapoints `
@@ -138,6 +143,12 @@ jobs:
             main.py
           New-Item -ItemType Directory -Force -Path electron/backend
           Copy-Item -Recurse dist/backend electron/backend/
+        shell: pwsh
+
+      - name: Self-check i18n bundle
+        run: |
+          electron\backend\backend\backend.exe --selfcheck-i18n
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
         shell: pwsh
 
       - name: Build Electron (Windows)
