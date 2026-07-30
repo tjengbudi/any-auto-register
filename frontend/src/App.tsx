@@ -2,6 +2,7 @@ import { BrowserRouter, NavLink, Route, Routes, useLocation, useNavigate } from 
 import { useEffect, useState } from 'react'
 import { getPlatforms } from '@/lib/app-data'
 import { getAuthToken, setAuthToken, API, cn } from '@/lib/utils'
+import { LanguageProvider, useLanguage } from '@/i18n'
 import Dashboard from '@/pages/Dashboard'
 import Accounts from '@/pages/Accounts'
 import Register from '@/pages/Register'
@@ -28,11 +29,6 @@ import {
 
 type NavItem = { path: string; label: string; icon: any; exact?: boolean }
 
-const NAV_ITEMS: NavItem[] = [
-  { path: '/', label: '总览', icon: LayoutDashboard, exact: true },
-  { path: '/history', label: '任务', icon: History },
-]
-
 function Sidebar({
   theme,
   toggleTheme,
@@ -46,8 +42,14 @@ function Sidebar({
 }) {
   const location = useLocation()
   const navigate = useNavigate()
+  const { catalog } = useLanguage()
   const [platforms, setPlatforms] = useState<{ key: string; label: string }[]>([])
   const [accountsOpen, setAccountsOpen] = useState(location.pathname.startsWith('/accounts'))
+
+  const navItems: NavItem[] = [
+    { path: '/', label: catalog.nav.total, icon: LayoutDashboard, exact: true },
+    { path: '/history', label: catalog.nav.history, icon: History },
+  ]
 
   useEffect(() => {
     getPlatforms()
@@ -100,7 +102,7 @@ function Sidebar({
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
-        {NAV_ITEMS.map(({ path, label, icon: Icon, exact }) => {
+        {navItems.map(({ path, label, icon: Icon, exact }) => {
           const active = exact ? location.pathname === path : location.pathname.startsWith(path)
           return (
             <NavLink key={path} to={path} end={exact} className={navLinkClass(active)} title={collapsed ? label : undefined}>
@@ -121,12 +123,12 @@ function Sidebar({
               }
             }}
             className={cn(navLinkClass(isAccounts), 'w-full')}
-            title={collapsed ? '账号' : undefined}
+            title={collapsed ? catalog.nav.accounts : undefined}
           >
             <Users className={iconClass(isAccounts)} />
             {!collapsed && (
               <>
-                <span className="flex-1 text-left">账号</span>
+                <span className="flex-1 text-left">{catalog.nav.accounts}</span>
                 <ChevronRight className={cn('h-3 w-3 text-[var(--text-muted)] transition-transform duration-150', accountsOpen && 'rotate-90')} />
               </>
             )}
@@ -167,23 +169,23 @@ function Sidebar({
               }
             }}
             className={cn(navLinkClass(isSettings), 'w-full')}
-            title={collapsed ? '设置' : undefined}
+            title={collapsed ? catalog.nav.settings : undefined}
           >
             <SettingsIcon className={iconClass(isSettings)} />
-            {!collapsed && <span>设置</span>}
+            {!collapsed && <span>{catalog.nav.settings}</span>}
           </button>
           {!collapsed && isSettings && (
             <div className="ml-[21px] mt-0.5 space-y-px border-l border-[var(--border)] pl-3">
               {[
-                { label: '通用', hash: 'general' },
-                { label: '注册策略', hash: 'register' },
-                { label: '邮箱服务', hash: 'mailbox' },
-                { label: '验证服务', hash: 'captcha' },
-                { label: '接码服务', hash: 'sms' },
-                { label: '代理资源', hash: 'proxies' },
-                { label: 'ChatGPT', hash: 'chatgpt' },
-                { label: '高级', hash: 'advanced' },
-                { label: '关于', hash: 'about' },
+                { label: catalog.nav.settingsGeneral, hash: 'general' },
+                { label: catalog.nav.settingsRegister, hash: 'register' },
+                { label: catalog.nav.settingsMailbox, hash: 'mailbox' },
+                { label: catalog.nav.settingsCaptcha, hash: 'captcha' },
+                { label: catalog.nav.settingsSms, hash: 'sms' },
+                { label: catalog.nav.settingsProxies, hash: 'proxies' },
+                { label: catalog.nav.settingsChatgpt, hash: 'chatgpt' },
+                { label: catalog.nav.settingsAdvanced, hash: 'advanced' },
+                { label: catalog.nav.settingsAbout, hash: 'about' },
               ].map((item) => {
                 const params = new URLSearchParams(location.search)
                 const currentTab = params.get('tab') || 'general'
@@ -216,19 +218,19 @@ function Sidebar({
           className={cn(
             'flex items-center justify-center rounded-md p-2 text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)]',
           )}
-          title={theme === 'light' ? '切换到深色' : theme === 'dark' ? '切换到浅色' : '跟随系统'}
+          title={theme === 'light' ? catalog.nav.themeSwitchToDark : theme === 'dark' ? catalog.nav.themeSwitchToLight : catalog.nav.themeFollowSystem}
         >
           {theme === 'light' ? <Moon className="h-4 w-4" /> : theme === 'system' ? <Monitor className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
         </button>
         {!collapsed && (
           <span className="flex-1 text-[12px] text-[var(--text-muted)]">
-            {theme === 'light' ? '浅色' : theme === 'dark' ? '深色' : '系统'}
+            {theme === 'light' ? catalog.nav.themeLight : theme === 'dark' ? catalog.nav.themeDark : catalog.nav.themeSystem}
           </span>
         )}
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="flex items-center justify-center rounded-md p-2 text-[var(--text-muted)] transition-colors hover:bg-[var(--bg-hover)] hover:text-[var(--text-secondary)]"
-          title={collapsed ? '展开侧栏' : '收起侧栏'}
+          title={collapsed ? catalog.nav.expandSidebar : catalog.nav.collapseSidebar}
         >
           {collapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
         </button>
@@ -282,6 +284,7 @@ function Shell({
 /* ------------------------------------------------------------------ */
 
 function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
+  const { catalog } = useLanguage()
   const [pw, setPw] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -301,10 +304,10 @@ function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
         setAuthToken(data.token || '')
         onLogin(data.token || '')
       } else {
-        setError(data.error || '密码错误')
+        setError(data.error || catalog.login.wrongPassword)
       }
     } catch {
-      setError('请求失败')
+      setError(catalog.login.requestFailed)
     } finally {
       setLoading(false)
     }
@@ -317,12 +320,12 @@ function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--accent)] text-sm font-bold text-white">A</div>
           <h1 className="text-base font-semibold text-[var(--text-primary)]">Any Auto Register</h1>
         </div>
-        <p className="text-sm text-[var(--text-muted)]">请输入访问密码</p>
+        <p className="text-sm text-[var(--text-muted)]">{catalog.login.prompt}</p>
         <input
           type="password"
           value={pw}
           onChange={(e) => setPw(e.target.value)}
-          placeholder="密码"
+          placeholder={catalog.login.passwordPlaceholder}
           autoFocus
           className="control-surface w-full"
         />
@@ -332,7 +335,7 @@ function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
           disabled={loading || !pw}
           className="w-full rounded-lg bg-[var(--accent)] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[var(--accent-hover)] disabled:opacity-50"
         >
-          {loading ? '验证中...' : '登 录'}
+          {loading ? catalog.login.verifying : catalog.login.submit}
         </button>
       </form>
     </div>
@@ -377,16 +380,24 @@ export default function App() {
   const toggleTheme = () =>
     setTheme((c) => (c === 'dark' ? 'light' : c === 'light' ? 'system' : 'dark'))
 
-  if (authState === 'loading') {
-    return <div className="flex h-screen items-center justify-center bg-[var(--bg-base)] text-[var(--text-muted)] text-sm">加载中...</div>
-  }
-  if (authState === 'locked') {
-    return <LoginScreen onLogin={() => setAuthState('authed')} />
-  }
-
   return (
-    <BrowserRouter>
-      <Shell theme={theme} setTheme={setTheme} toggleTheme={toggleTheme} />
-    </BrowserRouter>
+    <LanguageProvider>
+      {authState === 'loading' && <LoadingScreen />}
+      {authState === 'locked' && <LoginScreen onLogin={() => setAuthState('authed')} />}
+      {(authState === 'open' || authState === 'authed') && (
+        <BrowserRouter>
+          <Shell theme={theme} setTheme={setTheme} toggleTheme={toggleTheme} />
+        </BrowserRouter>
+      )}
+    </LanguageProvider>
+  )
+}
+
+function LoadingScreen() {
+  const { catalog } = useLanguage()
+  return (
+    <div className="flex h-screen items-center justify-center bg-[var(--bg-base)] text-[var(--text-muted)] text-sm">
+      {catalog.login.loading}
+    </div>
   )
 }

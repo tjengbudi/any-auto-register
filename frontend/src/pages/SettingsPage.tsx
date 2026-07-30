@@ -4,6 +4,7 @@ import { Sun, Moon, Monitor } from 'lucide-react'
 import { cn, apiFetch } from '@/lib/utils'
 import { getConfig, getConfigOptions, invalidateConfigCache } from '@/lib/app-data'
 import type { ConfigOptionsResponse } from '@/lib/config-options'
+import { LANGUAGE_OPTIONS, useLanguage } from '@/i18n'
 import { Button } from '@/components/ui/button'
 import { Save, RefreshCw, CheckCircle, ExternalLink, Sparkles } from 'lucide-react'
 import Settings from '@/pages/Settings'
@@ -80,6 +81,7 @@ function GeneralTab({
   const [configOptions, setConfigOptions] = useState<ConfigOptionsResponse | null>(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const { lang, catalog, setLang } = useLanguage()
 
   useEffect(() => {
     Promise.all([getConfig().catch(() => ({})), getConfigOptions().catch(() => null)]).then(
@@ -113,6 +115,26 @@ function GeneralTab({
     <div className="space-y-8">
       <SettingGroup title="外观主题" desc="选择应用的外观主题，立即生效。">
         <ThemeSelector theme={theme} setTheme={setTheme} />
+      </SettingGroup>
+
+      <div className="border-t border-[var(--border)]" />
+
+      <SettingGroup title={catalog.settings.languageGroupTitle} desc={catalog.settings.languageGroupDesc}>
+        <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] divide-y divide-[var(--border)]/50">
+          <SettingRow label={catalog.settings.languageRowLabel}>
+            <select
+              value={lang === 'en' ? 'en' : 'zh'}
+              onChange={(e) => setLang(e.target.value as 'zh' | 'en')}
+              className="control-surface appearance-none"
+            >
+              {LANGUAGE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </SettingRow>
+        </div>
       </SettingGroup>
 
       <div className="border-t border-[var(--border)]" />
