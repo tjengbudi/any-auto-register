@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import textwrap
+import tokenize
 from pathlib import Path
 
 import pytest
@@ -394,6 +395,185 @@ class TestFStringNotScanned:
 
         assert exit_code == 0
         assert _read_zh(tmp_path) == {}
+
+
+# ---------------------------------------------------------------------------
+# Adjacent-concatenated plain literal + f-string (DW-7): warn, don't mint
+# ---------------------------------------------------------------------------
+
+
+class TestAdjacentFstringWarning:
+    def test_han_literal_adjacent_concatenated_into_fstring_warns_and_is_not_minted(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        # "你好" f"{name}" parses to the same ast.JoinedStr as f"你好{name}"
+        # (verified: the AST cannot tell them apart), so the plain fragment
+        # is genuinely lost to _iter_candidates. tokenize can still tell
+        # them apart -- this is the diagnostic that replaces silent loss.
+        _set_root(monkeypatch, tmp_path)
+        _write_zh(tmp_path, {})
+        _write_source(tmp_path, "main.py", '''\
+            name = "value"
+            x = "你好" f"{name}"
+        ''')
+
+        exit_code = i18n_mint.main(["main.py"])
+
+        assert exit_code == 0
+        assert _read_zh(tmp_path) == {}
+        err = capsys.readouterr().err
+        assert "main.py:2" in err
+        assert "你好" in err
+
+    def test_pure_fstring_with_chinese_static_segment_stays_silent(self, monkeypatch, tmp_path, capsys):
+        # f"你好{name}" -- no adjacent-concatenated plain literal exists here,
+        # so this stays the deliberately-silent case spec 1.5's Never clause
+        # requires: no mint, and now also no warning.
+        _set_root(monkeypatch, tmp_path)
+        _write_zh(tmp_path, {})
+        _write_source(tmp_path, "main.py", '''\
+            name = "value"
+            x = f"你好{name}"
+        ''')
+
+        exit_code = i18n_mint.main(["main.py"])
+
+        assert exit_code == 0
+        assert _read_zh(tmp_path) == {}
+        assert capsys.readouterr().err == ""
+
+    def test_no_han_text_in_adjacent_literal_stays_silent(self, monkeypatch, tmp_path, capsys):
+        # "hello" f"{name}" -- adjacent-concatenated with an f-string, but
+        # the plain fragment has no CJK text, so it was never a mint
+        # candidate in the first place (I/O matrix row 3).
+        _set_root(monkeypatch, tmp_path)
+        _write_zh(tmp_path, {})
+        _write_source(tmp_path, "main.py", '''\
+            name = "value"
+            x = "hello" f"{name}"
+        ''')
+
+        exit_code = i18n_mint.main(["main.py"])
+
+        assert exit_code == 0
+        assert _read_zh(tmp_path) == {}
+        assert capsys.readouterr().err == ""
+
+    def test_explicit_plus_concatenation_is_not_implicit_and_stays_silent(self, monkeypatch, tmp_path, capsys):
+        # "你好" + f"{name}" is a BinOp, not implicit concatenation -- Python
+        # never merges it into one ast.JoinedStr, so the plain literal is
+        # already its own ordinary mint candidate and no warning applies.
+        _set_root(monkeypatch, tmp_path)
+        _write_zh(tmp_path, {})
+        _write_source(tmp_path, "main.py", '''\
+            name = "value"
+            x = "你好" + f"{name}"
+        ''')
+
+        exit_code = i18n_mint.main(["main.py"])
+
+        assert exit_code == 0
+        assert _read_zh(tmp_path) == {"main": {i18n_mint._hash8("你好"): "你好"}}
+        assert capsys.readouterr().err == ""
+
+    def test_warns_once_per_han_bearing_plain_atom_in_one_run(self, monkeypatch, tmp_path, capsys):
+        # "你好" "再见" f"{name}" -- two Han-bearing plain atoms fall into the
+        # same implicit-concatenation run; each is swallowed by the merged
+        # JoinedStr and each must get its own warning.
+        _set_root(monkeypatch, tmp_path)
+        _write_zh(tmp_path, {})
+        _write_source(tmp_path, "main.py", '''\
+            name = "value"
+            x = "你好" "再见" f"{name}"
+        ''')
+
+        exit_code = i18n_mint.main(["main.py"])
+
+        assert exit_code == 0
+        assert _read_zh(tmp_path) == {}
+        err = capsys.readouterr().err
+        assert "你好" in err
+        assert "再见" in err
+
+    def test_warning_fires_when_fstring_precedes_the_plain_literal(self, monkeypatch, tmp_path, capsys):
+        # f"{name}" "你好" -- the f-string comes first in the run; detection
+        # must not depend on which side of the run the f-string is on.
+        _set_root(monkeypatch, tmp_path)
+        _write_zh(tmp_path, {})
+        _write_source(tmp_path, "main.py", '''\
+            name = "value"
+            x = f"{name}" "你好"
+        ''')
+
+        exit_code = i18n_mint.main(["main.py"])
+
+        assert exit_code == 0
+        assert _read_zh(tmp_path) == {}
+        assert "你好" in capsys.readouterr().err
+
+    def test_warning_fires_across_a_parenthesized_multiline_run_with_a_comment(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        # A parenthesized multi-line implicit concatenation with a comment
+        # between the atoms is still one concatenation run in Python's own
+        # grammar -- the NL/COMMENT tokens between them must not break it.
+        _set_root(monkeypatch, tmp_path)
+        _write_zh(tmp_path, {})
+        _write_source(tmp_path, "main.py", '''\
+            name = "value"
+            x = (
+                "你好"
+                # a comment between the atoms
+                f"{name}"
+            )
+        ''')
+
+        exit_code = i18n_mint.main(["main.py"])
+
+        assert exit_code == 0
+        assert _read_zh(tmp_path) == {}
+        assert "你好" in capsys.readouterr().err
+
+    def test_standalone_literal_still_mints_alongside_a_warned_adjacent_fragment(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        # A genuine standalone candidate elsewhere in the same file must
+        # still mint normally in the same run as a warned fragment.
+        _set_root(monkeypatch, tmp_path)
+        _write_zh(tmp_path, {})
+        _write_source(tmp_path, "main.py", '''\
+            name = "value"
+            warned = "你好" f"{name}"
+            standalone = "普通字符串"
+        ''')
+
+        exit_code = i18n_mint.main(["main.py"])
+
+        assert exit_code == 0
+        assert _read_zh(tmp_path) == {"main": {i18n_mint._hash8("普通字符串"): "普通字符串"}}
+        assert "你好" in capsys.readouterr().err
+
+    def test_tokenize_failure_falls_back_to_no_warnings_without_crashing(self, monkeypatch, tmp_path, capsys):
+        # If tokenize ever raises on source ast.parse already accepted, the
+        # diagnostic must degrade gracefully instead of crashing the whole
+        # run -- guards against the except-tuple naming the wrong exception
+        # class (tokenize.TokenizeError is not real; tokenize.TokenError is).
+        _set_root(monkeypatch, tmp_path)
+        _write_zh(tmp_path, {})
+        _write_source(tmp_path, "main.py", '''\
+            x = "普通字符串"
+        ''')
+
+        def _raise(*args, **kwargs):
+            raise tokenize.TokenError("boom")
+
+        monkeypatch.setattr(i18n_mint.tokenize, "generate_tokens", _raise)
+
+        exit_code = i18n_mint.main(["main.py"])
+
+        assert exit_code == 0
+        assert capsys.readouterr().err == ""
+        assert _read_zh(tmp_path) == {"main": {i18n_mint._hash8("普通字符串"): "普通字符串"}}
 
 
 # ---------------------------------------------------------------------------

@@ -36,9 +36,11 @@ from __future__ import annotations
 import argparse
 import ast
 import hashlib
+import io
 import json
 import re
 import sys
+import tokenize
 from pathlib import Path
 from typing import Iterator
 
@@ -62,6 +64,10 @@ _HAN_RE = re.compile("[一-鿿]")
 _SNAKE_SEGMENT_RE = re.compile(r"_([a-zA-Z0-9])")
 
 _OWNER_RE = re.compile(r"[a-z][a-zA-Z0-9]*")
+
+# 字符串字面量前缀（r/b/f 及其组合），位于引号之前 —
+# A string literal's prefix (r/b/f and combinations), before the quote.
+_STRING_PREFIX_RE = re.compile(r"^[a-zA-Z]*")
 
 _DOCSTRING_HOLDER_TYPES = (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
 
@@ -170,6 +176,71 @@ def _iter_candidates(tree: ast.AST) -> Iterator[tuple[int, str]]:
             yield node.lineno, node.value
 
 
+def _is_fstring_token(tok_string: str) -> bool:
+    """判断一个 STRING 记号是否带 f/F 前缀 —— 3.12 以前，f-string 整体只产出
+    一个 STRING 记号，前缀是唯一能看出它是 f-string 的地方 ——
+    Whether a STRING token carries an f/F prefix. Before 3.12, an f-string
+    tokenizes as a single STRING token, and the prefix is the only way to
+    tell it apart from a plain string.
+    """
+    return "f" in _STRING_PREFIX_RE.match(tok_string).group(0).lower()
+
+
+def _iter_adjacent_fstring_warnings(source: str) -> Iterator[tuple[int, str]]:
+    """用 tokenize 找出隐式与 f-string 相邻拼接、且含汉字的普通字符串字面量 ——
+    Python 的语法把 `"你好" f"{x}"` 和 `f"你好{x}"` 解析成字节相同的
+    ast.JoinedStr，AST 层面无法区分；但 tokenize 层面能看出前者是两个独立
+    的记号（一个 STRING，一个 f-string），后者是一个 —— 产出 (行号, 文本)。
+    Portable across the pre-3.12 single-STRING-token and 3.12+
+    FSTRING_START/MIDDLE/END tokenizations of an f-string. Python's grammar
+    parses `"你好" f"{x}"` and `f"你好{x}"` into byte-identical ast.JoinedStr
+    nodes -- the AST cannot tell them apart -- but tokenize can, since the
+    former is two separate tokens (a STRING, then an f-string) and the
+    latter is one. Yields (lineno, text) for each Han-bearing plain literal
+    caught in an implicit concatenation run that also contains an f-string.
+    """
+    fstring_start = getattr(tokenize, "FSTRING_START", None)
+    fstring_end = getattr(tokenize, "FSTRING_END", None)
+
+    tokens = list(tokenize.generate_tokens(io.StringIO(source).readline))
+
+    run: list[tuple[str, int, str | None]] = []
+
+    def flush() -> Iterator[tuple[int, str]]:
+        if any(kind == "fstring" for kind, _, _ in run):
+            for kind, lineno, text in run:
+                if kind == "plain" and _HAN_RE.search(text):
+                    yield lineno, text
+
+    i = 0
+    while i < len(tokens):
+        tok = tokens[i]
+        if tok.type == tokenize.STRING:
+            if _is_fstring_token(tok.string):
+                run.append(("fstring", tok.start[0], None))
+            else:
+                run.append(("plain", tok.start[0], ast.literal_eval(tok.string)))
+            i += 1
+        elif fstring_start is not None and tok.type == fstring_start:
+            lineno = tok.start[0]
+            depth = 1
+            i += 1
+            while i < len(tokens) and depth:
+                if tokens[i].type == fstring_start:
+                    depth += 1
+                elif tokens[i].type == fstring_end:
+                    depth -= 1
+                i += 1
+            run.append(("fstring", lineno, None))
+        elif tok.type in (tokenize.NL, tokenize.COMMENT):
+            i += 1  # 不打断隐式拼接串 —— does not break a concatenation run
+        else:
+            yield from flush()
+            run = []
+            i += 1
+    yield from flush()
+
+
 def _load_existing_zh(path: Path) -> dict:
     """读取已有的 zh.json；文件不存在时视为空目录 ——
     Load the existing zh.json; a missing file is treated as an empty catalog.
@@ -234,6 +305,19 @@ def main(argv: list[str] | None = None) -> int:
         except (OSError, UnicodeDecodeError, SyntaxError, MintError) as exc:
             print(f"错误：无法处理 {rel_display} (failed to process {rel_display}): {exc}", file=sys.stderr)
             return 1
+
+        try:
+            adjacent_warnings = list(_iter_adjacent_fstring_warnings(source))
+        except (tokenize.TokenError, IndentationError, SyntaxError):
+            adjacent_warnings = []
+        for lineno, text in adjacent_warnings:
+            print(
+                f"警告：{rel_display}:{lineno} 处的中文字面量与相邻 f-string 隐式拼接为一体，"
+                f"铸键工具无法安全提取，需要人工处理：{text!r} —— "
+                f"warning: Chinese literal at {rel_display}:{lineno} is implicitly "
+                f"concatenated with an adjacent f-string and must be extracted manually: {text!r}",
+                file=sys.stderr,
+            )
 
         for lineno, text in _iter_candidates(tree):
             hash8 = _hash8(text)
