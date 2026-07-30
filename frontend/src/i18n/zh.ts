@@ -498,6 +498,13 @@ const catalogZh = {
     downloadButton: '前往下载',
     dismissLabel: '忽略',
   },
+  taskLogPanel: {
+    eventCountLabel: '{count} 条日志',
+    errorReasonLabel: '失败原因',
+    liveLogLabel: '实时执行日志',
+    copyLogsButton: '复制日志',
+    waitingForLogsLabel: '等待任务日志...',
+  },
 }
 
 export type Catalog = typeof catalogZh

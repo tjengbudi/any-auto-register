@@ -500,6 +500,13 @@ const catalogViRaw: Catalog = {
     downloadButton: '',
     dismissLabel: '',
   },
+  taskLogPanel: {
+    eventCountLabel: '',
+    errorReasonLabel: '',
+    liveLogLabel: '',
+    copyLogsButton: '',
+    waitingForLogsLabel: '',
+  },
 }
 
 export { catalogViRaw }

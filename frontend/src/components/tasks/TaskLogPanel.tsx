@@ -12,7 +12,7 @@ export function TaskLogPanel({
   onDone: (status: string) => void
 }) {
   const { catalog } = useLanguage()
-  const [lines, setLines] = useState<string[]>([])
+  const [lines, setLines] = useState<{ line: string; level: string }[]>([])
   const [task, setTask] = useState<any | null>(null)
   const [doneStatus, setDoneStatus] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -45,7 +45,7 @@ export function TaskLogPanel({
         cursorRef.current = Math.max(cursorRef.current, eventId)
       }
       if (payload?.line) {
-        setLines(prev => [...prev, payload.line])
+        setLines(prev => [...prev, { line: payload.line, level: payload.level ?? 'info' }])
       }
       if (payload?.done && !doneRef.current) {
         doneRef.current = true
@@ -126,7 +126,7 @@ export function TaskLogPanel({
     'border-sky-400/40 bg-sky-400/10 text-sky-200'
 
   const copyLogs = () => {
-    navigator.clipboard?.writeText(lines.join('\n')).catch(() => {})
+    navigator.clipboard?.writeText(lines.map(l => l.line).join('\n')).catch(() => {})
   }
 
   return (
@@ -142,7 +142,7 @@ export function TaskLogPanel({
         </div>
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-3">
           <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-muted)]">Events</div>
-          <div className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{lines.length} 条日志</div>
+          <div className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{catalog.taskLogPanel.eventCountLabel.replace('{count}', String(lines.length))}</div>
         </div>
       </div>
 
@@ -159,7 +159,7 @@ export function TaskLogPanel({
 
       {errorText ? (
         <div className="rounded-2xl border border-red-400/35 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-          <div className="mb-1 font-semibold">失败原因</div>
+          <div className="mb-1 font-semibold">{catalog.taskLogPanel.errorReasonLabel}</div>
           <div className="break-words text-red-100/85">{errorText}</div>
         </div>
       ) : null}
@@ -167,34 +167,34 @@ export function TaskLogPanel({
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-muted)]">Live Log</div>
-          <div className="mt-1 text-sm font-medium text-[var(--text-primary)]">实时执行日志</div>
+          <div className="mt-1 text-sm font-medium text-[var(--text-primary)]">{catalog.taskLogPanel.liveLogLabel}</div>
         </div>
         <button
           type="button"
           onClick={copyLogs}
           className="rounded-full border border-[var(--border)] bg-[var(--bg-hover)] px-3 py-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
         >
-          复制日志
+          {catalog.taskLogPanel.copyLogsButton}
         </button>
       </div>
 
       <div className="min-h-[260px] flex-1 overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--bg-input)] p-4 font-mono text-xs ">
         {lines.length === 0 && (
           <div className="flex h-full min-h-[180px] items-center justify-center rounded-2xl border border-dashed border-[var(--border)] text-[var(--text-muted)]">
-            等待任务日志...
+            {catalog.taskLogPanel.waitingForLogsLabel}
           </div>
         )}
         <div className="space-y-1.5">
-          {lines.map((line, index) => (
+          {lines.map((entry, index) => (
             <div
               key={index}
               className={`rounded-xl border border-white/5 bg-white/[0.025] px-3 py-2 leading-5 ${
-                line.includes('✓') || line.includes('成功') ? 'text-emerald-400' :
-                line.includes('✗') || line.includes('失败') || line.includes('错误') ? 'text-red-400' :
+                entry.level === 'error' ? 'text-red-400' :
+                entry.level === 'warning' ? 'text-amber-400' :
                 'text-[var(--text-secondary)]'
               }`}
             >
-              {line}
+              {entry.line}
             </div>
           ))}
         </div>

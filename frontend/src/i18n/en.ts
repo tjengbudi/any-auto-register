@@ -499,6 +499,13 @@ const catalogEn: Catalog = {
     downloadButton: 'Go to download',
     dismissLabel: 'Dismiss',
   },
+  taskLogPanel: {
+    eventCountLabel: '{count} events',
+    errorReasonLabel: 'Failure reason',
+    liveLogLabel: 'Live execution log',
+    copyLogsButton: 'Copy logs',
+    waitingForLogsLabel: 'Waiting for task logs...',
+  },
 }
 
 export { catalogEn }
