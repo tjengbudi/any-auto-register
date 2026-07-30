@@ -4,7 +4,7 @@ import { Sun, Moon, Monitor } from 'lucide-react'
 import { cn, apiFetch } from '@/lib/utils'
 import { getConfig, getConfigOptions, invalidateConfigCache } from '@/lib/app-data'
 import type { ConfigOptionsResponse } from '@/lib/config-options'
-import { LANGUAGE_OPTIONS, useLanguage } from '@/i18n'
+import { LANGUAGE_OPTIONS, useLanguage, getLocaleTag } from '@/i18n'
 import { Button } from '@/components/ui/button'
 import { Save, RefreshCw, CheckCircle, ExternalLink, Sparkles } from 'lucide-react'
 import Settings from '@/pages/Settings'
@@ -267,7 +267,7 @@ type VersionResp = {
 }
 
 function AboutTab() {
-  const { catalog } = useLanguage()
+  const { catalog, lang } = useLanguage()
   const [info, setInfo] = useState<VersionResp | null>(null)
   const [checking, setChecking] = useState(false)
   const formatVersion = (value: string) => {
@@ -334,7 +334,7 @@ function AboutTab() {
               )}
               {info.latest.published_at && (
                 <div className="text-xs text-[var(--text-muted)]">
-                  {catalog.settings.publishedOnLabel}{new Date(info.latest.published_at).toLocaleDateString('zh-CN')}
+                  {catalog.settings.publishedOnLabel}{new Date(info.latest.published_at).toLocaleDateString(getLocaleTag(lang))}
                 </div>
               )}
               <Button

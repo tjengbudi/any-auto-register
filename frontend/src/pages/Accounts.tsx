@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { getTaskStatusText, TASK_STATUS_VARIANTS } from '@/lib/tasks'
 import { RefreshCw, Copy, ExternalLink, Download, Upload, Plus, X, Mail, Trash2, Zap } from 'lucide-react'
-import { useLanguage, type Catalog } from '@/i18n'
+import { useLanguage, getLocaleTag, type Catalog } from '@/i18n'
 
 const STATUS_VARIANT: Record<string, any> = {
   registered: 'default', trial: 'success', subscribed: 'success',
@@ -1531,7 +1531,7 @@ function ExportMenu({
 
 // ── Main ────────────────────────────────────────────────────
 export default function Accounts() {
-  const { catalog } = useLanguage()
+  const { catalog, lang } = useLanguage()
   const { platform } = useParams<{ platform: string }>()
   const [tab, setTab] = useState(platform || '')
   useEffect(() => { if (platform) { setTab(platform) } }, [platform])
@@ -1956,7 +1956,7 @@ export default function Accounts() {
                   ) : <span className="text-[var(--text-muted)]/50 text-xs">-</span>}
                 </td>
                 <td className="px-3 py-2.5 font-mono text-xs text-[var(--text-muted)] whitespace-nowrap align-top">
-                  {acc.created_at ? new Date(acc.created_at).toLocaleString('zh-CN', { 
+                  {acc.created_at ? new Date(acc.created_at).toLocaleString(getLocaleTag(lang), {
                     month: '2-digit', day: '2-digit',
                     hour: '2-digit', minute: '2-digit',
                     hour12: false 

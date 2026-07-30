@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { getTaskStatusText, TASK_STATUS_VARIANTS } from '@/lib/tasks'
 import { RefreshCw, Activity, CheckCircle2, AlertTriangle, Clock3, ChevronDown } from 'lucide-react'
-import { useLanguage } from '@/i18n'
+import { useLanguage, getLocaleTag } from '@/i18n'
 
 function shortId(id: string) {
   if (!id) return '-'
@@ -33,7 +33,7 @@ function formatError(error: string | null | undefined): string {
 }
 
 export default function TaskHistory() {
-  const { catalog } = useLanguage()
+  const { catalog, lang } = useLanguage()
   const [tasks, setTasks] = useState<any[]>([])
   const [platform, setPlatform] = useState('')
   const [status, setStatus] = useState('')
@@ -182,7 +182,7 @@ export default function TaskHistory() {
                   >
                     <td className="whitespace-nowrap px-4 py-3 text-xs text-[var(--text-muted)]">
                       {task.created_at
-                        ? new Date(task.created_at).toLocaleString('zh-CN', {
+                        ? new Date(task.created_at).toLocaleString(getLocaleTag(lang), {
                             month: '2-digit',
                             day: '2-digit',
                             hour: '2-digit',
