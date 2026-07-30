@@ -7,6 +7,39 @@ const { autoUpdater } = require('electron-updater')
 const PORT = 8000
 const isDev = !app.isPackaged
 
+// Plain per-locale object literal for the 11 user-visible strings this file renders
+// before the backend (and therefore the Python/TypeScript i18n catalogs) is reachable.
+// See AD-18 in _bmad-output/specs/spec-i18n/SPEC.md for the rationale. The OS locale API
+// must only ever be resolved inside app.whenReady() (electron#3843, #4919) — never here.
+const STRINGS = {
+  zh: {
+    splashMessage: '正在启动后端服务...',
+    splashProgress: (current) => `正在启动后端服务... (${current}s)`,
+    backendExited: '后端进程已退出，请检查日志',
+    backendTimeout: '后端启动超时（180秒），请检查防火墙或端口占用',
+    failureTitle: '启动失败',
+    updateAvailableTitle: '发现新版本',
+    updateAvailableMessage: (version) => `新版本 v${version} 可用，是否下载？`,
+    updateAvailableButtons: ['下载更新', '稍后'],
+    updateReadyTitle: '更新就绪',
+    updateReadyMessage: '新版本已下载完成，重启应用即可安装。',
+    updateReadyButtons: ['立即重启', '稍后'],
+  },
+  en: {
+    splashMessage: 'Starting backend service...',
+    splashProgress: (current) => `Starting backend service... (${current}s)`,
+    backendExited: 'Backend process exited, please check the logs',
+    backendTimeout: 'Backend startup timed out (180s), please check firewall or port usage',
+    failureTitle: 'Startup Failed',
+    updateAvailableTitle: 'New Version Available',
+    updateAvailableMessage: (version) => `New version v${version} is available. Download now?`,
+    updateAvailableButtons: ['Download', 'Later'],
+    updateReadyTitle: 'Update Ready',
+    updateReadyMessage: 'The new version has been downloaded. Restart the app to install.',
+    updateReadyButtons: ['Restart Now', 'Later'],
+  },
+}
+
 let backendProcess = null
 let mainWindow = null
 let splashWindow = null
@@ -43,7 +76,7 @@ function startBackend() {
   })
 }
 
-function waitForBackend(retries = 180, onProgress = null) {
+function waitForBackend(s, retries = 180, onProgress = null) {
   const total = retries
   return new Promise((resolve, reject) => {
     let backendExited = false
@@ -58,7 +91,7 @@ function waitForBackend(retries = 180, onProgress = null) {
     const attempt = (n) => {
       // If backend process already exited, don't keep retrying
       if (backendExited) {
-        reject(new Error('后端进程已退出，请检查日志'))
+        reject(new Error(s.backendExited))
         return
       }
 
@@ -69,17 +102,17 @@ function waitForBackend(retries = 180, onProgress = null) {
       http.get(`http://localhost:${PORT}/api/health`, (res) => {
         if (res.statusCode < 500) resolve()
         else if (n > 0) setTimeout(() => attempt(n - 1), 1000)
-        else reject(new Error('后端启动超时（180秒），请检查防火墙或端口占用'))
+        else reject(new Error(s.backendTimeout))
       }).on('error', () => {
         if (n > 0) setTimeout(() => attempt(n - 1), 1000)
-        else reject(new Error('后端启动超时（180秒），请检查防火墙或端口占用'))
+        else reject(new Error(s.backendTimeout))
       })
     }
     attempt(retries)
   })
 }
 
-function createSplash() {
+function createSplash(s) {
   splashWindow = new BrowserWindow({
     width: 360,
     height: 200,
@@ -101,7 +134,7 @@ function createSplash() {
     </style></head>
     <body>
       <h1>Account Manager</h1>
-      <p id="msg">正在启动后端服务...</p>
+      <p id="msg">${s.splashMessage}</p>
       <div class="bar"><div class="bar-inner" id="progress" style="width:0%"></div></div>
     </body>
     </html>`
@@ -109,12 +142,13 @@ function createSplash() {
   splashWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html))
 }
 
-function updateSplashProgress(current, total) {
+function updateSplashProgress(s, current, total) {
   if (!splashWindow || splashWindow.isDestroyed()) return
   const pct = Math.min(Math.round((current / total) * 100), 99)
+  const msg = s.splashProgress(current)
   splashWindow.webContents.executeJavaScript(
     `document.getElementById('progress').style.width='${pct}%';` +
-    `document.getElementById('msg').textContent='正在启动后端服务... (${current}s)';`
+    `document.getElementById('msg').textContent=${JSON.stringify(msg)};`
   ).catch(() => {})
 }
 
@@ -154,14 +188,17 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
-  createSplash()
+  const locale = app.getLocale().startsWith('zh') ? 'zh' : 'en'
+  const s = STRINGS[locale]
+
+  createSplash(s)
   startBackend()
 
   try {
-    await waitForBackend(180, updateSplashProgress)
+    await waitForBackend(s, 180, (current, total) => updateSplashProgress(s, current, total))
   } catch (err) {
     closeSplash()
-    dialog.showErrorBox('启动失败', err.message)
+    dialog.showErrorBox(s.failureTitle, err.message)
     app.quit()
     return
   }
@@ -176,9 +213,9 @@ app.whenReady().then(async () => {
     autoUpdater.on('update-available', (info) => {
       dialog.showMessageBox(mainWindow, {
         type: 'info',
-        title: '发现新版本',
-        message: `新版本 v${info.version} 可用，是否下载？`,
-        buttons: ['下载更新', '稍后'],
+        title: s.updateAvailableTitle,
+        message: s.updateAvailableMessage(info.version),
+        buttons: s.updateAvailableButtons,
         defaultId: 0,
       }).then(({ response }) => {
         if (response === 0) {
@@ -190,9 +227,9 @@ app.whenReady().then(async () => {
     autoUpdater.on('update-downloaded', () => {
       dialog.showMessageBox(mainWindow, {
         type: 'info',
-        title: '更新就绪',
-        message: '新版本已下载完成，重启应用即可安装。',
-        buttons: ['立即重启', '稍后'],
+        title: s.updateReadyTitle,
+        message: s.updateReadyMessage,
+        buttons: s.updateReadyButtons,
         defaultId: 0,
       }).then(({ response }) => {
         if (response === 0) {
