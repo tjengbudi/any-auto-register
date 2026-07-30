@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 from application.config import ConfigService
@@ -25,4 +25,7 @@ def get_config_options():
 
 @router.put("")
 def update_config(body: ConfigUpdateRequest):
-    return service.update_config(body.data)
+    try:
+        return service.update_config(body.data)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
