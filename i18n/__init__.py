@@ -12,7 +12,7 @@ import string
 from pathlib import Path
 from typing import Any
 
-__all__ = ["t", "load", "selfcheck", "CatalogError"]
+__all__ = ["t", "load", "selfcheck", "CatalogError", "LOCALES"]
 
 _logger = logging.getLogger(__name__)
 
@@ -23,6 +23,11 @@ _SOURCE_LOCALE = "zh"
 # en/vi 是翻译目标，回退目标始终是 zh —
 # en/vi are the translation targets; the fallback target is always zh.
 _TARGET_LOCALES = ("en", "vi")
+
+# 公开的有序语言集合（源语言在前），供 main.py 打包提示等调用方使用 —
+# The public ordered locale set (source first), exposed for callers like
+# main.py's PyInstaller bundle-file hint.
+LOCALES = (_SOURCE_LOCALE, *_TARGET_LOCALES)
 
 # 模块级缓存，首次调用 load() 时填充 —
 # Module-level cache, populated on the first load() call.

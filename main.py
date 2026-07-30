@@ -66,9 +66,17 @@ from i18n import load as load_i18n
 from i18n import selfcheck as selfcheck_i18n
 from providers.registry import load_all as load_providers
 
-# PyInstaller 打包必须携带这三个目录文件，否则 zh 目录缺失会在启动时中止 —
-# PyInstaller must bundle these three catalog files, or a missing `zh` aborts startup.
-_I18N_BUNDLE_FILES = "i18n/zh.json、i18n/en.json、i18n/vi.json"
+
+def _i18n_bundle_files() -> str:
+    """渲染 PyInstaller 打包提示里的目录文件列表；每次调用都读取 i18n.LOCALES
+    的当前值，而不是在导入时冻结一份副本 — 这正是本次修复要解决的问题 —
+    Render the PyInstaller bundle-file hint. Reads `i18n.LOCALES` fresh on
+    every call instead of freezing a value at import time -- a stale
+    hard-coded copy is exactly the bug this helper fixes.
+    """
+    import i18n
+
+    return "、".join(f"i18n/{locale}.json" for locale in i18n.LOCALES)
 
 
 def _ensure_i18n_ready() -> None:
@@ -80,7 +88,7 @@ def _ensure_i18n_ready() -> None:
     except CatalogError as exc:
         # exc 的文本已经以 "i18n: " 开头，这里不再重复加 [i18n] 标签 —
         # exc's own text already starts with "i18n: "; no need for a second tag here.
-        message = f"{exc}；PyInstaller 打包需要通过 --add-data 携带：{_I18N_BUNDLE_FILES}"
+        message = f"{exc}；PyInstaller 打包需要通过 --add-data 携带：{_i18n_bundle_files()}"
         try:
             print(message)
         except Exception:
@@ -102,7 +110,7 @@ def _run_selfcheck_i18n() -> int:
     try:
         selfcheck_i18n()
     except CatalogError as exc:
-        message = f"[selfcheck] FAIL: {exc}；PyInstaller 打包需要通过 --add-data 携带：{_I18N_BUNDLE_FILES}"
+        message = f"[selfcheck] FAIL: {exc}；PyInstaller 打包需要通过 --add-data 携带：{_i18n_bundle_files()}"
         try:
             print(message)
         except Exception:
