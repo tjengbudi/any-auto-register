@@ -376,6 +376,23 @@ def main(argv: list[str] | None = None) -> int:
                     f"(the value for owner {owner!r} is not an object): {type(owner_map).__name__}"
                 )
             if hash8 in owner_map:
+                stored_text = owner_map[hash8]
+                if text != stored_text and _hash8(stored_text) == hash8:
+                    # 已存证据表明该值自铸造以来从未被人工编辑，
+                    # 因此与新候选文本不同即为跨运行的真实哈希冲突 ——
+                    # The stored value provably was never hand-edited since
+                    # minting, so a differing fresh candidate is a genuine
+                    # cross-run hash collision.
+                    print(
+                        "错误：跨运行哈希冲突，未写入任何内容 —— "
+                        "Cross-run hash collision; nothing was written:",
+                        file=sys.stderr,
+                    )
+                    print(f"  {owner}.{hash8}:", file=sys.stderr)
+                    print(f"    {stored_text!r} @ {zh_path}", file=sys.stderr)
+                    locations = ", ".join(sorted(by_text[text]))
+                    print(f"    {text!r} @ {locations}", file=sys.stderr)
+                    return 1
                 already_present += 1
                 continue
             owner_map[hash8] = text

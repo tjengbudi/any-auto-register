@@ -235,6 +235,89 @@ class TestHashCollision:
 
 
 # ---------------------------------------------------------------------------
+# Cross-run collision: fresh candidate collides with a provably-unedited
+# pre-existing catalog entry (DW-6)
+# ---------------------------------------------------------------------------
+
+
+class TestCrossRunCollision:
+    def test_unedited_stored_value_colliding_fresh_text_aborts_before_write(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        _set_root(monkeypatch, tmp_path)
+        # A real sha256 collision cannot be constructed for a test fixture;
+        # force one by monkeypatching the tool's own hash function instead,
+        # exactly as TestHashCollision does for the same-run case.
+        monkeypatch.setattr(i18n_mint, "_hash8", lambda text: "00000000")
+        _write_zh(tmp_path, {"main": {"00000000": "已存储的文本"}})
+        _write_source(tmp_path, "main.py", '''\
+            x = "新的候选文本"
+        ''')
+        before = (tmp_path / "i18n" / "zh.json").read_text(encoding="utf-8")
+
+        with monkeypatch.context() as m:
+            _guard_write_text(m, "zh.json must not be written on a cross-run collision")
+            exit_code = i18n_mint.main(["main.py"])
+
+        assert exit_code == 1
+        after = (tmp_path / "i18n" / "zh.json").read_text(encoding="utf-8")
+        assert after == before
+
+        err = capsys.readouterr().err
+        assert "main.00000000" in err
+        assert "已存储的文本" in err
+        assert "新的候选文本" in err
+        assert "main.py:1" in err
+
+    def test_hand_edited_stored_value_stays_silent_zero_writes_exit_zero(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        # Same shape as TestIdempotentHandEditedValue, restated here to make
+        # explicit that it is this class's outcome-3 boundary: the stored
+        # value's hash does NOT match its own key, so nothing can be
+        # concluded and the tool must stay silent (unchanged from today).
+        _set_root(monkeypatch, tmp_path)
+        _write_source(tmp_path, "main.py", '''\
+            x = "你好世界"
+        ''')
+        hash8 = i18n_mint._hash8("你好世界")
+        _write_zh(tmp_path, {"main": {hash8: "手动编辑过的翻译"}})
+        before = (tmp_path / "i18n" / "zh.json").read_text(encoding="utf-8")
+
+        with monkeypatch.context() as m:
+            _guard_write_text(m, "zh.json must not be written when provenance can't be verified")
+            exit_code = i18n_mint.main(["main.py"])
+
+        assert exit_code == 0
+        after = (tmp_path / "i18n" / "zh.json").read_text(encoding="utf-8")
+        assert after == before
+        assert capsys.readouterr().err == ""
+
+    def test_unedited_stored_value_identical_fresh_text_is_already_present(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        # Same shape as TestFullyAlreadyMigratedFile, restated here to make
+        # explicit that it is this class's outcome-1 boundary: fresh text
+        # equals stored text, so the hash gate is never even consulted.
+        _set_root(monkeypatch, tmp_path)
+        _write_source(tmp_path, "main.py", '''\
+            x = "你好世界"
+        ''')
+        hash8 = i18n_mint._hash8("你好世界")
+        _write_zh(tmp_path, {"main": {hash8: "你好世界"}})
+        before = (tmp_path / "i18n" / "zh.json").read_text(encoding="utf-8")
+
+        with monkeypatch.context() as m:
+            _guard_write_text(m, "zh.json must not be written when nothing is new")
+            exit_code = i18n_mint.main(["main.py"])
+
+        assert exit_code == 0
+        after = (tmp_path / "i18n" / "zh.json").read_text(encoding="utf-8")
+        assert after == before
+        assert capsys.readouterr().err == ""
+
+
+# ---------------------------------------------------------------------------
 # Fully already-migrated file
 # ---------------------------------------------------------------------------
 
