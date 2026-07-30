@@ -575,6 +575,74 @@ class TestAdjacentFstringWarning:
         assert capsys.readouterr().err == ""
         assert _read_zh(tmp_path) == {"main": {i18n_mint._hash8("普通字符串"): "普通字符串"}}
 
+    def test_fieldless_fstring_adjacent_concatenated_with_a_real_fstring_warns(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        # f"你好" f"{name}" -- the first atom carries a redundant f-prefix but
+        # has no {expr} field at all, so it is functionally a plain literal.
+        # It parses to the same ast.JoinedStr as "你好" f"{name}" (verified),
+        # so it must be caught the same way -- classifying it as an f-string
+        # purely by its prefix would silently lose the Han text again.
+        _set_root(monkeypatch, tmp_path)
+        _write_zh(tmp_path, {})
+        _write_source(tmp_path, "main.py", '''\
+            name = "value"
+            x = f"你好" f"{name}"
+        ''')
+
+        exit_code = i18n_mint.main(["main.py"])
+
+        assert exit_code == 0
+        assert _read_zh(tmp_path) == {}
+        err = capsys.readouterr().err
+        assert "main.py:2" in err
+        assert "你好" in err
+
+    def test_fieldless_fstring_with_escaped_braces_alone_stays_silent(self, monkeypatch, tmp_path, capsys):
+        # f"你好{{}}再见" alone (no adjacent f-string) -- the doubled braces are
+        # an escaped literal `{`/`}`, not a field, so this atom has no real
+        # interpolation either. Standing alone it is not part of a run
+        # containing a genuine f-string, so it must stay silent -- same as
+        # any other pure f-string per spec 1.5's Never clause.
+        _set_root(monkeypatch, tmp_path)
+        _write_zh(tmp_path, {})
+        _write_source(tmp_path, "main.py", '''\
+            x = f"你好{{}}再见"
+        ''')
+
+        exit_code = i18n_mint.main(["main.py"])
+
+        assert exit_code == 0
+        assert _read_zh(tmp_path) == {}
+        assert capsys.readouterr().err == ""
+
+    def test_literal_eval_failure_falls_back_to_no_warnings_without_crashing(self, monkeypatch, tmp_path, capsys):
+        # ast.literal_eval on a plain STRING token's raw text is documented
+        # to be able to raise ValueError/TypeError; the fallback around the
+        # diagnostic call must also catch those, not just the tokenizer's
+        # own exceptions, or a rare divergence crashes the whole run instead
+        # of degrading gracefully.
+        _set_root(monkeypatch, tmp_path)
+        _write_zh(tmp_path, {})
+        _write_source(tmp_path, "main.py", '''\
+            x = "普通字符串"
+        ''')
+
+        real_literal_eval = i18n_mint.ast.literal_eval
+
+        def _raise(*args, **kwargs):
+            raise ValueError("boom")
+
+        monkeypatch.setattr(i18n_mint.ast, "literal_eval", _raise)
+
+        exit_code = i18n_mint.main(["main.py"])
+
+        monkeypatch.setattr(i18n_mint.ast, "literal_eval", real_literal_eval)
+
+        assert exit_code == 0
+        assert capsys.readouterr().err == ""
+        assert _read_zh(tmp_path) == {"main": {i18n_mint._hash8("普通字符串"): "普通字符串"}}
+
 
 # ---------------------------------------------------------------------------
 # Operator-facing errors: bad input instead of a raw traceback

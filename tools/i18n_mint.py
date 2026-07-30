@@ -222,16 +222,37 @@ def _iter_adjacent_fstring_warnings(source: str) -> Iterator[tuple[int, str]]:
                 run.append(("plain", tok.start[0], ast.literal_eval(tok.string)))
             i += 1
         elif fstring_start is not None and tok.type == fstring_start:
+            # 一个 f-string 记号本身可能完全没有 {expr} 字段（如 f"你好"），
+            # 这种情况下它对提取来说和普通字符串等价 —— 只看前缀会误判为
+            # f-string 而漏掉其中的汉字；只有真正出现字段（一个未转义的
+            # OP '{'）才算作真正的 f-string ——
+            # An f-string token may carry no {expr} field at all (e.g.
+            # f"你好"), in which case it is equivalent to a plain literal for
+            # extraction purposes -- classifying it as an f-string purely by
+            # prefix would misclassify it and lose the Han text inside. Only
+            # a genuine field (an unescaped OP '{') makes it a true f-string;
+            # an escaped `{{`/`}}` arrives pre-folded into FSTRING_MIDDLE and
+            # never produces a separate OP token.
             lineno = tok.start[0]
             depth = 1
+            has_field = False
+            middle_parts: list[str] = []
             i += 1
             while i < len(tokens) and depth:
-                if tokens[i].type == fstring_start:
+                t = tokens[i]
+                if t.type == fstring_start:
                     depth += 1
-                elif tokens[i].type == fstring_end:
+                elif t.type == fstring_end:
                     depth -= 1
+                elif t.type == tokenize.FSTRING_MIDDLE:
+                    middle_parts.append(t.string)
+                elif t.type == tokenize.OP and t.string == "{":
+                    has_field = True
                 i += 1
-            run.append(("fstring", lineno, None))
+            if has_field:
+                run.append(("fstring", lineno, None))
+            else:
+                run.append(("plain", lineno, "".join(middle_parts)))
         elif tok.type in (tokenize.NL, tokenize.COMMENT):
             i += 1  # 不打断隐式拼接串 —— does not break a concatenation run
         else:
@@ -308,7 +329,7 @@ def main(argv: list[str] | None = None) -> int:
 
         try:
             adjacent_warnings = list(_iter_adjacent_fstring_warnings(source))
-        except (tokenize.TokenError, IndentationError, SyntaxError):
+        except (tokenize.TokenError, IndentationError, SyntaxError, ValueError, TypeError):
             adjacent_warnings = []
         for lineno, text in adjacent_warnings:
             print(
