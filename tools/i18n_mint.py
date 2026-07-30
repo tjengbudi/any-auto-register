@@ -15,7 +15,10 @@ literals, mint their `owner.hash8` keys and write them into i18n/zh.json.
       根目录文件取自身文件名（不含扩展名）。
     - 只扫描命令行给出的文件，不做目录遍历；f-string 片段与文档字符串不算候选。
     - 一次运行内两个不同文本撞在同一个 owner.hash8 上会中止整次运行、不写入
-      任何内容；已存在的键永远保持不变，即使它当前的值已经不再匹配新的哈希。
+      任何内容；已存在的键永远不会被改名或重写，但如果它当前的值的哈希仍与
+      自己的键吻合（即从未被人工改动过），新候选文本与其不同同样视为跨运行
+      哈希冲突并中止整次运行；哈希已不再匹配（说明被人工改动过）时则保持
+      沉默，和以前一样。
 
 Rules (see _bmad-output/specs/spec-i18n/catalog-conventions.md for the full
 authoring convention this tool implements):
@@ -28,8 +31,11 @@ authoring convention this tool implements):
       walk. f-string fragments and docstrings are never candidates.
     - Two distinct texts colliding on the same owner.hash8 within one run
       aborts the whole run before any write; an already-existing key is
-      always left untouched, even if its stored value no longer matches a
-      fresh hash of the current source text.
+      never renamed or rewritten, but if its stored value's hash still
+      matches its own key (i.e. it was never hand-edited since minting), a
+      differing fresh candidate is also treated as a cross-run collision and
+      aborts the run; when the hash no longer matches (hand-edited), the
+      tool stays silent, exactly as before.
 """
 from __future__ import annotations
 
@@ -362,6 +368,59 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         existing = _load_existing_zh(zh_path)
+        zh_rel = zh_path.relative_to(root).as_posix()
+
+        # 先扫一遍：校验每个涉及到的 owner 的值都是对象，并收集全部可证明
+        # 未被人工改动过的跨运行哈希冲突 —— 和上面的同一次运行内碰撞检测一样，
+        # 先收集完整清单再一次性中止，而不是发现第一个就退出 ——
+        # First pass: validate every owner touched by this run has an
+        # object value, and collect every cross-run collision against a
+        # provably-unedited stored value. Mirrors the same-run collision
+        # check above -- collect the full list before aborting, instead of
+        # stopping at the first one found.
+        cross_run_collisions: dict[tuple[str, str], str] = {}
+        for (owner, hash8), by_text in groups.items():
+            owner_map = existing.get(owner, {})
+            if not isinstance(owner_map, dict):
+                raise MintError(
+                    f"{zh_path} 中 owner {owner!r} 对应的值不是一个对象 "
+                    f"(the value for owner {owner!r} is not an object): {type(owner_map).__name__}"
+                )
+            if hash8 not in owner_map:
+                continue
+            stored_text = owner_map[hash8]
+            (text,) = by_text.keys()
+            # 只有已存值本身是字符串、和新候选文本不同、且其哈希仍与自己的键
+            # 吻合时，才能证明它未被人工改动过，从而判定为真正的跨运行冲突；
+            # 一个非字符串的已存值（损坏的目录）既无法哈希也无法验证来源，
+            # 与人工改动过的情形一样保持沉默 ——
+            # Only when the stored value is itself a string, differs from the
+            # fresh candidate text, and its hash still matches its own key
+            # can it be proven un-edited and therefore a genuine cross-run
+            # collision. A non-string stored value (a corrupt catalog) can
+            # neither be hashed nor have its provenance verified, and is
+            # treated the same as a hand-edited value: stays silent.
+            if (
+                isinstance(stored_text, str)
+                and text != stored_text
+                and _hash8(stored_text) == hash8
+            ):
+                cross_run_collisions[(owner, hash8)] = stored_text
+
+        if cross_run_collisions:
+            print(
+                "错误：跨运行哈希冲突，未写入任何内容 —— "
+                "Cross-run hash collision; nothing was written:",
+                file=sys.stderr,
+            )
+            for owner, hash8 in sorted(cross_run_collisions):
+                stored_text = cross_run_collisions[(owner, hash8)]
+                (text,) = groups[(owner, hash8)].keys()
+                locations = ", ".join(sorted(groups[(owner, hash8)][text]))
+                print(f"  {owner}.{hash8}:", file=sys.stderr)
+                print(f"    {stored_text!r} @ {zh_rel} (已存在 / existing)", file=sys.stderr)
+                print(f"    {text!r} @ {locations}", file=sys.stderr)
+            return 1
 
         minted = 0
         already_present = 0
@@ -370,29 +429,7 @@ def main(argv: list[str] | None = None) -> int:
             # Collisions were already excluded above, so by_text has exactly one text.
             (text,) = by_text.keys()
             owner_map = existing.setdefault(owner, {})
-            if not isinstance(owner_map, dict):
-                raise MintError(
-                    f"{zh_path} 中 owner {owner!r} 对应的值不是一个对象 "
-                    f"(the value for owner {owner!r} is not an object): {type(owner_map).__name__}"
-                )
             if hash8 in owner_map:
-                stored_text = owner_map[hash8]
-                if text != stored_text and _hash8(stored_text) == hash8:
-                    # 已存证据表明该值自铸造以来从未被人工编辑，
-                    # 因此与新候选文本不同即为跨运行的真实哈希冲突 ——
-                    # The stored value provably was never hand-edited since
-                    # minting, so a differing fresh candidate is a genuine
-                    # cross-run hash collision.
-                    print(
-                        "错误：跨运行哈希冲突，未写入任何内容 —— "
-                        "Cross-run hash collision; nothing was written:",
-                        file=sys.stderr,
-                    )
-                    print(f"  {owner}.{hash8}:", file=sys.stderr)
-                    print(f"    {stored_text!r} @ {zh_path}", file=sys.stderr)
-                    locations = ", ".join(sorted(by_text[text]))
-                    print(f"    {text!r} @ {locations}", file=sys.stderr)
-                    return 1
                 already_present += 1
                 continue
             owner_map[hash8] = text

@@ -314,6 +314,77 @@ class TestCrossRunCollision:
         assert exit_code == 0
         after = (tmp_path / "i18n" / "zh.json").read_text(encoding="utf-8")
         assert after == before
+
+    def test_non_string_stored_value_does_not_crash_and_stays_silent(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        # A corrupt catalog entry (stored value is a JSON int, not a string)
+        # can be neither hashed nor have its provenance verified. It must be
+        # treated the same as a hand-edited value -- silent, exit 0 -- not
+        # crash with a raw AttributeError out of _hash8(stored_text).
+        _set_root(monkeypatch, tmp_path)
+        _write_source(tmp_path, "main.py", '''\
+            x = "你好世界"
+        ''')
+        hash8 = i18n_mint._hash8("你好世界")
+        _write_zh(tmp_path, {"main": {hash8: 123}})
+        before = (tmp_path / "i18n" / "zh.json").read_text(encoding="utf-8")
+
+        with monkeypatch.context() as m:
+            _guard_write_text(m, "zh.json must not be written when the stored value is corrupt")
+            exit_code = i18n_mint.main(["main.py"])
+
+        assert exit_code == 0
+        after = (tmp_path / "i18n" / "zh.json").read_text(encoding="utf-8")
+        assert after == before
+        assert capsys.readouterr().err == ""
+
+    def test_two_independent_cross_run_collisions_are_both_reported_in_one_pass(
+        self, monkeypatch, tmp_path, capsys
+    ):
+        # Mirrors TestHashCollision's same-run batching: the same-run check
+        # collects every collision before aborting, so the cross-run check
+        # must too -- an operator hitting two unrelated cross-run collisions
+        # in one invocation must see both, not just the first, and must not
+        # have to fix-and-rerun to discover the second. A third, genuinely
+        # new owner with no existing entry proves the abort still happens
+        # before ANY write, even though that owner's entry would otherwise
+        # have minted cleanly on its own.
+        _set_root(monkeypatch, tmp_path)
+        monkeypatch.setattr(i18n_mint, "_hash8", lambda text: "00000000")
+        _write_zh(
+            tmp_path,
+            {
+                "b": {"00000000": "乙文本旧"},
+                "c": {"00000000": "丙文本旧"},
+            },
+        )
+        _write_source(tmp_path, "a.py", '''\
+            x = "甲文本全新"
+        ''')
+        _write_source(tmp_path, "b.py", '''\
+            x = "乙文本新"
+        ''')
+        _write_source(tmp_path, "c.py", '''\
+            x = "丙文本新"
+        ''')
+        before = (tmp_path / "i18n" / "zh.json").read_text(encoding="utf-8")
+
+        with monkeypatch.context() as m:
+            _guard_write_text(m, "zh.json must not be written when any cross-run collision is found")
+            exit_code = i18n_mint.main(["a.py", "b.py", "c.py"])
+
+        assert exit_code == 1
+        after = (tmp_path / "i18n" / "zh.json").read_text(encoding="utf-8")
+        assert after == before
+
+        err = capsys.readouterr().err
+        assert "b.00000000" in err
+        assert "乙文本旧" in err
+        assert "乙文本新" in err
+        assert "c.00000000" in err
+        assert "丙文本旧" in err
+        assert "丙文本新" in err
         assert capsys.readouterr().err == ""
 
 
