@@ -1123,7 +1123,7 @@ function ActionMenu({
   }
 
   return (
-    <div className="relative flex min-w-[136px] items-center justify-end gap-1.5 whitespace-nowrap">
+    <div className="relative flex flex-wrap items-center justify-end gap-1.5">
       {toast && (
         <div
           className="fixed top-5 right-5 z-[9999] flex items-center gap-2.5 rounded-xl border px-4 py-3 text-[13px] font-medium shadow-lg  cursor-pointer transition-all"
@@ -1815,9 +1815,9 @@ export default function Accounts() {
             <col className="w-[30%]" />
             <col className="w-[12%]" />
             <col className="w-[26%]" />
-            <col className="w-[8%]" />
+            <col className="w-[6%]" />
             <col className="w-[12%]" />
-            <col className="w-[12%]" />
+            <col className="w-[14%]" />
           </colgroup>
           <thead className="sticky top-0 z-10  bg-[var(--bg-pane)]/80">
             <tr className="border-b border-[var(--border)] text-xs uppercase tracking-wider font-medium text-[var(--text-muted)]">
@@ -1949,7 +1949,7 @@ export default function Accounts() {
                 </td>
                 <td className="px-3 py-2.5 align-top">
                   {getCashierUrl(acc) ? (
-                    <div className="flex items-center gap-1.5 whitespace-nowrap opacity-70 group-hover:opacity-100 transition-opacity">
+                    <div className="flex flex-wrap items-center gap-1.5 opacity-70 group-hover:opacity-100 transition-opacity">
                       <button onClick={e => { e.stopPropagation(); copy(getCashierUrl(acc)) }} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors p-0.5 rounded hover:bg-[var(--bg-pane)]" title={catalog.accounts.copyLinkTitle}><Copy className="h-3 w-3" /></button>
                       <a href={getCashierUrl(acc)} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors p-0.5 rounded hover:bg-[var(--bg-pane)]" title={catalog.accounts.openCashierTitle}><ExternalLink className="h-3 w-3" /></a>
                     </div>

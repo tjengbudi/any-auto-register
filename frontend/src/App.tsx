@@ -139,9 +139,10 @@ function Sidebar({
                 <NavLink
                   key={p.key}
                   to={`/accounts/${p.key}`}
+                  title={p.label}
                   className={({ isActive }) =>
                     cn(
-                      'block rounded-md px-2.5 py-1.5 text-[13px] transition-colors',
+                      'block truncate rounded-md px-2.5 py-1.5 text-[13px] transition-colors',
                       isActive
                         ? 'text-[var(--text-primary)] font-medium bg-[var(--bg-hover)]'
                         : 'text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--bg-hover)]'
@@ -194,6 +195,7 @@ function Sidebar({
                   <NavLink
                     key={item.hash}
                     to={`/settings?tab=${item.hash}`}
+                    title={item.label}
                     className={cn(
                       'relative block rounded-md px-2.5 py-1.5 text-[13px] transition-colors',
                       active
@@ -202,7 +204,7 @@ function Sidebar({
                     )}
                   >
                     {active && <span className="absolute -left-[13.5px] top-1/2 -translate-y-1/2 h-4 w-[2px] rounded-full bg-[var(--accent)]" />}
-                    {item.label}
+                    <span className="block truncate">{item.label}</span>
                   </NavLink>
                 )
               })}
