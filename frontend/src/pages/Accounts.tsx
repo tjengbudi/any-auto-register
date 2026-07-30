@@ -1742,7 +1742,7 @@ export default function Accounts() {
               <option value="trial">{catalog.accounts.lifecycleTrialOption}</option>
               <option value="subscribed">{catalog.accounts.lifecycleSubscribedOption}</option>
               <option value="free">{catalog.accounts.filterFreeOption}</option>
-              <option value="eligible">{catalog.accounts.filterEligibleOption}</option>
+              <option value="eligible">{catalog.accounts.statTrialEligible}</option>
               <option value="expired">{catalog.accounts.filterExpiredOption}</option>
               <option value="invalid">{catalog.accounts.filterInvalidOption}</option>
             </select>
@@ -1782,10 +1782,7 @@ export default function Accounts() {
                 disabled={bulkDeleting}
                 className="h-7 px-2.5 text-red-500 hover:bg-red-500/10 hover:text-red-600"
                 onClick={async () => {
-                  const deleteConfirmText = selectedCount === 1
-                    ? catalog.accounts.bulkDeleteConfirmSingular
-                    : catalog.accounts.bulkDeleteConfirmPlural.replace('{count}', String(selectedCount))
-                  if (!confirm(deleteConfirmText)) return
+                  if (!confirm(catalog.accounts.bulkDeleteConfirmPlural.replace('{count}', String(selectedCount)))) return
                   setBulkDeleting(true)
                   try {
                     await Promise.allSettled(
