@@ -1,4 +1,15 @@
 {
+  "api": {
+    "0e7924db": "SMSBower API Key is not configured",
+    "0fa0f821": "Provider setting not found",
+    "2197e510": "Failed to create task",
+    "345790e2": "Proxy not found",
+    "4ab0a7ed": "Proxy already exists",
+    "69060eb1": "HeroSMS API Key is not configured",
+    "af8bb650": "Account not found",
+    "d1817495": "Task not found",
+    "f4a7f40a": "Provider definition not found"
+  },
   "anything": {
     "0bb1e680": "Generate payment link",
     "3a43d2c8": "Check account status"

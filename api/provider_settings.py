@@ -3,8 +3,9 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from api.deps import get_ui_language
+from api.deps import get_ui_language, render_detail
 from application.provider_settings import ProviderSettingsService
+from i18n import t
 
 router = APIRouter(prefix="/provider-settings", tags=["provider-settings"])
 service = ProviderSettingsService()
@@ -33,7 +34,7 @@ def save_provider_setting(body: ProviderSettingUpsertRequest, lang: str = Depend
     try:
         return service.save_setting(body.model_dump(), lang)
     except ValueError as exc:
-        raise HTTPException(400, str(exc))
+        raise HTTPException(400, render_detail(exc, lang))
 
 
 @router.post("")
@@ -41,14 +42,14 @@ def create_provider_setting(body: ProviderSettingUpsertRequest, lang: str = Depe
     try:
         return service.save_setting(body.model_dump(), lang)
     except ValueError as exc:
-        raise HTTPException(400, str(exc))
+        raise HTTPException(400, render_detail(exc, lang))
 
 
 @router.delete("/{setting_id}")
-def delete_provider_setting(setting_id: int):
+def delete_provider_setting(setting_id: int, lang: str = Depends(get_ui_language)):
     result = service.delete_setting(setting_id)
     if not result["ok"]:
-        raise HTTPException(404, "provider setting 不存在")
+        raise HTTPException(404, t("api.0fa0f821", lang))
     return result
 
 

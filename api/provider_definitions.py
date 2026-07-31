@@ -3,8 +3,9 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from api.deps import get_ui_language
+from api.deps import get_ui_language, render_detail
 from application.provider_definitions import ProviderDefinitionsService
+from i18n import t
 
 router = APIRouter(prefix="/provider-definitions", tags=["provider-definitions"])
 service = ProviderDefinitionsService()
@@ -43,11 +44,11 @@ def create_provider_definition(body: ProviderDefinitionUpsertRequest, lang: str 
 
 
 @router.delete("/{definition_id}")
-def delete_provider_definition(definition_id: int):
+def delete_provider_definition(definition_id: int, lang: str = Depends(get_ui_language)):
     try:
         result = service.delete_definition(definition_id)
     except ValueError as exc:
-        raise HTTPException(400, str(exc))
+        raise HTTPException(400, render_detail(exc, lang))
     if not result["ok"]:
-        raise HTTPException(404, "provider definition 不存在")
+        raise HTTPException(404, t("api.f4a7f40a", lang))
     return result

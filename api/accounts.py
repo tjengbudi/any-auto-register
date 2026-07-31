@@ -7,10 +7,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from api.deps import get_ui_language
+from api.deps import get_ui_language, render_detail
 from application.account_exports import AccountExportsService, ExportArtifact
 from application.accounts import AccountsService
 from domain.accounts import AccountCreateCommand, AccountExportSelection, AccountQuery, AccountUpdateCommand
+from i18n import t
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])
 service = AccountsService()
@@ -110,7 +111,7 @@ def export_accounts(platform: str = "", status: str = ""):
 
 
 @router.post("/export/json")
-def export_accounts_json(body: BatchExportRequest):
+def export_accounts_json(body: BatchExportRequest, lang: str = Depends(get_ui_language)):
     try:
         artifact = exports_service.export_chatgpt_json(
             AccountExportSelection(
@@ -122,12 +123,12 @@ def export_accounts_json(body: BatchExportRequest):
             )
         )
     except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
+        raise HTTPException(400, render_detail(exc, lang)) from exc
     return _stream_artifact(artifact)
 
 
 @router.post("/export/csv")
-def export_accounts_csv(body: BatchExportRequest):
+def export_accounts_csv(body: BatchExportRequest, lang: str = Depends(get_ui_language)):
     try:
         artifact = exports_service.export_chatgpt_csv(
             AccountExportSelection(
@@ -139,12 +140,12 @@ def export_accounts_csv(body: BatchExportRequest):
             )
         )
     except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
+        raise HTTPException(400, render_detail(exc, lang)) from exc
     return _stream_artifact(artifact)
 
 
 @router.post("/export/sub2api")
-def export_accounts_sub2api(body: BatchExportRequest):
+def export_accounts_sub2api(body: BatchExportRequest, lang: str = Depends(get_ui_language)):
     try:
         artifact = exports_service.export_chatgpt_sub2api(
             AccountExportSelection(
@@ -156,12 +157,12 @@ def export_accounts_sub2api(body: BatchExportRequest):
             )
         )
     except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
+        raise HTTPException(400, render_detail(exc, lang)) from exc
     return _stream_artifact(artifact)
 
 
 @router.post("/export/cpa")
-def export_accounts_cpa(body: BatchExportRequest):
+def export_accounts_cpa(body: BatchExportRequest, lang: str = Depends(get_ui_language)):
     try:
         artifact = exports_service.export_chatgpt_cpa(
             AccountExportSelection(
@@ -173,12 +174,12 @@ def export_accounts_cpa(body: BatchExportRequest):
             )
         )
     except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
+        raise HTTPException(400, render_detail(exc, lang)) from exc
     return _stream_artifact(artifact)
 
 
 @router.post("/export/kiro-go")
-def export_accounts_kiro_go(body: BatchExportRequest):
+def export_accounts_kiro_go(body: BatchExportRequest, lang: str = Depends(get_ui_language)):
     try:
         artifact = exports_service.export_kiro_go(
             AccountExportSelection(
@@ -190,12 +191,12 @@ def export_accounts_kiro_go(body: BatchExportRequest):
             )
         )
     except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
+        raise HTTPException(400, render_detail(exc, lang)) from exc
     return _stream_artifact(artifact)
 
 
 @router.post("/export/any2api")
-def export_accounts_any2api(body: BatchExportRequest):
+def export_accounts_any2api(body: BatchExportRequest, lang: str = Depends(get_ui_language)):
     try:
         artifact = exports_service.export_any2api(
             AccountExportSelection(
@@ -207,7 +208,7 @@ def export_accounts_any2api(body: BatchExportRequest):
             )
         )
     except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
+        raise HTTPException(400, render_detail(exc, lang)) from exc
     return _stream_artifact(artifact)
 
 
@@ -220,7 +221,7 @@ def import_accounts(body: ImportRequest):
 def get_account(account_id: int, lang: str = Depends(get_ui_language)):
     item = service.get_account(account_id, lang)
     if not item:
-        raise HTTPException(404, "账号不存在")
+        raise HTTPException(404, t("api.af8bb650", lang))
     return item
 
 
@@ -228,13 +229,13 @@ def get_account(account_id: int, lang: str = Depends(get_ui_language)):
 def update_account(account_id: int, body: AccountUpdateRequest, lang: str = Depends(get_ui_language)):
     item = service.update_account(account_id, AccountUpdateCommand(**body.model_dump()), lang)
     if not item:
-        raise HTTPException(404, "账号不存在")
+        raise HTTPException(404, t("api.af8bb650", lang))
     return item
 
 
 @router.delete("/{account_id}")
-def delete_account(account_id: int):
+def delete_account(account_id: int, lang: str = Depends(get_ui_language)):
     result = service.delete_account(account_id)
     if not result["ok"]:
-        raise HTTPException(404, "账号不存在")
+        raise HTTPException(404, t("api.af8bb650", lang))
     return result

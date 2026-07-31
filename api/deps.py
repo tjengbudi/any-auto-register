@@ -9,7 +9,7 @@ querying the config store on its own (AD-4).
 from __future__ import annotations
 
 from core.config_store import config_store
-from i18n import LOCALES
+from i18n import LOCALES, t
 
 
 def get_ui_language() -> str:
@@ -25,3 +25,22 @@ def get_ui_language() -> str:
     if lang not in LOCALES:
         return "zh"
     return lang
+
+
+def render_detail(exc: Exception, lang: str) -> str:
+    """渲染一个被捕获异常的 detail 文本 —— 优先用它携带的 i18n_key/i18n_params，
+    否则退回 str(exc) —— Render the detail text for a caught exception,
+    preferring its carried `i18n_key`/`i18n_params` and falling back to
+    `str(exc)` when absent (AD-8, AD-17).
+
+    `providers/`/`infrastructure/` 目前不携带 i18n_key，此处的回退分支就是它们
+    今天已有的行为，直到 story 4.13 补上键为止 —
+    `providers/`/`infrastructure/` carry no `i18n_key` yet, so the fallback
+    branch is exactly their behavior today, forward-compatible with story
+    4.13 without a second change here.
+    """
+    key = getattr(exc, "i18n_key", None)
+    if not key:
+        return str(exc)
+    params = getattr(exc, "i18n_params", None) or {}
+    return t(key, lang, **params)

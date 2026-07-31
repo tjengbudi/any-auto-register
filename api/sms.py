@@ -1,9 +1,11 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from api.deps import get_ui_language, render_detail
 from core.base_sms import HERO_SMS_DEFAULT_COUNTRY, HERO_SMS_DEFAULT_SERVICE, HeroSmsProvider, SmsBowerProvider
+from i18n import t
 from infrastructure.provider_settings_repository import ProviderSettingsRepository
 
 router = APIRouter(prefix="/sms", tags=["sms"])
@@ -46,45 +48,45 @@ def _provider_from_payload(payload: HeroSmsQueryRequest | None = None) -> HeroSm
 
 
 @router.get("/herosms/countries")
-def herosms_countries():
+def herosms_countries(lang: str = Depends(get_ui_language)):
     try:
         return {"countries": _provider_from_payload().get_countries()}
     except Exception as exc:
-        raise HTTPException(502, str(exc))
+        raise HTTPException(502, render_detail(exc, lang))
 
 
 @router.get("/herosms/services")
-def herosms_services(country: str = ""):
+def herosms_services(country: str = "", lang: str = Depends(get_ui_language)):
     try:
         return {"services": _provider_from_payload(HeroSmsQueryRequest(country=country)).get_services(country=country or None)}
     except Exception as exc:
-        raise HTTPException(502, str(exc))
+        raise HTTPException(502, render_detail(exc, lang))
 
 
 @router.post("/herosms/balance")
-def herosms_balance(body: HeroSmsQueryRequest | None = None):
+def herosms_balance(body: HeroSmsQueryRequest | None = None, lang: str = Depends(get_ui_language)):
     body = body or HeroSmsQueryRequest()
     provider = _provider_from_payload(body)
     if not provider.api_key:
-        raise HTTPException(400, "HeroSMS API Key 未配置")
+        raise HTTPException(400, t("api.69060eb1", lang))
     try:
         return {"balance": provider.get_balance()}
     except Exception as exc:
-        raise HTTPException(502, str(exc))
+        raise HTTPException(502, render_detail(exc, lang))
 
 
 @router.post("/herosms/prices")
-def herosms_prices(body: HeroSmsQueryRequest | None = None):
+def herosms_prices(body: HeroSmsQueryRequest | None = None, lang: str = Depends(get_ui_language)):
     body = body or HeroSmsQueryRequest()
     provider = _provider_from_payload(body)
     if not provider.api_key:
-        raise HTTPException(400, "HeroSMS API Key 未配置")
+        raise HTTPException(400, t("api.69060eb1", lang))
     try:
         service = str(body.service or provider.default_service or HERO_SMS_DEFAULT_SERVICE)
         country = str(body.country or provider.default_country or HERO_SMS_DEFAULT_COUNTRY)
         return {"prices": provider.get_prices(service=service, country=country)}
     except Exception as exc:
-        raise HTTPException(502, str(exc))
+        raise HTTPException(502, render_detail(exc, lang))
 
 
 class HeroSmsBestCountryRequest(BaseModel):
@@ -97,14 +99,14 @@ class HeroSmsBestCountryRequest(BaseModel):
 
 
 @router.post("/herosms/top-countries")
-def herosms_top_countries(body: HeroSmsBestCountryRequest | None = None):
+def herosms_top_countries(body: HeroSmsBestCountryRequest | None = None, lang: str = Depends(get_ui_language)):
     """获取按价格排序的国家列表（含价格和库存）。"""
     body = body or HeroSmsBestCountryRequest()
     provider = _provider_from_payload(HeroSmsQueryRequest(
         api_key=body.api_key, service=body.service, proxy=body.proxy,
     ))
     if not provider.api_key:
-        raise HTTPException(400, "HeroSMS API Key 未配置")
+        raise HTTPException(400, t("api.69060eb1", lang))
     try:
         service = str(body.service or provider.default_service or HERO_SMS_DEFAULT_SERVICE)
         rows = provider.get_top_countries(service=service)
@@ -114,18 +116,18 @@ def herosms_top_countries(body: HeroSmsBestCountryRequest | None = None):
             rows = rows[:body.top_n]
         return {"countries": rows, "service": service}
     except Exception as exc:
-        raise HTTPException(502, str(exc))
+        raise HTTPException(502, render_detail(exc, lang))
 
 
 @router.post("/herosms/best-country")
-def herosms_best_country(body: HeroSmsBestCountryRequest | None = None):
+def herosms_best_country(body: HeroSmsBestCountryRequest | None = None, lang: str = Depends(get_ui_language)):
     """自动选择最优国家（价格最低 + 库存充足）。"""
     body = body or HeroSmsBestCountryRequest()
     provider = _provider_from_payload(HeroSmsQueryRequest(
         api_key=body.api_key, service=body.service, proxy=body.proxy,
     ))
     if not provider.api_key:
-        raise HTTPException(400, "HeroSMS API Key 未配置")
+        raise HTTPException(400, t("api.69060eb1", lang))
     try:
         service = str(body.service or provider.default_service or HERO_SMS_DEFAULT_SERVICE)
         best = provider.get_best_country(
@@ -144,7 +146,7 @@ def herosms_best_country(body: HeroSmsBestCountryRequest | None = None):
             }
         return {"country": None, "detail": None, "service": service}
     except Exception as exc:
-        raise HTTPException(502, str(exc))
+        raise HTTPException(502, render_detail(exc, lang))
 
 
 # ── SMSBower endpoints ──────────────────────────────────────────────────────
@@ -167,48 +169,48 @@ def _smsbower_from_payload(payload: HeroSmsQueryRequest | None = None) -> SmsBow
 
 
 @router.get("/smsbower/countries")
-def smsbower_countries():
+def smsbower_countries(lang: str = Depends(get_ui_language)):
     try:
         provider = _smsbower_from_payload()
         if not provider.api_key:
             return {"countries": []}
         return {"countries": provider.get_countries()}
     except Exception as exc:
-        raise HTTPException(502, str(exc))
+        raise HTTPException(502, render_detail(exc, lang))
 
 
 @router.get("/smsbower/services")
-def smsbower_services(country: str = ""):
+def smsbower_services(country: str = "", lang: str = Depends(get_ui_language)):
     try:
         provider = _smsbower_from_payload(HeroSmsQueryRequest(country=country))
         if not provider.api_key:
             return {"services": []}
         return {"services": provider.get_services(country=country or None)}
     except Exception as exc:
-        raise HTTPException(502, str(exc))
+        raise HTTPException(502, render_detail(exc, lang))
 
 
 @router.post("/smsbower/balance")
-def smsbower_balance(body: HeroSmsQueryRequest | None = None):
+def smsbower_balance(body: HeroSmsQueryRequest | None = None, lang: str = Depends(get_ui_language)):
     body = body or HeroSmsQueryRequest()
     provider = _smsbower_from_payload(body)
     if not provider.api_key:
-        raise HTTPException(400, "SMSBower API Key 未配置")
+        raise HTTPException(400, t("api.0e7924db", lang))
     try:
         return {"balance": provider.get_balance()}
     except Exception as exc:
-        raise HTTPException(502, str(exc))
+        raise HTTPException(502, render_detail(exc, lang))
 
 
 @router.post("/smsbower/prices")
-def smsbower_prices(body: HeroSmsQueryRequest | None = None):
+def smsbower_prices(body: HeroSmsQueryRequest | None = None, lang: str = Depends(get_ui_language)):
     body = body or HeroSmsQueryRequest()
     provider = _smsbower_from_payload(body)
     if not provider.api_key:
-        raise HTTPException(400, "SMSBower API Key 未配置")
+        raise HTTPException(400, t("api.0e7924db", lang))
     try:
         service = str(body.service or provider.default_service or HERO_SMS_DEFAULT_SERVICE)
         country = str(body.country or provider.default_country or HERO_SMS_DEFAULT_COUNTRY)
         return {"prices": provider.get_prices(service=service, country=country)}
     except Exception as exc:
-        raise HTTPException(502, str(exc))
+        raise HTTPException(502, render_detail(exc, lang))
