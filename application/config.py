@@ -23,8 +23,8 @@ class ConfigService:
     def update_config(self, data: dict[str, str]) -> dict:
         if "ui_language" in data and data["ui_language"] not in LOCALES:
             raise ValueError(f"ui_language must be one of {', '.join(LOCALES)}")
-        updated = self.repository.update_flat(data)
-        return {"ok": True, "updated": updated}
+        updated, ignored = self.repository.update_flat(data)
+        return {"ok": True, "updated": updated, "ignored": ignored}
 
     def get_options(self) -> dict:
         platform_options = collect_platform_choice_options(self.platforms.list_platforms())

@@ -37,8 +37,9 @@ class ConfigRepository:
             if key in allowed
         }
 
-    def update_flat(self, data: dict[str, str]) -> list[str]:
+    def update_flat(self, data: dict[str, str]) -> tuple[list[str], list[str]]:
         allowed = self.get_allowed_keys()
         safe = {key: value for key, value in data.items() if key in allowed}
         config_store.set_many(safe)
-        return list(safe.keys())
+        ignored = [key for key in data.keys() if key not in safe]
+        return list(safe.keys()), ignored

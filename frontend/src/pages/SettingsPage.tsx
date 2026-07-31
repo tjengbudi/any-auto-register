@@ -88,6 +88,7 @@ function GeneralTab({
   const [configOptions, setConfigOptions] = useState<ConfigOptionsResponse | null>(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [ignoredNotice, setIgnoredNotice] = useState('')
   const { lang, catalog, setLang } = useLanguage()
 
   useEffect(() => {
@@ -101,11 +102,18 @@ function GeneralTab({
 
   const save = async () => {
     setSaving(true)
+    setIgnoredNotice('')
+    setSaved(false)
     try {
-      await apiFetch('/config', { method: 'PUT', body: JSON.stringify({ data: form }) })
+      const response = await apiFetch('/config', { method: 'PUT', body: JSON.stringify({ data: form }) })
       invalidateConfigCache()
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
+      if (response?.ignored?.length) {
+        setIgnoredNotice(interpolate(catalog.settings.configIgnoredKeysNotice, { keys: response.ignored.join(', ') }))
+        setTimeout(() => setIgnoredNotice(''), 4000)
+      } else {
+        setSaved(true)
+        setTimeout(() => setSaved(false), 2000)
+      }
     } finally {
       setSaving(false)
     }
@@ -230,6 +238,12 @@ function GeneralTab({
           </SettingRow>
         </div>
       </SettingGroup>
+
+      {ignoredNotice && (
+        <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-[var(--text-secondary)]">
+          {ignoredNotice}
+        </div>
+      )}
 
       <Button onClick={save} disabled={saving} className="w-full">
         <Save className="mr-2 h-4 w-4" />

@@ -5,6 +5,7 @@ from __future__ import annotations
 def test_ui_language_round_trip(client):
     resp = client.put("/api/config", json={"data": {"ui_language": "en"}})
     assert resp.status_code == 200
+    assert resp.json()["ignored"] == []
     resp = client.get("/api/config")
     assert resp.status_code == 200
     assert resp.json()["ui_language"] == "en"
@@ -69,3 +70,18 @@ def test_ui_language_falls_back_to_zh_for_stale_invalid_stored_value(client):
     resp = client.get("/api/config")
     assert resp.status_code == 200
     assert resp.json()["ui_language"] == "zh"
+
+
+def test_update_config_reports_unknown_key_as_ignored(client):
+    resp = client.put(
+        "/api/config",
+        json={"data": {"default_executor": "x", "ui_lanugage": "en"}},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["updated"] == ["default_executor"]
+    assert resp.json()["ignored"] == ["ui_lanugage"]
+    resp = client.get("/api/config")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["default_executor"] == "x"
+    assert "ui_lanugage" not in body

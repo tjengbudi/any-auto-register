@@ -39,6 +39,7 @@ const catalogEn: Catalog = {
     languageRowLabel: 'Display language',
     untranslatedNotice: 'This section is supplied by the backend and has not been translated yet — it still displays in Chinese.',
     savedCheckmark: 'Saved ✓',
+    configIgnoredKeysNotice: 'Not saved — unrecognized: {keys}',
     savingEllipsis: 'Saving...',
     saveButton: 'Save',
     saveConfigButton: 'Save configuration',

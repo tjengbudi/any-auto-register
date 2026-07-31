@@ -706,6 +706,7 @@ export default function Settings({ embedded, defaultTab }: { embedded?: boolean;
   const [showSecret, setShowSecret] = useState<Record<string, boolean>>({})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [ignoredNotice, setIgnoredNotice] = useState('')
   const [providerSaving, setProviderSaving] = useState<Record<string, boolean>>({})
   const [providerSaved, setProviderSaved] = useState<Record<string, boolean>>({})
   const [_providerDeleting, _setProviderDeleting] = useState<Record<string, boolean>>({})
@@ -763,10 +764,17 @@ export default function Settings({ embedded, defaultTab }: { embedded?: boolean;
 
   const save = async () => {
     setSaving(true)
+    setIgnoredNotice('')
+    setSaved(false)
     try {
-      await apiFetch('/config', { method: 'PUT', body: JSON.stringify({ data: form }) })
+      const response = await apiFetch('/config', { method: 'PUT', body: JSON.stringify({ data: form }) })
       invalidateConfigCache()
-      setSaved(true); setTimeout(() => setSaved(false), 2000)
+      if (response?.ignored?.length) {
+        setIgnoredNotice(interpolate(catalog.settings.configIgnoredKeysNotice, { keys: response.ignored.join(', ') }))
+        setTimeout(() => setIgnoredNotice(''), 4000)
+      } else {
+        setSaved(true); setTimeout(() => setSaved(false), 2000)
+      }
     } finally { setSaving(false) }
   }
 
@@ -1164,6 +1172,11 @@ export default function Settings({ embedded, defaultTab }: { embedded?: boolean;
               ))}
             </div>
           ))}
+          {!currentProviderTab && ignoredNotice && (
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-[var(--text-secondary)]">
+              {ignoredNotice}
+            </div>
+          )}
           {!currentProviderTab && (
             <Button onClick={save} disabled={saving} className="w-full">
               <Save className="h-4 w-4 mr-2" />
