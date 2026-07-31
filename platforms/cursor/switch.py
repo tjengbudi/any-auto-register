@@ -214,7 +214,7 @@ def read_current_cursor_account() -> dict | None:
         return None
 
 
-def get_cursor_desktop_state() -> dict:
+def get_cursor_desktop_state(lang: str = "zh") -> dict:
     current = read_current_cursor_account() or {}
     storage_path = _get_cursor_storage_path()
     config_dir = _get_cursor_config_dir()
@@ -229,6 +229,7 @@ def get_cursor_desktop_state() -> dict:
         extra={
             "storage_path": storage_path,
         },
+        lang=lang,
     )
     state["available"] = True
     return state

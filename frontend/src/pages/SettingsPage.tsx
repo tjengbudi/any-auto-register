@@ -11,7 +11,6 @@ import { Save, RefreshCw, CheckCircle, ExternalLink, Sparkles } from 'lucide-rea
 import Settings from '@/pages/Settings'
 import Proxies from '@/pages/Proxies'
 import AdvancedSettings from '@/components/settings/AdvancedSettings'
-import UntranslatedNotice from '@/components/settings/UntranslatedNotice'
 
 /* ------------------------------------------------------------------ */
 /*  Tab definitions                                                    */
@@ -154,7 +153,6 @@ function GeneralTab({
         title={catalog.settings.defaultRegisterStrategyTitle}
         desc={catalog.settings.defaultRegisterStrategyDesc}
       >
-        <UntranslatedNotice />
         <div className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] divide-y divide-[var(--border)]/50">
           <SettingRow label={catalog.settings.defaultIdentityLabel}>
             <select

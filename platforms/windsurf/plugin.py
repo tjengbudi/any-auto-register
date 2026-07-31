@@ -170,10 +170,10 @@ class WindsurfPlatform(BasePlatform):
     def get_last_check_overview(self) -> dict:
         return dict(getattr(self, "_last_check_overview", {}) or {})
 
-    def get_desktop_state(self) -> dict:
+    def get_desktop_state(self, lang: str = "zh") -> dict:
         from platforms.windsurf.switch import get_windsurf_desktop_state
 
-        return get_windsurf_desktop_state()
+        return get_windsurf_desktop_state(lang)
 
     def _handle_switch_desktop(self, account: Account, params: dict) -> dict:
         """

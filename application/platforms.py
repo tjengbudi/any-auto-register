@@ -77,5 +77,5 @@ class PlatformsService:
             )
         return result
 
-    def get_desktop_state(self, platform: str) -> dict:
-        return self.runtime.get_desktop_state(platform)
+    def get_desktop_state(self, platform: str, lang: str) -> dict:
+        return self.runtime.get_desktop_state(platform, lang)

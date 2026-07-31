@@ -15,5 +15,5 @@ def list_platforms(lang: str = Depends(get_ui_language)):
 
 
 @router.get("/{platform}/desktop-state")
-def get_desktop_state(platform: str):
-    return service.get_desktop_state(platform)
+def get_desktop_state(platform: str, lang: str = Depends(get_ui_language)):
+    return service.get_desktop_state(platform, lang)

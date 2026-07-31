@@ -52,7 +52,7 @@ def _build_credential_updates(
     return dict(credentials or {}) or None
 
 
-def _to_record(model: AccountModel, graph: dict | None = None) -> AccountRecord:
+def _to_record(model: AccountModel, graph: dict | None = None, lang: str = "zh") -> AccountRecord:
     graph = graph or {}
     overview = graph.get("overview") or {}
     lifecycle_status = graph.get("lifecycle_status") or "registered"
@@ -86,6 +86,7 @@ def _to_record(model: AccountModel, graph: dict | None = None) -> AccountRecord:
             display_status=display_status,
             overview=overview,
             provider_resources=provider_resources,
+            lang=lang,
         ),
         credentials=list(graph.get("credentials") or []),
         provider_accounts=list(graph.get("provider_accounts") or []),
@@ -97,7 +98,7 @@ def _to_record(model: AccountModel, graph: dict | None = None) -> AccountRecord:
 
 class AccountsRepository:
     @staticmethod
-    def _load_records(session: Session, models: list[AccountModel]) -> list[AccountRecord]:
+    def _load_records(session: Session, models: list[AccountModel], lang: str = "zh") -> list[AccountRecord]:
         account_ids = [int(model.id or 0) for model in models if model.id]
         graphs = load_account_graphs(session, account_ids)
         missing = [model for model in models if int(model.id or 0) not in graphs]
@@ -106,9 +107,9 @@ class AccountsRepository:
                 sync_account_graph(session, model)
             session.commit()
             graphs = load_account_graphs(session, account_ids)
-        return [_to_record(model, graphs.get(int(model.id or 0), {})) for model in models]
+        return [_to_record(model, graphs.get(int(model.id or 0), {}), lang=lang) for model in models]
 
-    def list(self, query: AccountQuery) -> tuple[int, list[AccountRecord]]:
+    def list(self, query: AccountQuery, lang: str = "zh") -> tuple[int, list[AccountRecord]]:
         page = max(query.page, 1)
         page_size = max(query.page_size, 1)
         with Session(engine) as session:
@@ -119,7 +120,7 @@ class AccountsRepository:
                 statement = statement.where(AccountModel.email.contains(query.email))
             statement = statement.order_by(AccountModel.created_at.desc(), AccountModel.id.desc())
             models = session.exec(statement).all()
-            records = self._load_records(session, models)
+            records = self._load_records(session, models, lang)
             if query.status:
                 records = [item for item in records if matches_status_filter({
                     "display_status": item.display_status,
@@ -132,12 +133,12 @@ class AccountsRepository:
         end = start + page_size
         return total, records[start:end]
 
-    def get(self, account_id: int) -> AccountRecord | None:
+    def get(self, account_id: int, lang: str = "zh") -> AccountRecord | None:
         with Session(engine) as session:
             model = session.get(AccountModel, account_id)
             if not model:
                 return None
-            records = self._load_records(session, [model])
+            records = self._load_records(session, [model], lang)
             return records[0] if records else None
 
     def select_for_export(self, selection: AccountExportSelection) -> list[AccountRecord]:
@@ -161,7 +162,7 @@ class AccountsRepository:
             }, selection.status_filter)]
         return records
 
-    def create(self, command: AccountCreateCommand) -> AccountRecord:
+    def create(self, command: AccountCreateCommand, lang: str = "zh") -> AccountRecord:
         with Session(engine) as session:
             model = AccountModel(
                 platform=command.platform,
@@ -193,9 +194,9 @@ class AccountsRepository:
                 replace_provider_resources=bool(command.provider_resources),
             )
             session.commit()
-            return self._load_records(session, [model])[0]
+            return self._load_records(session, [model], lang)[0]
 
-    def update(self, account_id: int, command: AccountUpdateCommand) -> AccountRecord | None:
+    def update(self, account_id: int, command: AccountUpdateCommand, lang: str = "zh") -> AccountRecord | None:
         with Session(engine) as session:
             model = session.get(AccountModel, account_id)
             if not model:
@@ -229,7 +230,7 @@ class AccountsRepository:
                 replace_provider_resources=command.replace_provider_resources,
             )
             session.commit()
-            return self._load_records(session, [model])[0]
+            return self._load_records(session, [model], lang)[0]
 
     def delete(self, account_id: int) -> bool:
         with Session(engine) as session:

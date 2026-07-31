@@ -269,11 +269,11 @@ class PlatformRuntime:
         instance = platform_cls(config=RegisterConfig())
         return instance.get_platform_capabilities()
 
-    def get_desktop_state(self, platform: str) -> dict[str, Any]:
+    def get_desktop_state(self, platform: str, lang: str = "zh") -> dict[str, Any]:
         load_all()
         platform_cls = get(platform)
         instance = platform_cls(config=RegisterConfig())
-        return instance.get_desktop_state() or {"available": False}
+        return instance.get_desktop_state(lang) or {"available": False}
 
     def execute_action(self, command: ActionExecutionCommand) -> ActionExecutionResult:
         load_all()

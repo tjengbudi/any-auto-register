@@ -7,7 +7,6 @@ import { getPlatforms, invalidatePlatformsCache } from '@/lib/app-data'
 import type { ChoiceOption } from '@/lib/config-options'
 import { Save } from 'lucide-react'
 import { useLanguage } from '@/i18n'
-import UntranslatedNotice from '@/components/settings/UntranslatedNotice'
 
 function SolverPanel() {
   const { catalog } = useLanguage()
@@ -134,9 +133,6 @@ function PlatformCapsPanel() {
       <p className="mt-1 text-sm text-[var(--text-muted)]">
         {catalog.settings.platformCapsDesc}
       </p>
-      <div className="mt-4">
-        <UntranslatedNotice />
-      </div>
       <div className="mt-4 space-y-4">
         {platforms.map((p) => {
           const draft = drafts[p.name] || {}

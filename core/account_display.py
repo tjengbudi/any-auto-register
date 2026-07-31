@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from core.datetime_utils import serialize_datetime
+from i18n import t
 
 
 def _text(value: Any) -> str:
@@ -18,11 +19,11 @@ def _safe_list(value: Any) -> list[Any]:
     return list(value) if isinstance(value, list) else []
 
 
-def _format_value(value: Any) -> str:
+def _format_value(value: Any, lang: str) -> str:
     if value is None or value == "":
         return ""
     if isinstance(value, bool):
-        return "是" if value else "否"
+        return t("core.b5141d3d", lang) if value else t("core.0c70665b", lang)
     return str(value)
 
 
@@ -52,11 +53,12 @@ def _metric(
     label: str,
     value: Any,
     *,
+    lang: str,
     sub: str = "",
     percent: int | float | None = None,
     tone: str = "muted",
 ) -> dict[str, Any] | None:
-    text = _format_value(value)
+    text = _format_value(value, lang)
     if not text:
         return None
     payload: dict[str, Any] = {
@@ -80,7 +82,7 @@ def _append_metric(items: list[dict[str, Any]], metric: dict[str, Any] | None) -
         items.append(metric)
 
 
-def _quota_metric(key: str, label: str, limit: dict[str, Any] | None) -> dict[str, Any] | None:
+def _quota_metric(key: str, label: str, limit: dict[str, Any] | None, *, lang: str) -> dict[str, Any] | None:
     if not isinstance(limit, dict):
         return None
     window = _safe_dict(limit.get("primary_window"))
@@ -90,70 +92,81 @@ def _quota_metric(key: str, label: str, limit: dict[str, Any] | None) -> dict[st
     except (TypeError, ValueError):
         remaining_percent = None
     reset_label = _format_reset_at(window.get("reset_at"))
-    sub = f"{reset_label} 重置" if reset_label else ""
+    sub = t("core.5912705f", lang, reset_label=reset_label) if reset_label else ""
     if remaining_percent is None:
-        return _metric(key, label, "可用" if limit.get("allowed") else "受限", sub=sub, tone="good" if limit.get("allowed") else "danger")
+        return _metric(
+            key,
+            label,
+            t("core.4d99c976", lang) if limit.get("allowed") else t("core.87836358", lang),
+            lang=lang,
+            sub=sub,
+            tone="good" if limit.get("allowed") else "danger",
+        )
     tone = "danger" if bool(limit.get("limit_reached")) or remaining_percent <= 0 else ("warning" if remaining_percent <= 20 else "good")
+    # t()'s {param} placeholders are bare names only, no format specs — the :g
+    # truncation must happen here, before the value reaches t().
+    percent_text = f"{remaining_percent:g}"
     return _metric(
         key,
         label,
-        f"剩余 {remaining_percent:g}%",
+        t("core.9b4933f8", lang, percent=percent_text),
+        lang=lang,
         sub=sub,
         percent=remaining_percent,
         tone=tone,
     )
 
 
-def _build_chatgpt_metrics(overview: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+def _build_chatgpt_metrics(overview: dict[str, Any], lang: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     primary: list[dict[str, Any]] = []
     secondary: list[dict[str, Any]] = []
     usage = _safe_dict(overview.get("chatgpt_usage") or overview.get("wham_usage"))
     if not usage:
         return primary, secondary
 
-    _append_metric(primary, _quota_metric("chatgpt_weekly_limit", "周限额", _safe_dict(usage.get("rate_limit"))))
-    _append_metric(primary, _quota_metric("chatgpt_code_review_weekly_limit", "代码审查周限额", _safe_dict(usage.get("code_review_rate_limit"))))
+    _append_metric(primary, _quota_metric("chatgpt_weekly_limit", t("core.eeac8033", lang), _safe_dict(usage.get("rate_limit")), lang=lang))
+    _append_metric(primary, _quota_metric("chatgpt_code_review_weekly_limit", t("core.06042f69", lang), _safe_dict(usage.get("code_review_rate_limit")), lang=lang))
 
     credits = _safe_dict(usage.get("credits"))
     if credits:
         if credits.get("unlimited"):
-            _append_metric(secondary, _metric("chatgpt_credits", "Credits", "无限", tone="good"))
+            _append_metric(secondary, _metric("chatgpt_credits", "Credits", t("core.8651f50c", lang), lang=lang, tone="good"))
         elif credits.get("balance") not in (None, ""):
-            _append_metric(secondary, _metric("chatgpt_credits", "Credits", credits.get("balance"), tone="muted"))
+            _append_metric(secondary, _metric("chatgpt_credits", "Credits", credits.get("balance"), lang=lang, tone="muted"))
         if credits.get("approx_local_messages") not in (None, ""):
-            _append_metric(secondary, _metric("chatgpt_local_messages", "本地消息", credits.get("approx_local_messages"), tone="muted"))
+            _append_metric(secondary, _metric("chatgpt_local_messages", t("core.96b65251", lang), credits.get("approx_local_messages"), lang=lang, tone="muted"))
         if credits.get("approx_cloud_messages") not in (None, ""):
-            _append_metric(secondary, _metric("chatgpt_cloud_messages", "云端消息", credits.get("approx_cloud_messages"), tone="muted"))
+            _append_metric(secondary, _metric("chatgpt_cloud_messages", t("core.326ec710", lang), credits.get("approx_cloud_messages"), lang=lang, tone="muted"))
     return primary, secondary
 
 
-def _build_generic_usage_metrics(overview: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+def _build_generic_usage_metrics(overview: dict[str, Any], lang: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
     primary: list[dict[str, Any]] = []
     secondary: list[dict[str, Any]] = []
     sections: list[dict[str, Any]] = []
 
-    _append_metric(primary, _metric("remaining_credits", "剩余额度", overview.get("remaining_credits"), tone="good"))
-    _append_metric(primary, _metric("usage_total", "已用额度", overview.get("usage_total"), tone="muted"))
-    _append_metric(secondary, _metric("plan_credits", "总额度", overview.get("plan_credits"), tone="muted"))
-    _append_metric(secondary, _metric("reset_days", "重置倒计时", overview.get("days_until_reset"), sub="天", tone="muted"))
-    _append_metric(secondary, _metric("next_reset_at", "下次重置", _format_maybe_timestamp(overview.get("next_reset_at")), tone="muted"))
+    _append_metric(primary, _metric("remaining_credits", t("core.ff93499b", lang), overview.get("remaining_credits"), lang=lang, tone="good"))
+    _append_metric(primary, _metric("usage_total", t("core.b808aeaa", lang), overview.get("usage_total"), lang=lang, tone="muted"))
+    _append_metric(secondary, _metric("plan_credits", t("core.4a282655", lang), overview.get("plan_credits"), lang=lang, tone="muted"))
+    _append_metric(secondary, _metric("reset_days", t("core.1d18be89", lang), overview.get("days_until_reset"), lang=lang, sub=t("core.49da61ce", lang), tone="muted"))
+    _append_metric(secondary, _metric("next_reset_at", t("core.a51b657c", lang), _format_maybe_timestamp(overview.get("next_reset_at")), lang=lang, tone="muted"))
 
     usage_models = _safe_list(overview.get("usage_models"))
     if usage_models:
         sections.append(
             {
                 "key": "usage_models",
-                "title": "模型用量",
+                "title": t("core.e40294c6", lang),
                 "items": [
                     {
                         "title": _text(item.get("model")) or "model",
                         "metrics": [
                             metric
                             for metric in [
-                                _metric("num_requests", "请求数", item.get("num_requests")),
-                                _metric("remaining_requests", "剩余请求", item.get("remaining_requests"), tone="good"),
-                                _metric("num_tokens", "Token", item.get("num_tokens")),
-                                _metric("remaining_tokens", "剩余 Token", item.get("remaining_tokens"), tone="good"),
+                                _metric("num_requests", t("core.855754c1", lang), item.get("num_requests"), lang=lang),
+                                _metric("remaining_requests", t("core.e742a113", lang), item.get("remaining_requests"), lang=lang, tone="good"),
+                                _metric("num_tokens", "Token", item.get("num_tokens"), lang=lang),
+                                _metric("remaining_tokens", t("core.0ad699eb", lang), item.get("remaining_tokens"), lang=lang, tone="good"),
                             ]
                             if metric
                         ],
@@ -169,19 +182,19 @@ def _build_generic_usage_metrics(overview: dict[str, Any]) -> tuple[list[dict[st
         sections.append(
             {
                 "key": "usage_breakdowns",
-                "title": "额度明细",
+                "title": t("core.10e9a7c8", lang),
                 "items": [
                     {
                         "title": _text(item.get("display_name")) or "usage",
                         "metrics": [
                             metric
                             for metric in [
-                                _metric("current_usage", "已用", item.get("current_usage")),
-                                _metric("usage_limit", "上限", item.get("usage_limit")),
-                                _metric("remaining_usage", "剩余", item.get("remaining_usage"), tone="good"),
-                                _metric("trial_status", "试用状态", item.get("trial_status")),
-                                _metric("trial_expiry", "试用到期", item.get("trial_expiry")),
-                                _metric("trial_remaining_usage", "试用剩余", item.get("trial_remaining_usage"), tone="good"),
+                                _metric("current_usage", t("core.937683da", lang), item.get("current_usage"), lang=lang),
+                                _metric("usage_limit", t("core.8e7ddbee", lang), item.get("usage_limit"), lang=lang),
+                                _metric("remaining_usage", t("core.d6822b04", lang), item.get("remaining_usage"), lang=lang, tone="good"),
+                                _metric("trial_status", t("core.e6a314b1", lang), item.get("trial_status"), lang=lang),
+                                _metric("trial_expiry", t("core.2753a45a", lang), item.get("trial_expiry"), lang=lang),
+                                _metric("trial_remaining_usage", t("core.f0ce7ca5", lang), item.get("trial_remaining_usage"), lang=lang, tone="good"),
                             ]
                             if metric
                         ],
@@ -206,6 +219,7 @@ def build_account_display_summary(
     display_status: str,
     overview: dict[str, Any] | None,
     provider_resources: list[dict[str, Any]] | None = None,
+    lang: str = "zh",
 ) -> dict[str, Any]:
     overview = _safe_dict(overview)
     checked_at = overview.get("checked_at")
@@ -220,26 +234,26 @@ def build_account_display_summary(
 
     effective_plan_name = _text(plan_name or overview.get("plan_name") or overview.get("plan"))
     if effective_plan_name:
-        _append_metric(secondary_metrics, _metric("plan_name", "套餐", effective_plan_name, tone="muted"))
+        _append_metric(secondary_metrics, _metric("plan_name", t("core.c1cfa134", lang), effective_plan_name, lang=lang, tone="muted"))
     if plan_state and plan_state != "unknown":
-        _append_metric(secondary_metrics, _metric("plan_state", "套餐状态", plan_state, tone="muted"))
+        _append_metric(secondary_metrics, _metric("plan_state", t("core.a2004596", lang), plan_state, lang=lang, tone="muted"))
     if checked_at_value:
-        _append_metric(secondary_metrics, _metric("checked_at", "最近检测", checked_at_value, tone="muted"))
+        _append_metric(secondary_metrics, _metric("checked_at", t("core.85c449ce", lang), checked_at_value, lang=lang, tone="muted"))
 
-    chatgpt_primary, chatgpt_secondary = _build_chatgpt_metrics(overview)
+    chatgpt_primary, chatgpt_secondary = _build_chatgpt_metrics(overview, lang)
     primary_metrics.extend(chatgpt_primary)
     secondary_metrics.extend(chatgpt_secondary)
 
-    generic_primary, generic_secondary, generic_sections = _build_generic_usage_metrics(overview)
+    generic_primary, generic_secondary, generic_sections = _build_generic_usage_metrics(overview, lang)
     primary_metrics.extend(generic_primary)
     secondary_metrics.extend(generic_secondary)
     sections.extend(generic_sections)
 
     warnings: list[dict[str, Any]] = []
     if validity_status == "invalid" or lifecycle_status == "invalid":
-        warnings.append({"key": "invalid", "tone": "danger", "message": "账号当前检测为失效"})
+        warnings.append({"key": "invalid", "tone": "danger", "message": t("core.b5a31ec8", lang)})
     if validity_status == "unknown":
-        warnings.append({"key": "unknown_validity", "tone": "warning", "message": "尚未完成有效性检测"})
+        warnings.append({"key": "unknown_validity", "tone": "warning", "message": t("core.641e827b", lang)})
     if overview.get("quota_note"):
         warnings.append({"key": "quota_note", "tone": "warning", "message": _text(overview.get("quota_note"))})
     if overview.get("check_error"):
@@ -252,7 +266,7 @@ def build_account_display_summary(
     ]
     for resource in provider_resources or []:
         if isinstance(resource, dict) and resource.get("resource_type") == "mailbox" and (resource.get("handle") or resource.get("display_name")):
-            badges.append({"label": "邮箱验证", "tone": "muted"})
+            badges.append({"label": t("core.72e5f913", lang), "tone": "muted"})
             break
 
     return {

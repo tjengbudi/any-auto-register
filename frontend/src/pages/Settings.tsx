@@ -10,7 +10,6 @@ import { Card } from '@/components/ui/card'
 import { Save, Eye, EyeOff, Mail, Shield, Cpu, Plus, X, Orbit, Package2, MessageSquare } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import ProviderCards from '@/components/settings/ProviderCards'
-import UntranslatedNotice from '@/components/settings/UntranslatedNotice'
 import { useLanguage, interpolate, type Catalog } from '@/i18n'
 
 const PROVIDER_TYPES = ['mailbox', 'captcha', 'sms'] as const
@@ -1075,7 +1074,6 @@ export default function Settings({ embedded, defaultTab }: { embedded?: boolean;
             <div className="text-sm text-[var(--text-secondary)] mt-2">{getCaptchaStrategyLabel('headless', catalog, configOptions.captcha_policy, configOptions.captcha_providers)}</div>
           </div>
         )}
-        <UntranslatedNotice />
         <ProviderCards
           providerType={providerType}
           catalog={providerCatalog}

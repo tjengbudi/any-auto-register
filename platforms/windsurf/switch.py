@@ -289,7 +289,7 @@ def read_current_windsurf_account() -> dict | None:
     }
 
 
-def get_windsurf_desktop_state() -> dict:
+def get_windsurf_desktop_state(lang: str = "zh") -> dict:
     """获取 Windsurf 桌面应用状态"""
     current = read_current_windsurf_account() or {}
     db_path = _get_windsurf_db_path()
@@ -305,6 +305,7 @@ def get_windsurf_desktop_state() -> dict:
         extra={
             "db_path": db_path,
         },
+        lang=lang,
     )
     state["available"] = True
     return state

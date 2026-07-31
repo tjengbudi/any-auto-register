@@ -62,11 +62,10 @@ def test_actions_windsurf_english(client):
     assert browser_param_labels["headless"] == "Headless mode"
 
     # query_state/check_trial are not overridden by windsurf -- their labels
-    # come straight from core/capability_registry.py, unminted (story 3.3's
-    # territory), so t()'s own-fallback leaves them exactly as-is even under
-    # ui_language=en.
-    assert labels["query_state"] == "查询账号状态/额度"
-    assert labels["check_trial"] == "检查试用资格"
+    # come straight from core/capability_registry.py, minted by story 3.3,
+    # so they render in English here too.
+    assert labels["query_state"] == "Check account status/quota"
+    assert labels["check_trial"] == "Check trial eligibility"
 
 
 def test_actions_windsurf_chinese_default(client):

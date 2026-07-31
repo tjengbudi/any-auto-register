@@ -453,7 +453,7 @@ def read_current_kiro_account() -> dict | None:
         return None
 
 
-def get_kiro_desktop_state() -> dict:
+def get_kiro_desktop_state(lang: str = "zh") -> dict:
     token_path = os.path.join(_get_cache_dir(), "kiro-auth-token.json")
     current = read_current_kiro_account() or {}
     state = build_desktop_app_state(
@@ -467,6 +467,7 @@ def get_kiro_desktop_state() -> dict:
         extra={
             "token_path": token_path,
         },
+        lang=lang,
     )
     state["available"] = True
     return state

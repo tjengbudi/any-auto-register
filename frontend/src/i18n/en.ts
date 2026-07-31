@@ -37,7 +37,6 @@ const catalogEn: Catalog = {
     languageGroupTitle: 'Language',
     languageGroupDesc: 'Choose the display language for the app; it applies immediately.',
     languageRowLabel: 'Display language',
-    untranslatedNotice: 'This section is supplied by the backend and has not been translated yet — it still displays in Chinese.',
     savedCheckmark: 'Saved ✓',
     configIgnoredKeysNotice: 'Not saved — unrecognized: {keys}',
     savingEllipsis: 'Saving...',

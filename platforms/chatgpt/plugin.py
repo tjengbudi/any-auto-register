@@ -248,10 +248,10 @@ class ChatGPTPlatform(BasePlatform):
              ]},
         ]
 
-    def get_desktop_state(self) -> dict:
+    def get_desktop_state(self, lang: str = "zh") -> dict:
         from platforms.chatgpt.switch import get_codex_desktop_state
 
-        return get_codex_desktop_state()
+        return get_codex_desktop_state(lang)
 
     def _execute_platform_action(self, action_id: str, account: Account, params: dict) -> dict:
         """Handle ChatGPT-specific actions."""

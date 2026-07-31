@@ -43,23 +43,23 @@ class AccountsService:
     def __init__(self, repository: AccountsRepository | None = None):
         self.repository = repository or AccountsRepository()
 
-    def list_accounts(self, query: AccountQuery) -> dict:
-        total, items = self.repository.list(query)
+    def list_accounts(self, query: AccountQuery, lang: str) -> dict:
+        total, items = self.repository.list(query, lang)
         return {
             "total": total,
             "page": query.page,
             "items": [self._serialize(item) for item in items],
         }
 
-    def get_account(self, account_id: int) -> dict | None:
-        item = self.repository.get(account_id)
+    def get_account(self, account_id: int, lang: str) -> dict | None:
+        item = self.repository.get(account_id, lang)
         return self._serialize(item) if item else None
 
-    def create_account(self, command: AccountCreateCommand) -> dict:
-        return self._serialize(self.repository.create(command))
+    def create_account(self, command: AccountCreateCommand, lang: str) -> dict:
+        return self._serialize(self.repository.create(command, lang))
 
-    def update_account(self, account_id: int, command: AccountUpdateCommand) -> dict | None:
-        item = self.repository.update(account_id, command)
+    def update_account(self, account_id: int, command: AccountUpdateCommand, lang: str) -> dict | None:
+        item = self.repository.update(account_id, command, lang)
         return self._serialize(item) if item else None
 
     def delete_account(self, account_id: int) -> dict:

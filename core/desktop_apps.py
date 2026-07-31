@@ -8,6 +8,8 @@ import shutil
 import subprocess
 from typing import Iterable
 
+from i18n import t
+
 
 def _run_command(cmd: list[str]) -> tuple[bool, str]:
     creationflags = 0x08000000 if platform.system() == "Windows" else 0
@@ -111,6 +113,7 @@ def build_desktop_app_state(
     config_paths: Iterable[str] = (),
     current_account_present: bool = False,
     extra: dict | None = None,
+    lang: str = "zh",
 ) -> dict:
     install_candidates = existing_paths(install_paths)
     binary_candidates = existing_binaries(binary_names)
@@ -130,8 +133,12 @@ def build_desktop_app_state(
         "install_paths": install_candidates,
         "binaries": binary_candidates,
         "config_paths": config_candidates,
-        "status_label": "已打开" if running else "未打开",
-        "ready_label": "已就绪" if installed and configured else ("未配置" if installed else "未安装"),
+        "status_label": t("core.76ef4ba6", lang) if running else t("core.a0a4c71b", lang),
+        "ready_label": (
+            t("core.ab27f80d", lang)
+            if installed and configured
+            else (t("core.80a57e03", lang) if installed else t("core.156219e3", lang))
+        ),
     }
     if extra:
         state.update(extra)

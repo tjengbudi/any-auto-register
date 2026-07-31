@@ -153,10 +153,10 @@ class KiroPlatform(BasePlatform):
             {"id": "get_account_state", "label": "kiro.da0f5916", "params": []},
         ]
 
-    def get_desktop_state(self) -> dict:
+    def get_desktop_state(self, lang: str = "zh") -> dict:
         from platforms.kiro.switch import get_kiro_desktop_state
 
-        return get_kiro_desktop_state()
+        return get_kiro_desktop_state(lang)
 
     def execute_action(self, action_id: str, account: Account, params: dict) -> dict:
         extra = account.extra or {}

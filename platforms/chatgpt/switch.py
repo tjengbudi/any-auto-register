@@ -290,7 +290,7 @@ def read_current_codex_account() -> dict:
     }
 
 
-def get_codex_desktop_state() -> dict:
+def get_codex_desktop_state(lang: str = "zh") -> dict:
     cookies_path = _get_codex_cookies_path()
     current = read_current_codex_account()
     state = build_desktop_app_state(
@@ -304,6 +304,7 @@ def get_codex_desktop_state() -> dict:
         extra={
             "cookies_path": cookies_path,
         },
+        lang=lang,
     )
     state["available"] = True
     return state

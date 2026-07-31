@@ -8,6 +8,7 @@ import string
 import time
 
 from core.registration import BrowserRegistrationFlow, ProtocolMailboxFlow, ProtocolOAuthFlow, RegistrationContext, RegistrationResult
+from i18n import t
 
 
 class AccountStatus(str, Enum):
@@ -183,10 +184,10 @@ class BasePlatform(ABC):
         # Fallback to empty list for platforms that haven't migrated yet
         return []
 
-    def get_desktop_state(self) -> dict:
+    def get_desktop_state(self, lang: str = "zh") -> dict:
         return {
             "available": False,
-            "message": f"{self.display_name or self.name} 暂未提供桌面应用状态探测",
+            "message": t("core.8bb32c42", lang, display_name=self.display_name or self.name),
         }
 
     def execute_action(self, action_id: str, account: Account, params: dict) -> dict:

@@ -3,10 +3,11 @@ from __future__ import annotations
 import io
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from api.deps import get_ui_language
 from application.account_exports import AccountExportsService, ExportArtifact
 from application.accounts import AccountsService
 from domain.accounts import AccountCreateCommand, AccountExportSelection, AccountQuery, AccountUpdateCommand
@@ -83,13 +84,14 @@ def list_accounts(
     email: str = "",
     page: int = 1,
     page_size: int = 20,
+    lang: str = Depends(get_ui_language),
 ):
-    return service.list_accounts(AccountQuery(platform=platform, status=status, email=email, page=page, page_size=page_size))
+    return service.list_accounts(AccountQuery(platform=platform, status=status, email=email, page=page, page_size=page_size), lang)
 
 
 @router.post("")
-def create_account(body: AccountCreateRequest):
-    return service.create_account(AccountCreateCommand(**body.model_dump()))
+def create_account(body: AccountCreateRequest, lang: str = Depends(get_ui_language)):
+    return service.create_account(AccountCreateCommand(**body.model_dump()), lang)
 
 
 @router.get("/stats")
@@ -215,16 +217,16 @@ def import_accounts(body: ImportRequest):
 
 
 @router.get("/{account_id}")
-def get_account(account_id: int):
-    item = service.get_account(account_id)
+def get_account(account_id: int, lang: str = Depends(get_ui_language)):
+    item = service.get_account(account_id, lang)
     if not item:
         raise HTTPException(404, "账号不存在")
     return item
 
 
 @router.patch("/{account_id}")
-def update_account(account_id: int, body: AccountUpdateRequest):
-    item = service.update_account(account_id, AccountUpdateCommand(**body.model_dump()))
+def update_account(account_id: int, body: AccountUpdateRequest, lang: str = Depends(get_ui_language)):
+    item = service.update_account(account_id, AccountUpdateCommand(**body.model_dump()), lang)
     if not item:
         raise HTTPException(404, "账号不存在")
     return item

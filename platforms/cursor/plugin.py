@@ -134,10 +134,10 @@ class CursorPlatform(BasePlatform):
             {"id": "generate_trial_link", "label": "cursor.73608a10", "params": []},
         ]
 
-    def get_desktop_state(self) -> dict:
+    def get_desktop_state(self, lang: str = "zh") -> dict:
         from platforms.cursor.switch import get_cursor_desktop_state
 
-        return get_cursor_desktop_state()
+        return get_cursor_desktop_state(lang)
 
     def execute_action(self, action_id: str, account: Account, params: dict) -> dict:
         """执行平台操作"""
