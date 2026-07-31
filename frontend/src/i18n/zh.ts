@@ -498,8 +498,12 @@ const catalogZh = {
     dismissLabel: '忽略',
   },
   taskLogPanel: {
+    statusLabel: '状态',
+    progressLabel: '进度',
+    eventsLabel: '事件',
     eventCountLabel: '{count} 条日志',
     errorReasonLabel: '失败原因',
+    liveLogEyebrowLabel: '实时日志',
     liveLogLabel: '实时执行日志',
     copyLogsButton: '复制日志',
     waitingForLogsLabel: '等待任务日志...',

@@ -499,8 +499,12 @@ const catalogEn: Catalog = {
     dismissLabel: 'Dismiss',
   },
   taskLogPanel: {
+    statusLabel: 'Status',
+    progressLabel: 'Progress',
+    eventsLabel: 'Events',
     eventCountLabel: '{count} events',
     errorReasonLabel: 'Failure reason',
+    liveLogEyebrowLabel: 'Live Log',
     liveLogLabel: 'Live execution log',
     copyLogsButton: 'Copy logs',
     waitingForLogsLabel: 'Waiting for task logs...',

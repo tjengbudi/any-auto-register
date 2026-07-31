@@ -500,8 +500,12 @@ const catalogViRaw: Catalog = {
     dismissLabel: '',
   },
   taskLogPanel: {
+    statusLabel: '',
+    progressLabel: '',
+    eventsLabel: '',
     eventCountLabel: '',
     errorReasonLabel: '',
+    liveLogEyebrowLabel: '',
     liveLogLabel: '',
     copyLogsButton: '',
     waitingForLogsLabel: '',

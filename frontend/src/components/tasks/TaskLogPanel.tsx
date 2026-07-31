@@ -133,15 +133,15 @@ export function TaskLogPanel({
     <div className="flex h-full flex-col gap-4">
       <div className="grid gap-3 md:grid-cols-3">
         <div className={`rounded-2xl border px-4 py-3 ${statusTone}`}>
-          <div className="text-[11px] uppercase tracking-[0.18em] opacity-70">Status</div>
+          <div className="text-[11px] uppercase tracking-[0.18em] opacity-70">{catalog.taskLogPanel.statusLabel}</div>
           <div className="mt-1 text-sm font-semibold">{getTaskStatusText(currentStatus, catalog)}</div>
         </div>
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-3">
-          <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-muted)]">Progress</div>
+          <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-muted)]">{catalog.taskLogPanel.progressLabel}</div>
           <div className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{progress.label || task?.progress || '0/0'}</div>
         </div>
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-hover)] px-4 py-3">
-          <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-muted)]">Events</div>
+          <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-muted)]">{catalog.taskLogPanel.eventsLabel}</div>
           <div className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{interpolate(catalog.taskLogPanel.eventCountLabel, { count: String(lines.length) })}</div>
         </div>
       </div>
@@ -166,7 +166,7 @@ export function TaskLogPanel({
 
       <div className="flex items-center justify-between gap-3">
         <div>
-          <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-muted)]">Live Log</div>
+          <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--text-muted)]">{catalog.taskLogPanel.liveLogEyebrowLabel}</div>
           <div className="mt-1 text-sm font-medium text-[var(--text-primary)]">{catalog.taskLogPanel.liveLogLabel}</div>
         </div>
         <button
