@@ -1,4 +1,4 @@
-import type { Catalog } from '@/i18n'
+import { interpolate, type Catalog } from '@/i18n'
 
 export type ChoiceOption = {
   value: string
@@ -104,12 +104,12 @@ export function getCaptchaStrategyLabel(executorType: string, catalog: Catalog, 
   if (executorType === 'headless' || executorType === 'headed') {
     const browserDefault = policy?.browser_mode || ''
     const label = providers?.find(item => item.value === browserDefault)?.label || browserDefault
-    return label ? catalog.settings.captchaStrategyBrowserDefault.replace('{label}', label) : catalog.settings.captchaStrategyBrowserUnset
+    return label ? interpolate(catalog.settings.captchaStrategyBrowserDefault, { label }) : catalog.settings.captchaStrategyBrowserUnset
   }
   const order = policy?.protocol_order || []
   if (order.length === 0) {
     return catalog.settings.captchaStrategyProtocolUnset
   }
   const labels = order.map(value => providers?.find(item => item.value === value)?.label || value)
-  return catalog.settings.captchaStrategyProtocolAuto.replace('{labels}', labels.join(' -> '))
+  return interpolate(catalog.settings.captchaStrategyProtocolAuto, { labels: labels.join(' -> ') })
 }

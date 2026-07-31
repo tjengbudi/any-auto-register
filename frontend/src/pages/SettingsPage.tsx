@@ -4,7 +4,7 @@ import { Sun, Moon, Monitor } from 'lucide-react'
 import { cn, apiFetch } from '@/lib/utils'
 import { getConfig, getConfigOptions, invalidateConfigCache } from '@/lib/app-data'
 import type { ConfigOptionsResponse } from '@/lib/config-options'
-import { LANGUAGE_OPTIONS, useLanguage, getLocaleTag } from '@/i18n'
+import { LANGUAGE_OPTIONS, useLanguage, getLocaleTag, interpolate } from '@/i18n'
 import { Button } from '@/components/ui/button'
 import { Save, RefreshCw, CheckCircle, ExternalLink, Sparkles } from 'lucide-react'
 import Settings from '@/pages/Settings'
@@ -321,7 +321,7 @@ function AboutTab() {
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-[var(--accent)]" />
                 <span className="text-sm font-semibold text-[var(--text-primary)]">
-                  {catalog.settings.newVersionAvailable.replace('{tag}', () => info.latest?.tag || '')}
+                  {interpolate(catalog.settings.newVersionAvailable, { tag: info.latest?.tag || '' })}
                 </span>
               </div>
               {info.latest.name && (

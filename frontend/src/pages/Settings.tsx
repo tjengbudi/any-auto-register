@@ -10,7 +10,7 @@ import { Save, Eye, EyeOff, Mail, Shield, Cpu, Sliders, Plus, X, Orbit, Package2
 import { cn } from '@/lib/utils'
 import ProviderCards from '@/components/settings/ProviderCards'
 import UntranslatedNotice from '@/components/settings/UntranslatedNotice'
-import { useLanguage, type Catalog } from '@/i18n'
+import { useLanguage, interpolate, type Catalog } from '@/i18n'
 
 const PROVIDER_TYPES = ['mailbox', 'captcha', 'sms'] as const
 
@@ -45,9 +45,9 @@ function getProviderMeta(catalog: Catalog): Record<ProviderType, ProviderMeta> {
       usageHint: catalog.settings.mailboxUsageHint,
       usageHintClassName: 'rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-[var(--text-secondary)]',
       listTitle: catalog.settings.mailboxListTitle,
-      listDescription: (count: number) => catalog.settings.mailboxListDescription.replace('{count}', String(count)),
+      listDescription: (count: number) => interpolate(catalog.settings.mailboxListDescription, { count: String(count) }),
       noAvailableText: catalog.settings.mailboxNoAvailableText,
-      availableText: (count: number) => catalog.settings.mailboxAvailableText.replace('{count}', String(count)),
+      availableText: (count: number) => interpolate(catalog.settings.mailboxAvailableText, { count: String(count) }),
       emptyText: catalog.settings.mailboxEmptyText,
       metricLabel: catalog.settings.mailboxMetricLabel,
     },
@@ -61,9 +61,9 @@ function getProviderMeta(catalog: Catalog): Record<ProviderType, ProviderMeta> {
       usageHint: catalog.settings.captchaUsageHint,
       usageHintClassName: 'rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-[var(--text-secondary)]',
       listTitle: catalog.settings.captchaListTitle,
-      listDescription: (count: number) => catalog.settings.captchaListDescription.replace('{count}', String(count)),
+      listDescription: (count: number) => interpolate(catalog.settings.captchaListDescription, { count: String(count) }),
       noAvailableText: catalog.settings.captchaNoAvailableText,
-      availableText: (count: number) => catalog.settings.captchaAvailableText.replace('{count}', String(count)),
+      availableText: (count: number) => interpolate(catalog.settings.captchaAvailableText, { count: String(count) }),
       emptyText: catalog.settings.captchaEmptyText,
       metricLabel: catalog.settings.captchaMetricLabel,
     },
@@ -77,9 +77,9 @@ function getProviderMeta(catalog: Catalog): Record<ProviderType, ProviderMeta> {
       usageHint: catalog.settings.smsUsageHint,
       usageHintClassName: 'rounded-lg border border-sky-500/20 bg-sky-500/10 px-4 py-3 text-sm text-[var(--text-secondary)]',
       listTitle: catalog.settings.smsListTitle,
-      listDescription: (count: number) => catalog.settings.smsListDescription.replace('{count}', String(count)),
+      listDescription: (count: number) => interpolate(catalog.settings.smsListDescription, { count: String(count) }),
       noAvailableText: catalog.settings.smsNoAvailableText,
-      availableText: (count: number) => catalog.settings.smsAvailableText.replace('{count}', String(count)),
+      availableText: (count: number) => interpolate(catalog.settings.smsAvailableText, { count: String(count) }),
       emptyText: catalog.settings.smsEmptyText,
       metricLabel: catalog.settings.smsMetricLabel,
     },
@@ -421,7 +421,7 @@ function HeroSmsTools({ item }: { item: ProviderSetting }) {
         method: 'POST',
         body: JSON.stringify(payload()),
       })
-      setMessage(catalog.settings.heroSmsBalanceResult.replace('{amount}', Number(data.balance ?? 0).toFixed(3)))
+      setMessage(interpolate(catalog.settings.heroSmsBalanceResult, { amount: Number(data.balance ?? 0).toFixed(3) }))
     } catch (e: any) {
       setMessage(e.message || catalog.settings.heroSmsBalanceQueryFailed)
     } finally {
@@ -442,7 +442,7 @@ function HeroSmsTools({ item }: { item: ProviderSetting }) {
       const service = payload().service
       const current = prices?.[country]?.[service]
       if (current) {
-        setMessage(catalog.settings.heroSmsPriceResult.replace('{cost}', String(current.cost)).replace('{count}', String(current.count)))
+        setMessage(interpolate(catalog.settings.heroSmsPriceResult, { cost: String(current.cost), count: String(current.count) }))
       } else {
         setMessage(catalog.settings.heroSmsPriceNotFound)
       }
@@ -1051,7 +1051,7 @@ export default function Settings({ embedded, defaultTab }: { embedded?: boolean;
       invalidateConfigOptionsCache()
       invalidateConfigCache()
       await loadConfigData()
-      setProviderNotice(current => ({ ...current, [providerType]: catalog.settings.providerSavedNotice.replace('{label}', () => item.catalog_label || item.provider_key) }))
+      setProviderNotice(current => ({ ...current, [providerType]: interpolate(catalog.settings.providerSavedNotice, { label: item.catalog_label || item.provider_key }) }))
       setProviderSaved(current => ({ ...current, [stateKey]: true }))
       setTimeout(() => setProviderSaved(current => ({ ...current, [stateKey]: false })), 2000)
     } catch (error) {
@@ -1090,7 +1090,7 @@ export default function Settings({ embedded, defaultTab }: { embedded?: boolean;
       })
       invalidateConfigOptionsCache()
       await loadConfigData()
-      setProviderNotice(current => ({ ...current, [providerType]: catalog.settings.providerAddedNotice.replace('{label}', () => catalogEntry.label) }))
+      setProviderNotice(current => ({ ...current, [providerType]: interpolate(catalog.settings.providerAddedNotice, { label: catalogEntry.label }) }))
       setProviderAddDialog(null)
     } catch (error) {
       setProviderError(current => ({ ...current, [providerType]: getErrorMessage(error, catalog.settings.addProviderFailed) }))
@@ -1140,7 +1140,7 @@ export default function Settings({ embedded, defaultTab }: { embedded?: boolean;
       })
       invalidateConfigOptionsCache()
       await loadConfigData()
-      setProviderNotice(current => ({ ...current, [providerType]: catalog.settings.providerDefinitionCreatedNotice.replace('{label}', () => payload.label) }))
+      setProviderNotice(current => ({ ...current, [providerType]: interpolate(catalog.settings.providerDefinitionCreatedNotice, { label: payload.label }) }))
       setProviderCreateDialog(null)
       setProviderDefinitionForm(current => ({
         ...current,

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Save, Eye, EyeOff, X, Pencil, Plus, Trash2, FlaskConical, Search } from 'lucide-react'
 import { invalidateConfigOptionsCache } from '@/lib/app-data'
-import { useLanguage, type Catalog } from '@/i18n'
+import { useLanguage, interpolate, type Catalog } from '@/i18n'
 
 function getCategoryGroups(catalog: Catalog) {
   return [
@@ -355,6 +355,10 @@ type Props = {
 export default function ProviderCards({ providerType, catalog: providerCatalog, settings, onReload, onCreateCustom }: Props) {
   const { catalog } = useLanguage()
   const categoryGroups = getCategoryGroups(catalog)
+  const serviceTypeLabel = providerType === 'mailbox' ? catalog.settings.serviceTypeMailbox
+    : providerType === 'captcha' ? catalog.settings.serviceTypeCaptcha
+    : providerType === 'sms' ? catalog.settings.serviceTypeSms
+    : ''
   const [editTarget, setEditTarget] = useState<{ provider: ProviderOption; setting: ProviderSetting | null } | null>(null)
   const [loading, setLoading] = useState<Record<string, boolean>>({})
   const [testResults, setTestResults] = useState<Record<string, { ok: boolean; message?: string; error?: string }>>({})
@@ -555,12 +559,7 @@ export default function ProviderCards({ providerType, catalog: providerCatalog, 
                     onClick={() => onCreateCustom?.()}
                   >
                     <Plus className="h-4 w-4" />
-                    {catalog.settings.addCustomServiceButton.replace('{type}', () => (
-                      providerType === 'mailbox' ? catalog.settings.serviceTypeMailbox
-                        : providerType === 'captcha' ? catalog.settings.serviceTypeCaptcha
-                        : providerType === 'sms' ? catalog.settings.serviceTypeSms
-                        : ''
-                    ))}
+                    {interpolate(catalog.settings.addCustomServiceButton, { type: serviceTypeLabel })}
                   </button>
                 )}
               </div>

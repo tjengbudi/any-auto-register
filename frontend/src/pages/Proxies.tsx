@@ -4,7 +4,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Plus, Trash2, RefreshCw, ToggleLeft, ToggleRight, Globe2, ShieldCheck, CircleOff, Activity } from 'lucide-react'
-import { useLanguage } from '@/i18n'
+import { useLanguage, interpolate } from '@/i18n'
 
 export default function Proxies() {
   const { catalog } = useLanguage()
@@ -67,8 +67,8 @@ export default function Proxies() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
             <div className="text-sm font-semibold text-[var(--text-primary)]">{catalog.proxies.headerTitle}</div>
-            <Badge variant="default">{catalog.proxies.totalBadge.replace('{count}', String(proxies.length))}</Badge>
-            <Badge variant="secondary">{catalog.proxies.activeBadge.replace('{count}', String(activeCount))}</Badge>
+            <Badge variant="default">{interpolate(catalog.proxies.totalBadge, { count: String(proxies.length) })}</Badge>
+            <Badge variant="secondary">{interpolate(catalog.proxies.activeBadge, { count: String(activeCount) })}</Badge>
           </div>
           <Button variant="outline" size="sm" onClick={check} disabled={checking}>
             <RefreshCw className={`h-4 w-4 mr-1.5 ${checking ? 'animate-spin' : ''}`} />

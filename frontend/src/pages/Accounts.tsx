@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { getTaskStatusText, TASK_STATUS_VARIANTS } from '@/lib/tasks'
 import { RefreshCw, Copy, ExternalLink, Download, Upload, Plus, X, Mail, Trash2, Zap } from 'lucide-react'
-import { useLanguage, getLocaleTag, type Catalog } from '@/i18n'
+import { useLanguage, getLocaleTag, interpolate, type Catalog } from '@/i18n'
 
 const STATUS_VARIANT: Record<string, any> = {
   registered: 'default', trial: 'success', subscribed: 'success',
@@ -361,7 +361,7 @@ function RegisterModal({
       <div className="dialog-panel dialog-panel-md flex flex-col"
            onClick={e => e.stopPropagation()} style={{maxHeight: '88vh'}}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
-          <h2 className="text-base font-semibold text-[var(--text-primary)]">{catalog.accounts.registerModalTitle.replace('{platform}', () => String(platformMeta?.display_name || platform))}</h2>
+          <h2 className="text-base font-semibold text-[var(--text-primary)]">{interpolate(catalog.accounts.registerModalTitle, { platform: String(platformMeta?.display_name || platform) })}</h2>
           <button onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text-primary)]"><X className="h-4 w-4" /></button>
         </div>
         <div className="px-6 py-4 flex-1 overflow-y-auto flex flex-col gap-5">
@@ -1198,7 +1198,7 @@ function ActionMenu({
               <button
                 onClick={() => {
                   setOpen(false)
-                  if (confirm(catalog.accounts.deleteConfirm.replace('{email}', () => acc.email))) {
+                  if (confirm(interpolate(catalog.accounts.deleteConfirm, { email: acc.email }))) {
                     apiFetch(`/accounts/${acc.id}`, { method: 'DELETE' }).then(onDelete)
                   }
                 }}
@@ -1213,7 +1213,7 @@ function ActionMenu({
       )}
       {actions.length === 0 && (
         <button
-          onClick={() => { if (confirm(catalog.accounts.deleteConfirm.replace('{email}', () => acc.email))) apiFetch(`/accounts/${acc.id}`, { method: 'DELETE' }).then(onDelete) }}
+          onClick={() => { if (confirm(interpolate(catalog.accounts.deleteConfirm, { email: acc.email }))) apiFetch(`/accounts/${acc.id}`, { method: 'DELETE' }).then(onDelete) }}
           className="table-action-btn table-action-btn-danger"
         >
           {catalog.accounts.deleteButton}
@@ -1419,8 +1419,8 @@ function ImportModal({ platform, onClose, onDone }: { platform: string; onClose:
     try {
       const lines = text.trim().split('\n').filter(Boolean)
       const res = await apiFetch('/accounts/import', { method: 'POST', body: JSON.stringify({ platform, lines }) })
-      setResult(catalog.accounts.importSuccessCount.replace('{count}', String(res.created))); onDone()
-    } catch (e: any) { setResult(catalog.accounts.importFailedMessage.replace('{message}', () => String(e.message))) } finally { setLoading(false) }
+      setResult(interpolate(catalog.accounts.importSuccessCount, { count: String(res.created) })); onDone()
+    } catch (e: any) { setResult(interpolate(catalog.accounts.importFailedMessage, { message: String(e.message) })) } finally { setLoading(false) }
   }
   return (
     <div className="dialog-backdrop" onClick={onClose}>
@@ -1490,12 +1490,12 @@ function ExportMenu({
   }
 
   const options = [
-    { key: 'json', label: catalog.accounts.exportFormatLabel.replace('{format}', 'JSON') },
-    { key: 'csv', label: catalog.accounts.exportFormatLabel.replace('{format}', 'CSV') },
-    { key: 'any2api', label: catalog.accounts.exportFormatLabel.replace('{format}', 'Any2Api') },
-    { key: 'sub2api', label: catalog.accounts.exportFormatLabel.replace('{format}', 'Sub2Api') },
-    { key: 'cpa', label: catalog.accounts.exportFormatLabel.replace('{format}', 'CPA') },
-    ...(platform === 'kiro' ? [{ key: 'kiro-go', label: catalog.accounts.exportFormatLabel.replace('{format}', 'Kiro-Go') }] : []),
+    { key: 'json', label: interpolate(catalog.accounts.exportFormatLabel, { format: 'JSON' }) },
+    { key: 'csv', label: interpolate(catalog.accounts.exportFormatLabel, { format: 'CSV' }) },
+    { key: 'any2api', label: interpolate(catalog.accounts.exportFormatLabel, { format: 'Any2Api' }) },
+    { key: 'sub2api', label: interpolate(catalog.accounts.exportFormatLabel, { format: 'Sub2Api' }) },
+    { key: 'cpa', label: interpolate(catalog.accounts.exportFormatLabel, { format: 'CPA' }) },
+    ...(platform === 'kiro' ? [{ key: 'kiro-go', label: interpolate(catalog.accounts.exportFormatLabel, { format: 'Kiro-Go' }) }] : []),
   ]
 
   return (
@@ -1507,12 +1507,12 @@ function ExportMenu({
         disabled={total === 0 || !!loading}
       >
         <Download className="h-4 w-4 mr-1" />
-        {loading ? catalog.accounts.exportingButton : hasSelection ? catalog.accounts.exportSelectedShort.replace('{count}', String(selectedIds.length)) : catalog.accounts.exportButton}
+        {loading ? catalog.accounts.exportingButton : hasSelection ? interpolate(catalog.accounts.exportSelectedShort, { count: String(selectedIds.length) }) : catalog.accounts.exportButton}
       </Button>
       {open && (
         <div className="absolute right-0 top-10 z-20 min-w-[148px] rounded-lg border border-[var(--border)] bg-[var(--bg-card)] py-1 shadow-lg">
           <div className="px-3 py-1 text-[11px] text-[var(--text-muted)]">
-            {hasSelection ? catalog.accounts.exportSelectedLong.replace('{count}', String(selectedIds.length)) : catalog.accounts.exportCurrentFilterResults}
+            {hasSelection ? interpolate(catalog.accounts.exportSelectedLong, { count: String(selectedIds.length) }) : catalog.accounts.exportCurrentFilterResults}
           </div>
           {options.map(option => (
             <button
@@ -1680,12 +1680,12 @@ export default function Accounts() {
             </h1>
             <div className="h-4 w-[1px] bg-[var(--border)]"></div>
             <div className="flex items-center gap-1.5 text-xs">
-              <span className="text-[var(--text-muted)]">{catalog.accounts.totalCountLabel.replace('{count}', String(total))}</span>
-              {visibleTrial > 0 && <span className="flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 font-medium text-emerald-500 ring-1 ring-inset ring-emerald-500/20">{catalog.accounts.chipTrialLabel.replace('{count}', String(visibleTrial))}</span>}
-              {visibleSubscribed > 0 && <span className="flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 font-medium text-blue-500 ring-1 ring-inset ring-blue-500/20">{catalog.accounts.chipSubscribedLabel.replace('{count}', String(visibleSubscribed))}</span>}
-              {linkedCashier > 0 && <span className="flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 font-medium text-amber-500 ring-1 ring-inset ring-amber-500/20">{catalog.accounts.chipLinkedLabel.replace('{count}', String(linkedCashier))}</span>}
-              {visibleInvalid > 0 && <span className="flex items-center rounded-full bg-red-500/10 px-2 py-0.5 font-medium text-red-500 ring-1 ring-inset ring-red-500/20">{catalog.accounts.chipInvalidLabel.replace('{count}', String(visibleInvalid))}</span>}
-              {selectedCount > 0 && <span className="flex items-center rounded-full bg-[var(--text-primary)]/10 px-2 py-0.5 font-medium text-[var(--text-primary)] ring-1 ring-inset ring-[var(--text-primary)]/20">{catalog.accounts.chipSelectedLabel.replace('{count}', String(selectedCount))}</span>}
+              <span className="text-[var(--text-muted)]">{interpolate(catalog.accounts.totalCountLabel, { count: String(total) })}</span>
+              {visibleTrial > 0 && <span className="flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 font-medium text-emerald-500 ring-1 ring-inset ring-emerald-500/20">{interpolate(catalog.accounts.chipTrialLabel, { count: String(visibleTrial) })}</span>}
+              {visibleSubscribed > 0 && <span className="flex items-center rounded-full bg-blue-500/10 px-2 py-0.5 font-medium text-blue-500 ring-1 ring-inset ring-blue-500/20">{interpolate(catalog.accounts.chipSubscribedLabel, { count: String(visibleSubscribed) })}</span>}
+              {linkedCashier > 0 && <span className="flex items-center rounded-full bg-amber-500/10 px-2 py-0.5 font-medium text-amber-500 ring-1 ring-inset ring-amber-500/20">{interpolate(catalog.accounts.chipLinkedLabel, { count: String(linkedCashier) })}</span>}
+              {visibleInvalid > 0 && <span className="flex items-center rounded-full bg-red-500/10 px-2 py-0.5 font-medium text-red-500 ring-1 ring-inset ring-red-500/20">{interpolate(catalog.accounts.chipInvalidLabel, { count: String(visibleInvalid) })}</span>}
+              {selectedCount > 0 && <span className="flex items-center rounded-full bg-[var(--text-primary)]/10 px-2 py-0.5 font-medium text-[var(--text-primary)] ring-1 ring-inset ring-[var(--text-primary)]/20">{interpolate(catalog.accounts.chipSelectedLabel, { count: String(selectedCount) })}</span>}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -1763,7 +1763,7 @@ export default function Accounts() {
                 try {
                   const res = await apiFetch(`/accounts/check-all?platform=${tab}`, { method: 'POST' })
                   if (res?.task_id) {
-                    setBatchTask({ taskId: res.task_id, title: catalog.accounts.batchRefreshTaskTitle.replace('{platform}', () => platformLabel) })
+                    setBatchTask({ taskId: res.task_id, title: interpolate(catalog.accounts.batchRefreshTaskTitle, { platform: platformLabel }) })
                     setBatchTaskStatus(null)
                   }
                 } catch (e) {
@@ -1785,7 +1785,7 @@ export default function Accounts() {
                 disabled={bulkDeleting}
                 className="h-7 px-2.5 text-red-500 hover:bg-red-500/10 hover:text-red-600"
                 onClick={async () => {
-                  if (!confirm(catalog.accounts.bulkDeleteConfirmPlural.replace('{count}', String(selectedCount)))) return
+                  if (!confirm(interpolate(catalog.accounts.bulkDeleteConfirmPlural, { count: String(selectedCount) }))) return
                   setBulkDeleting(true)
                   try {
                     await Promise.allSettled(
@@ -1885,8 +1885,8 @@ export default function Accounts() {
                     </div>
                   )}
                   {overview?.remote_email && overview.remote_email !== acc.email && (
-                    <div className="mt-1 truncate text-xs text-[var(--text-muted)]" title={catalog.accounts.remoteEmailRowTitle.replace('{email}', () => overview.remote_email)}>
-                      {catalog.accounts.remoteEmailRowTitle.replace('{email}', () => overview.remote_email)}
+                    <div className="mt-1 truncate text-xs text-[var(--text-muted)]" title={interpolate(catalog.accounts.remoteEmailRowTitle, { email: overview.remote_email })}>
+                      {interpolate(catalog.accounts.remoteEmailRowTitle, { email: overview.remote_email })}
                     </div>
                   )}
                   {displayBadges.length > 0 && (

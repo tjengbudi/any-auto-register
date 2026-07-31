@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { apiFetch } from '@/lib/utils'
 import { Sparkles, X } from 'lucide-react'
-import { useLanguage } from '@/i18n'
+import { useLanguage, interpolate } from '@/i18n'
 
 const DISMISS_KEY = 'update-banner-dismissed-tag'
 
@@ -55,9 +55,10 @@ export default function UpdateBanner() {
       <div className="flex items-center gap-2 min-w-0">
         <Sparkles className="h-4 w-4 text-[var(--accent)] shrink-0" />
         <span className="text-[var(--text-primary)] truncate">
-          {catalog.updateBanner.message
-            .replace('{tag}', info.latest.tag)
-            .replace('{current}', info.current === 'dev' ? 'dev' : info.current)}
+          {interpolate(catalog.updateBanner.message, {
+            tag: info.latest.tag,
+            current: info.current === 'dev' ? 'dev' : info.current,
+          })}
         </span>
       </div>
       <div className="flex items-center gap-2 shrink-0">

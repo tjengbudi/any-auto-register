@@ -2,3 +2,4 @@ export { LanguageProvider, useLanguage, LANGUAGE_OPTIONS } from './LanguageConte
 export type { Lang } from './LanguageContext'
 export type { Catalog } from './zh'
 export { getLocaleTag } from './locale-tags'
+export { interpolate } from './interpolate'

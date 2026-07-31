@@ -1,4 +1,4 @@
-import type { Catalog } from '@/i18n'
+import { interpolate, type Catalog } from '@/i18n'
 
 type ChoiceOption = {
   value: string
@@ -47,10 +47,11 @@ export function buildRegistrationOptions(platformMeta: any, catalog: Catalog) {
   }> = []
 
   if (supportedModes.includes('mailbox')) {
+    const mailboxLabel = getOptionLabel('mailbox', identityModeOptions)
     options.push({
       key: 'mailbox',
-      label: getOptionLabel('mailbox', identityModeOptions),
-      description: catalog.register.mailboxOptionDescription.replace('{label}', getOptionLabel('mailbox', identityModeOptions)),
+      label: mailboxLabel,
+      description: interpolate(catalog.register.mailboxOptionDescription, { label: mailboxLabel }),
       identityProvider: 'mailbox',
       oauthProvider: '',
     })
@@ -62,7 +63,7 @@ export function buildRegistrationOptions(platformMeta: any, catalog: Catalog) {
       options.push({
         key: `oauth:${provider}`,
         label: providerLabel,
-        description: catalog.register.oauthOptionDescription.replace('{label}', providerLabel),
+        description: interpolate(catalog.register.oauthOptionDescription, { label: providerLabel }),
         identityProvider: 'oauth_browser',
         oauthProvider: provider,
       })
