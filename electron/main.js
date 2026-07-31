@@ -188,6 +188,14 @@ function createWindow() {
 }
 
 app.whenReady().then(async () => {
+  // 系统语言在应用进程运行期间固定不变，因此这里只需解析一次。
+  // The OS locale does not change during the lifetime of a running Electron process, so resolving it once here is sufficient.
+  // 根据 AD-18，此调用必须在 whenReady() 内进行，绝不能提前调用：在 Windows 上，提前调用会返回空字符串。
+  // Per AD-18, this call must happen inside whenReady() — never earlier — because on Windows, calling it earlier returns an empty string.
+  // 下方 autoUpdater 的 update-available 与 update-downloaded 处理函数刻意闭包捕获已解析的 s，而不是重新解析系统语言：
+  // 新增第二处解析点会被 story 2.10 的验证步骤禁止（该步骤断言全文件只存在一处调用）。
+  // The autoUpdater update-available and update-downloaded handlers below deliberately close over the resolved `s` instead of re-resolving the locale:
+  // adding a second resolution site is forbidden by story 2.10's own verification step, which asserts exactly one call site in this file.
   const locale = app.getLocale().startsWith('zh') ? 'zh' : 'en'
   const s = STRINGS[locale]
 
