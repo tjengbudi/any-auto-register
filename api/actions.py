@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from api.deps import get_ui_language
 from application.actions import ActionsService
 from domain.actions import ActionExecutionCommand
 
@@ -15,8 +16,8 @@ class ActionRequest(BaseModel):
 
 
 @router.get("/{platform}")
-def list_actions(platform: str):
-    return service.list_actions(platform)
+def list_actions(platform: str, lang: str = Depends(get_ui_language)):
+    return service.list_actions(platform, lang)
 
 
 @router.get("/{platform}/capabilities")

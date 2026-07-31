@@ -49,22 +49,22 @@ class WindsurfPlatform(BasePlatform):
     ]
     capability_overrides = {
         "generate_link": {
-            "label": "生成 Pro Trial 链接（自动打码）",
+            "label": "windsurf.e4f9e3fa",
             "params": [
-                {"key": "turnstile_token", "label": "Turnstile Token（可空，自动打码）", "type": "text"},
+                {"key": "turnstile_token", "label": "windsurf.ccf81eca", "type": "text"},
             ],
         },
         "generate_link_browser": {
-            "label": "生成 Pro Trial 链接（浏览器）",
+            "label": "windsurf.4253b3b0",
             "params": [
-                {"key": "turnstile_token", "label": "Turnstile Token（可空，自动打码）", "type": "text"},
-                {"key": "timeout", "label": "等待秒数（默认 180）", "type": "number"},
-                {"key": "headless", "label": "无头模式", "type": "text", "options": ["false", "true"]},
+                {"key": "turnstile_token", "label": "windsurf.ccf81eca", "type": "text"},
+                {"key": "timeout", "label": "windsurf.6967c1c1", "type": "number"},
+                {"key": "headless", "label": "windsurf.c0168f40", "type": "text", "options": ["false", "true"]},
             ],
             "sync": False,
         },
         "switch_desktop": {
-            "label": "切换桌面应用（纯协议）",
+            "label": "windsurf.5372389d",
         },
     }
 

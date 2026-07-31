@@ -104,8 +104,8 @@ class AnythingPlatform(BasePlatform):
 
     def get_platform_actions(self) -> list:
         return [
-            {"id": "get_account_state", "label": "查询账号状态", "params": []},
-            {"id": "generate_checkout_link", "label": "生成支付链接", "params": []},
+            {"id": "get_account_state", "label": "anything.3a43d2c8", "params": []},
+            {"id": "generate_checkout_link", "label": "anything.0bb1e680", "params": []},
         ]
 
     def execute_action(self, action_id: str, account: Account, params: dict) -> dict:

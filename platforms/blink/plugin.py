@@ -98,13 +98,13 @@ class BlinkPlatform(BasePlatform):
 
     def get_platform_actions(self) -> list:
         return [
-            {"id": "get_account_state", "label": "查询账号状态/额度", "params": []},
-            {"id": "generate_checkout_link", "label": "生成 Pro 支付链接", "params": []},
+            {"id": "get_account_state", "label": "blink.a7517bf2", "params": []},
+            {"id": "generate_checkout_link", "label": "blink.8e7f6e2f", "params": []},
             {
                 "id": "create_api_key",
-                "label": "创建 API Key",
+                "label": "blink.3c077658",
                 "params": [
-                    {"key": "name", "label": "Key 名称", "type": "text"},
+                    {"key": "name", "label": "blink.c073886a", "type": "text"},
                 ],
             },
         ]

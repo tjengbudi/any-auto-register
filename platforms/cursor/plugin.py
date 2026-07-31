@@ -129,9 +129,9 @@ class CursorPlatform(BasePlatform):
     def get_platform_actions(self) -> list:
         """返回平台支持的操作列表"""
         return [
-            {"id": "switch_account", "label": "切换到桌面应用", "params": []},
-            {"id": "get_account_state", "label": "查询账号状态/额度提示", "params": []},
-            {"id": "generate_trial_link", "label": "生成 7 天 Pro 链接", "params": []},
+            {"id": "switch_account", "label": "cursor.5b67f763", "params": []},
+            {"id": "get_account_state", "label": "cursor.da0f5916", "params": []},
+            {"id": "generate_trial_link", "label": "cursor.73608a10", "params": []},
         ]
 
     def get_desktop_state(self) -> dict:

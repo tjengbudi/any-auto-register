@@ -99,9 +99,9 @@ class TraePlatform(BasePlatform):
     def get_platform_actions(self) -> list:
         """返回平台支持的操作列表"""
         return [
-            {"id": "switch_account", "label": "切换到桌面应用", "params": []},
-            {"id": "get_user_info", "label": "获取用户信息", "params": []},
-            {"id": "get_cashier_url", "label": "获取升级链接", "params": []},
+            {"id": "switch_account", "label": "trae.5b67f763", "params": []},
+            {"id": "get_user_info", "label": "trae.3012e673", "params": []},
+            {"id": "get_cashier_url", "label": "trae.c90d6d67", "params": []},
         ]
 
     def execute_action(self, action_id: str, account: Account, params: dict) -> dict:

@@ -148,9 +148,9 @@ class KiroPlatform(BasePlatform):
 
     def get_platform_actions(self) -> list:
         return [
-            {"id": "switch_account", "label": "切换到桌面应用", "params": []},
-            {"id": "refresh_token", "label": "刷新 Token", "params": []},
-            {"id": "get_account_state", "label": "查询账号状态/额度提示", "params": []},
+            {"id": "switch_account", "label": "kiro.5b67f763", "params": []},
+            {"id": "refresh_token", "label": "kiro.26dc9dcc", "params": []},
+            {"id": "get_account_state", "label": "kiro.da0f5916", "params": []},
         ]
 
     def get_desktop_state(self) -> dict:

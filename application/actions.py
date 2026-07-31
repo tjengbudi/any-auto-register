@@ -4,24 +4,25 @@ from domain.actions import ActionExecutionCommand
 from application.tasks import create_platform_action_task
 from services.task_runtime import task_runtime
 from infrastructure.platform_runtime import PlatformRuntime
+from i18n import t
 
 
 class ActionsService:
     def __init__(self, runtime: PlatformRuntime | None = None):
         self.runtime = runtime or PlatformRuntime()
 
-    def list_actions(self, platform: str) -> dict:
+    def list_actions(self, platform: str, lang: str = "zh") -> dict:
         actions = self.runtime.list_actions(platform)
         return {
             "actions": [
                 {
                     "id": action.id,
-                    "label": action.label,
+                    "label": t(action.label, lang),
                     "sync": action.sync,
                     "params": [
                         {
                             "key": param.key,
-                            "label": param.label,
+                            "label": t(param.label, lang),
                             "type": param.type,
                             "options": param.options,
                         }

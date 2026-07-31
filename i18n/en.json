@@ -1,10 +1,38 @@
 {
+  "anything": {
+    "0bb1e680": "Generate payment link",
+    "3a43d2c8": "Check account status"
+  },
   "application": {
     "38258a58": "Visible browser (auto)",
     "415fd6aa": "System mailbox",
     "94b52a85": "Third-party account",
     "c161fc9b": "Headless browser (auto)",
     "ec83bb04": "Protocol mode"
+  },
+  "blink": {
+    "3c077658": "Create API Key",
+    "8e7f6e2f": "Generate Pro payment link",
+    "a7517bf2": "Check account status/quota",
+    "c073886a": "Key name"
+  },
+  "cerebras": {
+    "3a43d2c8": "Check account status"
+  },
+  "chatgpt": {
+    "0b5daa92": "Region",
+    "0bb1e680": "Generate payment link",
+    "26dc9dcc": "Refresh token",
+    "59e65e56": "Switch to Codex desktop",
+    "a4965ed9": "Upload CPA",
+    "c1cfa134": "Plan",
+    "d9186615": "Upload Team Manager",
+    "e57e69cb": "Check account status/subscription"
+  },
+  "cursor": {
+    "5b67f763": "Switch to desktop app",
+    "73608a10": "Generate 7-day Pro link",
+    "da0f5916": "Check account status / quota"
   },
   "infrastructure": {
     "06bfac32": "FreeMail (auto-generated)",
@@ -89,5 +117,23 @@
     "f701f554": "Free temporary mailbox; requires a browser environment (Camoufox)",
     "fb981701": "SMSBower SMS-receiving platform; API-compatible with HeroSMS, supports number reuse and automatic resend",
     "ffdcce0a": "Select a country..."
+  },
+  "kiro": {
+    "26dc9dcc": "Refresh token",
+    "5b67f763": "Switch to desktop app",
+    "da0f5916": "Check account status / quota"
+  },
+  "trae": {
+    "3012e673": "Get user info",
+    "5b67f763": "Switch to desktop app",
+    "c90d6d67": "Get upgrade link"
+  },
+  "windsurf": {
+    "4253b3b0": "Generate Pro Trial link (browser)",
+    "5372389d": "Switch desktop app (protocol only)",
+    "6967c1c1": "Wait seconds (default 180)",
+    "c0168f40": "Headless mode",
+    "ccf81eca": "Turnstile Token (optional, auto captcha)",
+    "e4f9e3fa": "Generate Pro Trial link (auto captcha)"
   }
 }

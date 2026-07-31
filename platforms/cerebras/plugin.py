@@ -75,7 +75,7 @@ class CerebrasPlatform(BasePlatform):
 
     def get_platform_actions(self) -> list:
         return [
-            {"id": "get_account_state", "label": "查询账号状态", "params": []},
+            {"id": "get_account_state", "label": "cerebras.3a43d2c8", "params": []},
         ]
 
     def execute_action(self, action_id: str, account: Account, params: dict) -> dict:

@@ -1,10 +1,63 @@
 {
+  "anything": {
+    "0bb1e680": "生成支付链接",
+    "21311389": "未提供 checkout lookup",
+    "27343818": "等待 Anything 魔法链接邮件...",
+    "3a43d2c8": "查询账号状态",
+    "54adad92": "未获取到 organization_id，无法生成 Anything 支付链接",
+    "b0b3ec51": "Anything 支付链接已生成",
+    "cb988942": "魔法链接"
+  },
   "application": {
     "38258a58": "可视浏览器自动",
     "415fd6aa": "系统邮箱",
     "94b52a85": "第三方账号",
     "c161fc9b": "后台浏览器自动",
     "ec83bb04": "协议模式"
+  },
+  "blink": {
+    "16c77f12": "等待魔法链接邮件...",
+    "1f9daf02": "开发 Key",
+    "3c077658": "创建 API Key",
+    "41497ce5": "未获取到 workspace_id，无法生成 Blink 支付链接",
+    "4ae438e0": "Blink 未返回 API Key 明文",
+    "58f150e3": "Blink API Key 已创建",
+    "8594c2fa": "未获取到 workspace_id，无法创建 Blink API Key",
+    "8932cb51": "Blink 未返回支付链接",
+    "8e7f6e2f": "生成 Pro 支付链接",
+    "a7517bf2": "查询账号状态/额度",
+    "c073886a": "Key 名称",
+    "cb988942": "魔法链接",
+    "efe9de30": "Blink Pro 支付链接已生成"
+  },
+  "cerebras": {
+    "3a43d2c8": "查询账号状态",
+    "f57df6b5": "等待验证码邮件..."
+  },
+  "chatgpt": {
+    "0b5daa92": "地区",
+    "0bb1e680": "生成支付链接",
+    "26dc9dcc": "刷新 Token",
+    "59e65e56": "切换到 Codex 桌面端",
+    "a4965ed9": "上传 CPA",
+    "acda6d2a": "ChatGPT 注册未完成完整 OAuth callback，缺少: ",
+    "c1cfa134": "套餐",
+    "cfeae2ac": "等待验证码...",
+    "d9186615": "上传 Team Manager",
+    "e57e69cb": "查询账号状态/订阅"
+  },
+  "cursor": {
+    "2339340a": "获取用户信息失败",
+    "5b67f763": "切换到桌面应用",
+    "73608a10": "生成 7 天 Pro 链接",
+    "7de91b87": "生成 7 天 Pro 链接失败",
+    "83cb9642": "等待 Cursor 邮箱验证码...",
+    "ba8781bf": "账号缺少 token",
+    "bb015c60": "验证码",
+    "cfeae2ac": "等待验证码...",
+    "da0f5916": "查询账号状态/额度提示",
+    "e46763f7": "Cursor 可查询 usage，但部分账号只返回已用量；maxRequestUsage/maxTokenUsage 可能为空，无法保证总能计算剩余额度。",
+    "ecfa3a44": "7 天 Cursor Pro 试用链接已生成"
   },
   "infrastructure": {
     "06bfac32": "FreeMail（自动生成）",
@@ -89,5 +142,40 @@
     "f701f554": "免费临时邮箱，需要浏览器环境（Camoufox）",
     "fb981701": "SMSBower 接码平台，API 兼容 HeroSMS，支持号码复用和自动重发",
     "ffdcce0a": "请选择国家..."
+  },
+  "kiro": {
+    "04b73b69": "Kiro 可通过 Web Portal 查询订阅、试用与 credits 用量，但依赖 sessionToken 浏览器会话；若缺少会话则只能返回 token 刷新校验结果。",
+    "26dc9dcc": "刷新 Token",
+    "42414eea": "当前账号未提供 refreshToken/clientId/clientSecret，无法执行远端刷新校验",
+    "5b67f763": "切换到桌面应用",
+    "6106f0a1": "刷新失败",
+    "cfa125f5": "当前账号未提供 refreshToken/clientId/clientSecret，跳过远端刷新校验",
+    "cfeae2ac": "等待验证码...",
+    "da0f5916": "查询账号状态/额度提示"
+  },
+  "trae": {
+    "2339340a": "获取用户信息失败",
+    "2a2280d2": "请在浏览器中打开升级链接完成 Pro 订阅",
+    "3012e673": "获取用户信息",
+    "4f63142e": "获取升级链接失败，token 可能已过期，请重新注册",
+    "5b67f763": "切换到桌面应用",
+    "ba8781bf": "账号缺少 token",
+    "c90d6d67": "获取升级链接",
+    "cfeae2ac": "等待验证码..."
+  },
+  "windsurf": {
+    "0abfa13e": "账号缺少 Windsurf 密码，无法执行浏览器自动化",
+    "1e41af50": "使用提供的 Turnstile token 作为浏览器流程回退",
+    "23cba581": "Windsurf Pro Trial Stripe 链接已生成",
+    "35d50bdf": "等待 Windsurf 邮箱验证码...",
+    "4253b3b0": "生成 Pro Trial 链接（浏览器）",
+    "5372389d": "切换桌面应用（纯协议）",
+    "6967c1c1": "等待秒数（默认 180）",
+    "9957d67a": "未提供 Turnstile token，将在页面上自动过验证",
+    "ba57068f": "账号缺少 session_token",
+    "bb015c60": "验证码",
+    "c0168f40": "无头模式",
+    "ccf81eca": "Turnstile Token（可空，自动打码）",
+    "e4f9e3fa": "生成 Pro Trial 链接（自动打码）"
   }
 }

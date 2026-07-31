@@ -226,22 +226,22 @@ class ChatGPTPlatform(BasePlatform):
 
     def get_platform_actions(self) -> list:
         return [
-            {"id": "switch_account", "label": "切换到 Codex 桌面端", "params": []},
-            {"id": "get_account_state", "label": "查询账号状态/订阅", "params": []},
-            {"id": "refresh_token", "label": "刷新 Token", "params": []},
-            {"id": "payment_link", "label": "生成支付链接",
+            {"id": "switch_account", "label": "chatgpt.59e65e56", "params": []},
+            {"id": "get_account_state", "label": "chatgpt.e57e69cb", "params": []},
+            {"id": "refresh_token", "label": "chatgpt.26dc9dcc", "params": []},
+            {"id": "payment_link", "label": "chatgpt.0bb1e680",
              "params": [
-                 {"key": "country", "label": "地区", "type": "select",
+                 {"key": "country", "label": "chatgpt.0b5daa92", "type": "select",
                   "options": ["US","SG","TR","HK","JP","GB","AU","CA"]},
-                 {"key": "plan", "label": "套餐", "type": "select",
+                 {"key": "plan", "label": "chatgpt.c1cfa134", "type": "select",
                   "options": ["plus", "team"]},
              ]},
-            {"id": "upload_cpa", "label": "上传 CPA",
+            {"id": "upload_cpa", "label": "chatgpt.a4965ed9",
              "params": [
                  {"key": "api_url", "label": "CPA API URL", "type": "text"},
                  {"key": "api_key", "label": "CPA API Key", "type": "text"},
              ]},
-            {"id": "upload_tm", "label": "上传 Team Manager",
+            {"id": "upload_tm", "label": "chatgpt.d9186615",
              "params": [
                  {"key": "api_url", "label": "TM API URL", "type": "text"},
                  {"key": "api_key", "label": "TM API Key", "type": "text"},
