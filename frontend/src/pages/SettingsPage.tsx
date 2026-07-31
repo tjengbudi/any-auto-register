@@ -334,7 +334,7 @@ function AboutTab() {
               )}
               {info.latest.published_at && (
                 <div className="text-xs text-[var(--text-muted)]">
-                  {catalog.settings.publishedOnLabel}{new Date(info.latest.published_at).toLocaleDateString(getLocaleTag(lang))}
+                  {catalog.settings.publishedOnLabel}{new Date(info.latest.published_at).toLocaleDateString(getLocaleTag(lang), { year: 'numeric', month: '2-digit', day: '2-digit' })}
                 </div>
               )}
               <Button
