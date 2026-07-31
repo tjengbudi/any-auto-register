@@ -106,7 +106,6 @@ const catalogZh = {
     oauthEmailHintLabel: '预期登录邮箱',
     chromeProfilePathLabel: 'Chrome Profile 路径',
     chromeCdpUrlLabel: 'Chrome CDP 地址',
-    platformCapsTabLabel: '高级：平台能力',
     registerTabButtonLabel: '注册策略',
     chatgptCpaSectionTitle: 'CPA 面板',
     chatgptCpaSectionDesc: '注册完成后自动上传到 CPA 管理平台',

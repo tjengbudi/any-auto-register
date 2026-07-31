@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
-import { getConfig, getConfigOptions, getPlatforms, invalidateConfigCache, invalidateConfigOptionsCache, invalidatePlatformsCache } from '@/lib/app-data'
-import type { ChoiceOption, ConfigOptionsResponse, ProviderDriver, ProviderField as ProviderFieldDef, ProviderOption, ProviderSetting } from '@/lib/config-options'
+import { getConfig, getConfigOptions, invalidateConfigCache, invalidateConfigOptionsCache } from '@/lib/app-data'
+import type { ConfigOptionsResponse, ProviderDriver, ProviderField as ProviderFieldDef, ProviderOption, ProviderSetting } from '@/lib/config-options'
 import { getCaptchaStrategyLabel } from '@/lib/config-options'
 import { apiFetch } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
-import { Save, Eye, EyeOff, Mail, Shield, Cpu, Sliders, Plus, X, Orbit, Package2, MessageSquare } from 'lucide-react'
+import { Save, Eye, EyeOff, Mail, Shield, Cpu, Plus, X, Orbit, Package2, MessageSquare } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import ProviderCards from '@/components/settings/ProviderCards'
 import UntranslatedNotice from '@/components/settings/UntranslatedNotice'
@@ -110,138 +110,6 @@ function SettingsMetric({
   )
 }
 
-function PlatformCapsTab() {
-  const { catalog } = useLanguage()
-  const [platforms, setPlatforms] = useState<any[]>([])
-  const [drafts, setDrafts] = useState<Record<string, any>>({})
-  const [saving, setSaving] = useState<Record<string, boolean>>({})
-  const [saved, setSaved] = useState<Record<string, boolean>>({})
-
-  useEffect(() => {
-    getPlatforms().then((list: any[]) => {
-      setPlatforms(list)
-      const init: Record<string, any> = {}
-      list.forEach(p => {
-        init[p.name] = {
-          supported_executors: [...p.supported_executors],
-          supported_identity_modes: [...p.supported_identity_modes],
-          supported_oauth_providers: [...p.supported_oauth_providers],
-        }
-      })
-      setDrafts(init)
-    })
-  }, [])
-
-  const toggle = (name: string, field: string, value: string) => {
-    setDrafts(d => {
-      const arr: string[] = [...(d[name]?.[field] || [])]
-      const idx = arr.indexOf(value)
-      if (idx >= 0) arr.splice(idx, 1); else arr.push(value)
-      return { ...d, [name]: { ...d[name], [field]: arr } }
-    })
-  }
-
-  const save = async (name: string) => {
-    setSaving(s => ({ ...s, [name]: true }))
-    try {
-      await apiFetch(`/platforms/${name}/capabilities`, { method: 'PUT', body: JSON.stringify(drafts[name]) })
-      invalidatePlatformsCache()
-      setSaved(s => ({ ...s, [name]: true }))
-      setTimeout(() => setSaved(s => ({ ...s, [name]: false })), 2000)
-    } finally { setSaving(s => ({ ...s, [name]: false })) }
-  }
-
-  const reset = async (name: string) => {
-    await apiFetch(`/platforms/${name}/capabilities`, { method: 'DELETE' })
-    invalidatePlatformsCache()
-    const list = await getPlatforms({ force: true })
-    const p = list.find((x: any) => x.name === name)
-    if (p) setDrafts(d => ({
-      ...d,
-      [name]: {
-        supported_executors: [...p.supported_executors],
-        supported_identity_modes: [...p.supported_identity_modes],
-        supported_oauth_providers: [...p.supported_oauth_providers],
-      },
-    }))
-  }
-
-  return (
-    <div className="space-y-4">
-      {platforms.map(p => {
-        const draft = drafts[p.name] || {}
-        const executors: string[] = draft.supported_executors || []
-        const modes: string[] = draft.supported_identity_modes || []
-        const oauths: string[] = draft.supported_oauth_providers || []
-        const executorOptions: ChoiceOption[] = p.supported_executor_options || []
-        const identityOptions: ChoiceOption[] = p.supported_identity_mode_options || []
-        const oauthOptions: ChoiceOption[] = p.supported_oauth_provider_options || []
-        return (
-          <div key={p.name} className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-sm font-semibold text-[var(--text-primary)]">{p.display_name}</h3>
-                <p className="text-xs text-[var(--text-muted)] mt-0.5">{p.name} v{p.version}</p>
-              </div>
-              <button onClick={() => reset(p.name)}
-                className="table-action-btn">
-                {catalog.settings.resetToDefaultButton}
-              </button>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <p className="text-xs text-[var(--text-muted)] mb-2">{catalog.settings.executorsFieldLabel}</p>
-                <div className="flex flex-wrap gap-4">
-                  {executorOptions.map(option => (
-                    <label key={option.value} className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)] cursor-pointer">
-                      <input type="checkbox" checked={executors.includes(option.value)}
-                        onChange={() => toggle(p.name, 'supported_executors', option.value)}
-                        className="checkbox-accent" />
-                      {option.label}
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-xs text-[var(--text-muted)] mb-2">{catalog.settings.identityModesFieldLabel}</p>
-                <div className="flex gap-4">
-                  {identityOptions.map(option => (
-                    <label key={option.value} className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)] cursor-pointer">
-                      <input type="checkbox" checked={modes.includes(option.value)}
-                        onChange={() => toggle(p.name, 'supported_identity_modes', option.value)}
-                        className="checkbox-accent" />
-                      {option.label}
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="text-xs text-[var(--text-muted)] mb-2">{catalog.settings.oauthProvidersFieldLabel}</p>
-                <div className="flex flex-wrap gap-4">
-                  {oauthOptions.map(option => (
-                    <label key={option.value} className="flex items-center gap-1.5 text-xs text-[var(--text-secondary)] cursor-pointer">
-                      <input type="checkbox" checked={oauths.includes(option.value)}
-                        onChange={() => toggle(p.name, 'supported_oauth_providers', option.value)}
-                        className="checkbox-accent" />
-                      {option.label}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="mt-4">
-              <Button size="sm" onClick={() => save(p.name)} disabled={saving[p.name]}>
-                <Save className="h-3.5 w-3.5 mr-1" />
-                {saved[p.name] ? catalog.settings.savedCheckmark : saving[p.name] ? catalog.settings.savingEllipsis : catalog.settings.saveButton}
-              </Button>
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
 function getTabs(catalog: Catalog, providerMeta: Record<ProviderType, ProviderMeta>): { id: string; label: string; icon: any; sections?: any[] }[] {
   return [
     {
@@ -274,10 +142,6 @@ function getTabs(catalog: Catalog, providerMeta: Record<ProviderType, ProviderMe
     },
     {
       id: 'sms', label: providerMeta.sms.tabLabel, icon: providerMeta.sms.icon,
-      sections: [],
-    },
-    {
-      id: 'platform_caps', label: catalog.settings.platformCapsTabLabel, icon: Sliders,
       sections: [],
     },
     {
@@ -1235,11 +1099,6 @@ export default function Settings({ embedded, defaultTab }: { embedded?: boolean;
     )
   }
 
-  // Filter tabs: when embedded, exclude platform_caps (moved to Advanced)
-  const visibleTabs = embedded
-    ? tabs.filter(t => t.id !== 'platform_caps')
-    : tabs
-
   return (
     <div className="space-y-4">
       {!embedded && (
@@ -1267,7 +1126,7 @@ export default function Settings({ embedded, defaultTab }: { embedded?: boolean;
       {/* Horizontal tab bar — only show when not navigated via sidebar */}
       {!(embedded && defaultTab) && (
       <div className="flex flex-wrap gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--chip-bg)] p-1">
-        {visibleTabs.map(({ id, label, icon: Icon }) => (
+        {tabs.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => setActiveTab(id)}
@@ -1286,36 +1145,30 @@ export default function Settings({ embedded, defaultTab }: { embedded?: boolean;
       )}
 
         <div className="space-y-4">
-          {activeTab === 'platform_caps' ? (
-            <PlatformCapsTab />
-          ) : (
-            <>
-              {activeTab === 'register' && (
-                <div className="rounded-lg border border-[var(--accent-edge)] bg-[var(--accent-soft)] px-4 py-3 text-sm text-[var(--text-secondary)]">
-                  {catalog.settings.registerTabIntro}
-                </div>
-              )}
-              {currentProviderTab && renderProviderPanel(currentProviderTab)}
-              {!currentProviderTab && sections.map(({ section, desc, items }) => (
-                <div key={section} className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-5">
-                  <div className="mb-4">
-                    <h3 className="text-sm font-semibold text-[var(--text-primary)]">{section}</h3>
-                    {desc && <p className="text-xs text-[var(--text-muted)] mt-0.5">{desc}</p>}
-                  </div>
-                  {items.map((field: any) => (
-                    <Field key={field.key} field={field} form={form} setForm={setForm}
-                      showSecret={showSecret} setShowSecret={setShowSecret}
-                      selectOptions={getSelectOptions(field.key)} />
-                  ))}
-                </div>
+          {activeTab === 'register' && (
+            <div className="rounded-lg border border-[var(--accent-edge)] bg-[var(--accent-soft)] px-4 py-3 text-sm text-[var(--text-secondary)]">
+              {catalog.settings.registerTabIntro}
+            </div>
+          )}
+          {currentProviderTab && renderProviderPanel(currentProviderTab)}
+          {!currentProviderTab && sections.map(({ section, desc, items }) => (
+            <div key={section} className="rounded-xl border border-[var(--border)] bg-[var(--bg-card)] p-5">
+              <div className="mb-4">
+                <h3 className="text-sm font-semibold text-[var(--text-primary)]">{section}</h3>
+                {desc && <p className="text-xs text-[var(--text-muted)] mt-0.5">{desc}</p>}
+              </div>
+              {items.map((field: any) => (
+                <Field key={field.key} field={field} form={form} setForm={setForm}
+                  showSecret={showSecret} setShowSecret={setShowSecret}
+                  selectOptions={getSelectOptions(field.key)} />
               ))}
-              {!currentProviderTab && (
-                <Button onClick={save} disabled={saving} className="w-full">
-                  <Save className="h-4 w-4 mr-2" />
-                  {saved ? catalog.settings.savedCheckmark : saving ? catalog.settings.savingEllipsis : catalog.settings.saveConfigButton}
-                </Button>
-              )}
-            </>
+            </div>
+          ))}
+          {!currentProviderTab && (
+            <Button onClick={save} disabled={saving} className="w-full">
+              <Save className="h-4 w-4 mr-2" />
+              {saved ? catalog.settings.savedCheckmark : saving ? catalog.settings.savingEllipsis : catalog.settings.saveConfigButton}
+            </Button>
           )}
         </div>
       {providerDialog.providerType && dialogItem && (

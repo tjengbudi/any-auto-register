@@ -107,7 +107,6 @@ const catalogEn: Catalog = {
     oauthEmailHintLabel: 'Expected sign-in email',
     chromeProfilePathLabel: 'Chrome Profile path',
     chromeCdpUrlLabel: 'Chrome CDP address',
-    platformCapsTabLabel: 'Advanced: Platform capabilities',
     registerTabButtonLabel: 'Register strategy',
     chatgptCpaSectionTitle: 'CPA panel',
     chatgptCpaSectionDesc: 'Automatically upload to the CPA management platform after registration completes',

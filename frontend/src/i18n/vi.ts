@@ -108,7 +108,6 @@ const catalogViRaw: Catalog = {
     oauthEmailHintLabel: '',
     chromeProfilePathLabel: '',
     chromeCdpUrlLabel: '',
-    platformCapsTabLabel: '',
     registerTabButtonLabel: '',
     chatgptCpaSectionTitle: '',
     chatgptCpaSectionDesc: '',
