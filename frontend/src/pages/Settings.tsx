@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { getConfig, getConfigOptions, invalidateConfigCache, invalidateConfigOptionsCache } from '@/lib/app-data'
+import { getConfig, getConfigOptions, invalidateConfigCache, invalidateConfigOptionsCache, updateConfig } from '@/lib/app-data'
 import type { ConfigOptionsResponse, ProviderDriver, ProviderField as ProviderFieldDef, ProviderOption, ProviderSetting } from '@/lib/config-options'
 import { getCaptchaStrategyLabel } from '@/lib/config-options'
 import { apiFetch } from '@/lib/utils'
+import { useSaveNotice } from '@/hooks/useSaveNotice'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
@@ -705,8 +706,7 @@ export default function Settings({ embedded, defaultTab }: { embedded?: boolean;
   const [providerError, setProviderError] = useState<Record<ProviderType, string>>({ mailbox: '', captcha: '', sms: '' })
   const [showSecret, setShowSecret] = useState<Record<string, boolean>>({})
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [ignoredNotice, setIgnoredNotice] = useState('')
+  const { saved, ignoredNotice, showSaved, showIgnored, reset: resetSaveNotice } = useSaveNotice()
   const [providerSaving, setProviderSaving] = useState<Record<string, boolean>>({})
   const [providerSaved, setProviderSaved] = useState<Record<string, boolean>>({})
   const [_providerDeleting, _setProviderDeleting] = useState<Record<string, boolean>>({})
@@ -764,16 +764,13 @@ export default function Settings({ embedded, defaultTab }: { embedded?: boolean;
 
   const save = async () => {
     setSaving(true)
-    setIgnoredNotice('')
-    setSaved(false)
+    resetSaveNotice()
     try {
-      const response = await apiFetch('/config', { method: 'PUT', body: JSON.stringify({ data: form }) })
-      invalidateConfigCache()
+      const response = await updateConfig(form)
       if (response?.ignored?.length) {
-        setIgnoredNotice(interpolate(catalog.settings.configIgnoredKeysNotice, { keys: response.ignored.join(', ') }))
-        setTimeout(() => setIgnoredNotice(''), 4000)
+        showIgnored(interpolate(catalog.settings.configIgnoredKeysNotice, { keys: response.ignored.join(', ') }))
       } else {
-        setSaved(true); setTimeout(() => setSaved(false), 2000)
+        showSaved()
       }
     } finally { setSaving(false) }
   }

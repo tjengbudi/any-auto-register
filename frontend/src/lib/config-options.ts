@@ -49,6 +49,12 @@ export type CaptchaPolicy = {
   browser_mode?: string
 }
 
+export type ConfigUpdateResponse = {
+  ok: boolean
+  updated: string[]
+  ignored: string[]
+}
+
 export type ConfigOptionsResponse = {
   mailbox_providers: ProviderOption[]
   captcha_providers: ProviderOption[]

@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Sun, Moon, Monitor } from 'lucide-react'
 import { cn, apiFetch } from '@/lib/utils'
-import { getConfig, getConfigOptions, invalidateConfigCache } from '@/lib/app-data'
+import { getConfig, getConfigOptions, updateConfig } from '@/lib/app-data'
 import type { ConfigOptionsResponse } from '@/lib/config-options'
+import { useSaveNotice } from '@/hooks/useSaveNotice'
 import { LANGUAGE_OPTIONS, useLanguage, getLocaleTag, interpolate } from '@/i18n'
 import { Button } from '@/components/ui/button'
 import { Save, RefreshCw, CheckCircle, ExternalLink, Sparkles } from 'lucide-react'
@@ -87,8 +88,7 @@ function GeneralTab({
   const [form, setForm] = useState<Record<string, string>>({})
   const [configOptions, setConfigOptions] = useState<ConfigOptionsResponse | null>(null)
   const [saving, setSaving] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [ignoredNotice, setIgnoredNotice] = useState('')
+  const { saved, ignoredNotice, showSaved, showIgnored, reset: resetSaveNotice } = useSaveNotice()
   const { lang, catalog, setLang } = useLanguage()
 
   useEffect(() => {
@@ -102,17 +102,13 @@ function GeneralTab({
 
   const save = async () => {
     setSaving(true)
-    setIgnoredNotice('')
-    setSaved(false)
+    resetSaveNotice()
     try {
-      const response = await apiFetch('/config', { method: 'PUT', body: JSON.stringify({ data: form }) })
-      invalidateConfigCache()
+      const response = await updateConfig(form)
       if (response?.ignored?.length) {
-        setIgnoredNotice(interpolate(catalog.settings.configIgnoredKeysNotice, { keys: response.ignored.join(', ') }))
-        setTimeout(() => setIgnoredNotice(''), 4000)
+        showIgnored(interpolate(catalog.settings.configIgnoredKeysNotice, { keys: response.ignored.join(', ') }))
       } else {
-        setSaved(true)
-        setTimeout(() => setSaved(false), 2000)
+        showSaved()
       }
     } finally {
       setSaving(false)

@@ -1,4 +1,5 @@
 import { apiFetch } from '@/lib/utils'
+import type { ConfigUpdateResponse } from '@/lib/config-options'
 
 type CacheEntry<T> = {
   value: T | null
@@ -92,4 +93,10 @@ export function getConfigOptions(options?: { force?: boolean }) {
   return loadCached(configOptionsCache, async () => {
     return apiFetch('/config/options')
   }, { force: options?.force })
+}
+
+export async function updateConfig(data: Record<string, string>): Promise<ConfigUpdateResponse> {
+  const response = await apiFetch('/config', { method: 'PUT', body: JSON.stringify({ data }) }) as ConfigUpdateResponse
+  invalidateConfigCache()
+  return response
 }
