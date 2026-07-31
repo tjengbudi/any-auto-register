@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from application.provider_definitions import _render_auth_modes, _render_fields
+from i18n import t
 from infrastructure.provider_definitions_repository import ProviderDefinitionsRepository
 from infrastructure.provider_settings_repository import ProviderSettingsRepository
 
@@ -9,11 +11,11 @@ class ProviderSettingsService:
         self.repository = repository or ProviderSettingsRepository()
         self.definitions = ProviderDefinitionsRepository()
 
-    def list_settings(self, provider_type: str) -> list[dict]:
+    def list_settings(self, provider_type: str, lang: str) -> list[dict]:
         items = self.repository.list_by_type(provider_type)
-        return [self._serialize(item) for item in items]
+        return [self._serialize(item, lang) for item in items]
 
-    def save_setting(self, payload: dict) -> dict:
+    def save_setting(self, payload: dict, lang: str) -> dict:
         item = self.repository.save(
             setting_id=payload.get("id"),
             provider_type=str(payload.get("provider_type") or ""),
@@ -28,17 +30,17 @@ class ProviderSettingsService:
         )
         return {
             "ok": True,
-            "item": self._serialize(item),
+            "item": self._serialize(item, lang),
         }
 
     def delete_setting(self, setting_id: int) -> dict:
         return {"ok": self.repository.delete(setting_id)}
 
-    def get_catalog_options(self) -> dict:
+    def get_catalog_options(self, lang: str = "zh") -> dict:
         return {
-            "mailbox_settings": self.list_settings("mailbox"),
-            "captcha_settings": self.list_settings("captcha"),
-            "sms_settings": self.list_settings("sms"),
+            "mailbox_settings": self.list_settings("mailbox", lang),
+            "captcha_settings": self.list_settings("captcha", lang),
+            "sms_settings": self.list_settings("sms", lang),
             "captcha_policy": self.get_captcha_policy(),
         }
 
@@ -51,18 +53,18 @@ class ProviderSettingsService:
             "browser_mode": browser_default,
         }
 
-    def _serialize(self, item) -> dict:
+    def _serialize(self, item, lang: str) -> dict:
         definition = self.definitions.get_by_key(item.provider_type, item.provider_key)
         auth = item.get_auth()
-        auth_modes = definition.get_auth_modes() if definition else []
-        fields = definition.get_fields() if definition else []
+        auth_modes = _render_auth_modes(definition.get_auth_modes(), lang) if definition else []
+        fields = _render_fields(definition.get_fields(), lang) if definition else []
         return {
             "id": int(item.id or 0),
             "provider_type": item.provider_type,
             "provider_key": item.provider_key,
             "display_name": item.display_name,
-            "catalog_label": definition.label if definition else item.provider_key,
-            "description": definition.description if definition else "",
+            "catalog_label": t(definition.label, lang) if definition else item.provider_key,
+            "description": t(definition.description, lang) if definition else "",
             "driver_type": definition.driver_type if definition else "",
             "auth_mode": item.auth_mode,
             "auth_modes": auth_modes,

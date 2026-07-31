@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from api.deps import get_ui_language
 from application.provider_settings import ProviderSettingsService
 
 router = APIRouter(prefix="/provider-settings", tags=["provider-settings"])
@@ -23,22 +24,22 @@ class ProviderSettingUpsertRequest(BaseModel):
 
 
 @router.get("")
-def list_provider_settings(provider_type: str):
-    return service.list_settings(provider_type)
+def list_provider_settings(provider_type: str, lang: str = Depends(get_ui_language)):
+    return service.list_settings(provider_type, lang)
 
 
 @router.put("")
-def save_provider_setting(body: ProviderSettingUpsertRequest):
+def save_provider_setting(body: ProviderSettingUpsertRequest, lang: str = Depends(get_ui_language)):
     try:
-        return service.save_setting(body.model_dump())
+        return service.save_setting(body.model_dump(), lang)
     except ValueError as exc:
         raise HTTPException(400, str(exc))
 
 
 @router.post("")
-def create_provider_setting(body: ProviderSettingUpsertRequest):
+def create_provider_setting(body: ProviderSettingUpsertRequest, lang: str = Depends(get_ui_language)):
     try:
-        return service.save_setting(body.model_dump())
+        return service.save_setting(body.model_dump(), lang)
     except ValueError as exc:
         raise HTTPException(400, str(exc))
 

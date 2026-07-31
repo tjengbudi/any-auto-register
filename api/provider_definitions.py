@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from api.deps import get_ui_language
 from application.provider_definitions import ProviderDefinitionsService
 
 router = APIRouter(prefix="/provider-definitions", tags=["provider-definitions"])
@@ -22,23 +23,23 @@ class ProviderDefinitionUpsertRequest(BaseModel):
 
 
 @router.get("")
-def list_provider_definitions(provider_type: str, enabled_only: bool = False):
-    return service.list_definitions(provider_type, enabled_only=enabled_only)
+def list_provider_definitions(provider_type: str, enabled_only: bool = False, lang: str = Depends(get_ui_language)):
+    return service.list_definitions(provider_type, lang, enabled_only=enabled_only)
 
 
 @router.get("/drivers")
-def list_provider_drivers(provider_type: str):
-    return service.list_driver_templates(provider_type)
+def list_provider_drivers(provider_type: str, lang: str = Depends(get_ui_language)):
+    return service.list_driver_templates(provider_type, lang)
 
 
 @router.put("")
-def save_provider_definition(body: ProviderDefinitionUpsertRequest):
-    return service.save_definition(body.model_dump())
+def save_provider_definition(body: ProviderDefinitionUpsertRequest, lang: str = Depends(get_ui_language)):
+    return service.save_definition(body.model_dump(), lang)
 
 
 @router.post("")
-def create_provider_definition(body: ProviderDefinitionUpsertRequest):
-    return service.save_definition(body.model_dump())
+def create_provider_definition(body: ProviderDefinitionUpsertRequest, lang: str = Depends(get_ui_language)):
+    return service.save_definition(body.model_dump(), lang)
 
 
 @router.delete("/{definition_id}")

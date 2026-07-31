@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from api.deps import get_ui_language
 from application.config import ConfigService
 
 router = APIRouter(prefix="/config", tags=["config"])
@@ -19,8 +20,8 @@ def get_config():
 
 
 @router.get("/options")
-def get_config_options():
-    return service.get_options()
+def get_config_options(lang: str = Depends(get_ui_language)):
+    return service.get_options(lang)
 
 
 @router.put("")

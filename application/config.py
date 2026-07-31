@@ -26,18 +26,18 @@ class ConfigService:
         updated, ignored = self.repository.update_flat(data)
         return {"ok": True, "updated": updated, "ignored": ignored}
 
-    def get_options(self) -> dict:
-        platform_options = collect_platform_choice_options(self.platforms.list_platforms())
+    def get_options(self, lang: str) -> dict:
+        platform_options = collect_platform_choice_options(self.platforms.list_platforms(lang), lang)
         return {
-            "mailbox_providers": self.provider_definitions.list_definitions("mailbox", enabled_only=True),
-            "captcha_providers": self.provider_definitions.list_definitions("captcha", enabled_only=True),
-            "sms_providers": self.provider_definitions.list_definitions("sms", enabled_only=True),
-            "mailbox_drivers": self.provider_definitions.list_driver_templates("mailbox"),
-            "captcha_drivers": self.provider_definitions.list_driver_templates("captcha"),
-            "sms_drivers": self.provider_definitions.list_driver_templates("sms"),
+            "mailbox_providers": self.provider_definitions.list_definitions("mailbox", lang, enabled_only=True),
+            "captcha_providers": self.provider_definitions.list_definitions("captcha", lang, enabled_only=True),
+            "sms_providers": self.provider_definitions.list_definitions("sms", lang, enabled_only=True),
+            "mailbox_drivers": self.provider_definitions.list_driver_templates("mailbox", lang),
+            "captcha_drivers": self.provider_definitions.list_driver_templates("captcha", lang),
+            "sms_drivers": self.provider_definitions.list_driver_templates("sms", lang),
             "captcha_policy": self.provider_settings.get_captcha_policy(),
-            "mailbox_settings": self.provider_settings.list_settings("mailbox"),
-            "captcha_settings": self.provider_settings.list_settings("captcha"),
-            "sms_settings": self.provider_settings.list_settings("sms"),
+            "mailbox_settings": self.provider_settings.list_settings("mailbox", lang),
+            "captcha_settings": self.provider_settings.list_settings("captcha", lang),
+            "sms_settings": self.provider_settings.list_settings("sms", lang),
             **platform_options,
         }
