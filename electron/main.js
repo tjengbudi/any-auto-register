@@ -16,7 +16,7 @@ const STRINGS = {
     splashMessage: '正在启动后端服务...',
     splashProgress: (current) => `正在启动后端服务... (${current}s)`,
     backendExited: '后端进程已退出，请检查日志',
-    backendTimeout: '后端启动超时（180秒），请检查防火墙或端口占用',
+    backendTimeout: (total) => `后端启动超时（${total}秒），请检查防火墙或端口占用`,
     failureTitle: '启动失败',
     updateAvailableTitle: '发现新版本',
     updateAvailableMessage: (version) => `新版本 v${version} 可用，是否下载？`,
@@ -29,7 +29,7 @@ const STRINGS = {
     splashMessage: 'Starting backend service...',
     splashProgress: (current) => `Starting backend service... (${current}s)`,
     backendExited: 'Backend process exited, please check the logs',
-    backendTimeout: 'Backend startup timed out (180s), please check firewall or port usage',
+    backendTimeout: (total) => `Backend startup timed out (${total}s), please check firewall or port usage`,
     failureTitle: 'Startup Failed',
     updateAvailableTitle: 'New Version Available',
     updateAvailableMessage: (version) => `New version v${version} is available. Download now?`,
@@ -102,10 +102,10 @@ function waitForBackend(s, retries = 180, onProgress = null) {
       http.get(`http://localhost:${PORT}/api/health`, (res) => {
         if (res.statusCode < 500) resolve()
         else if (n > 0) setTimeout(() => attempt(n - 1), 1000)
-        else reject(new Error(s.backendTimeout))
+        else reject(new Error(s.backendTimeout(total)))
       }).on('error', () => {
         if (n > 0) setTimeout(() => attempt(n - 1), 1000)
-        else reject(new Error(s.backendTimeout))
+        else reject(new Error(s.backendTimeout(total)))
       })
     }
     attempt(retries)
