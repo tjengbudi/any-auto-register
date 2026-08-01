@@ -238,3 +238,26 @@ def test_render_detail_falls_back_to_str_when_no_i18n_key():
     exc = ValueError("upstream boom")
     assert render_detail(exc, "en") == "upstream boom"
     assert render_detail(exc, "zh") == "upstream boom"
+
+
+def test_render_detail_falls_back_to_str_when_i18n_key_is_not_a_string():
+    exc = _KeyedError("discarded")
+    exc.i18n_key = 12345
+    assert render_detail(exc, "en") == "discarded"
+
+
+def test_render_detail_falls_back_to_str_when_i18n_params_is_not_a_mapping():
+    exc = _KeyedError("discarded")
+    exc.i18n_key = "api.d1817495"
+    exc.i18n_params = ["not", "a", "dict"]
+    assert render_detail(exc, "en") == "discarded"
+
+
+def test_render_detail_falls_back_to_str_when_i18n_params_shadows_a_t_parameter():
+    """A param named "lang" or "key" collides with t()'s own positional
+    parameters at the `**params` call boundary -- this raises before t()'s
+    own never-raises guarantee can apply, so render_detail must catch it."""
+    exc = _KeyedError("discarded")
+    exc.i18n_key = "api.d1817495"
+    exc.i18n_params = {"lang": "fr"}
+    assert render_detail(exc, "en") == "discarded"

@@ -40,7 +40,17 @@ def render_detail(exc: Exception, lang: str) -> str:
     4.13 without a second change here.
     """
     key = getattr(exc, "i18n_key", None)
-    if not key:
+    if not isinstance(key, str) or not key:
         return str(exc)
     params = getattr(exc, "i18n_params", None) or {}
-    return t(key, lang, **params)
+    if not isinstance(params, dict):
+        return str(exc)
+    try:
+        return t(key, lang, **params)
+    except TypeError:
+        # params 里若含有与 t() 形参同名的键（如 "lang"/"key"），** 展开会在
+        # 进入 t() 之前就抛出 —— t() 自身的"读边界永不抛出"保证覆盖不到这里 —
+        # A params key shadowing t()'s own parameter names (e.g. "lang"/"key")
+        # raises at the ** expansion, before t()'s own never-raises guarantee
+        # can apply.
+        return str(exc)
