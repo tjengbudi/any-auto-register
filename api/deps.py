@@ -42,8 +42,18 @@ def render_detail(exc: Exception, lang: str) -> str:
     key = getattr(exc, "i18n_key", None)
     if not isinstance(key, str) or not key:
         return str(exc)
-    params = getattr(exc, "i18n_params", None) or {}
+    params = getattr(exc, "i18n_params", None)
+    if params is None:
+        params = {}
     if not isinstance(params, dict):
+        return str(exc)
+    # t() 的 AD-7 约定要求参数值必须是 JSON 标量；否则它自己的读边界会吞下格式化
+    # 异常并回退到裸 key，把内部标识符暴露给用户，比 str(exc) 更糟 ——
+    # t()'s AD-7 contract requires JSON-scalar param values; otherwise its own
+    # read boundary swallows the formatting error and falls back to the bare
+    # key, leaking an internal identifier to the user, which is worse than
+    # str(exc).
+    if not all(v is None or isinstance(v, (str, int, float, bool)) for v in params.values()):
         return str(exc)
     try:
         return t(key, lang, **params)

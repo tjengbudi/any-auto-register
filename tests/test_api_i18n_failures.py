@@ -138,6 +138,23 @@ def test_account_checks_not_found_chinese_default(client):
     assert resp.json()["detail"] == "账号不存在"
 
 
+def test_shared_account_not_found_key_renders_identically_across_files(client):
+    """accounts.py's get/update/delete and account_checks.py's check all raise
+    from the same minted key -- same cross-file dedup proof as the
+    tasks.py/task_commands.py pair above, for the other shared key."""
+    client.put("/api/config", json={"data": {"ui_language": "en"}})
+    en_get = client.get("/api/accounts/99999").json()["detail"]
+    en_delete = client.delete("/api/accounts/99999").json()["detail"]
+    en_check = client.post("/api/accounts/99999/check").json()["detail"]
+    assert en_get == en_delete == en_check == "Account not found"
+
+    client.put("/api/config", json={"data": {"ui_language": "zh"}})
+    zh_get = client.get("/api/accounts/99999").json()["detail"]
+    zh_delete = client.delete("/api/accounts/99999").json()["detail"]
+    zh_check = client.post("/api/accounts/99999/check").json()["detail"]
+    assert zh_get == zh_delete == zh_check == "账号不存在"
+
+
 # ---------------------------------------------------------------------------
 # api/provider_definitions.py -- direct raise, definition not found
 # ---------------------------------------------------------------------------
@@ -250,6 +267,27 @@ def test_render_detail_falls_back_to_str_when_i18n_params_is_not_a_mapping():
     exc = _KeyedError("discarded")
     exc.i18n_key = "api.d1817495"
     exc.i18n_params = ["not", "a", "dict"]
+    assert render_detail(exc, "en") == "discarded"
+
+
+def test_render_detail_falls_back_to_str_when_i18n_params_is_a_falsy_non_mapping():
+    """A falsy-but-not-dict i18n_params (0, "", False) must still be treated
+    as malformed, not silently coerced to an empty dict -- `x or {}` would
+    swallow this before the isinstance(dict) guard ever saw it."""
+    exc = _KeyedError("discarded")
+    exc.i18n_key = "api.d1817495"
+    exc.i18n_params = 0
+    assert render_detail(exc, "en") == "discarded"
+
+
+def test_render_detail_falls_back_to_str_when_a_param_value_is_not_a_json_scalar():
+    """t()'s own read boundary never raises -- a non-scalar param value makes
+    its internal formatter fail and fall back to returning the bare key
+    (AD-7), which would leak an internal identifier like "core.5912705f" to
+    the user. render_detail must catch this upstream and prefer str(exc)."""
+    exc = _KeyedError("discarded")
+    exc.i18n_key = "core.5912705f"
+    exc.i18n_params = {"reset_label": ["not", "a", "scalar"]}
     assert render_detail(exc, "en") == "discarded"
 
 
