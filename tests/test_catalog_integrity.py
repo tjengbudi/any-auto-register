@@ -96,10 +96,15 @@ def _build_coverage_report(
 # in a disjoint namespace, so this pattern never matches a TS-owned key --
 # it is scanned for anyway (per DW-29's decision) in case a TS/TSX call site
 # ever forwards a Python-owned key through, e.g., a backend-rendered payload.
-# Matches single-, double- and backtick-quoted literals; a key built via
+# Matches single-, double- and backtick-quoted literals; the (?P=quote)
+# backreference requires the closing quote to match the opening one, so
+# mismatched-quote prose (e.g. an apostrophe followed later by a stray
+# double quote) can't be misread as a key literal. A key built via
 # concatenation, an f-string, or a variable is out of reach for a textual
 # scan and stays out of scope, same as the rest of this literal-based check.
-_KEY_REFERENCE_PATTERN = re.compile(r"""["'`]([A-Za-z][A-Za-z0-9_]*\.[0-9a-f]{8})["'`]""")
+_KEY_REFERENCE_PATTERN = re.compile(
+    r"""(?P<quote>["'`])(?P<key>[A-Za-z][A-Za-z0-9_]*\.[0-9a-f]{8})(?P=quote)"""
+)
 
 _REFERENCE_SCAN_ROOT = _CATALOG_DIR.parent
 _REFERENCE_SOURCE_EXTENSIONS = (".py", ".ts", ".tsx")
@@ -130,7 +135,7 @@ def _collect_referenced_zh_keys(root: Path) -> set[str]:
     referenced: set[str] = set()
     for path in _iter_reference_source_files(root):
         text = path.read_text(encoding="utf-8", errors="ignore")
-        referenced.update(_KEY_REFERENCE_PATTERN.findall(text))
+        referenced.update(m.group("key") for m in _KEY_REFERENCE_PATTERN.finditer(text))
     return referenced
 
 
@@ -342,6 +347,21 @@ class TestCollectReferencedZhKeys:
         (tmp_path / "test_mod.py").write_text('"chatgpt.a3f21c8e"\n', encoding="utf-8")
         (tmp_path / "test.ts").write_text('"core.11112222"\n', encoding="utf-8")
         (tmp_path / "widget.test.tsx").write_text('"core.33334444"\n', encoding="utf-8")
+        assert _collect_referenced_zh_keys(tmp_path) == set()
+
+    def test_excludes_underscore_test_and_spec_suffixed_files(self, tmp_path):
+        (tmp_path / "mod_test.py").write_text('"chatgpt.a3f21c8e"\n', encoding="utf-8")
+        (tmp_path / "widget.spec.tsx").write_text('"core.11112222"\n', encoding="utf-8")
+        assert _collect_referenced_zh_keys(tmp_path) == set()
+
+    def test_ignores_uppercase_hex_suffix(self, tmp_path):
+        (tmp_path / "mod.py").write_text('"chatgpt.A3F21C8E"\n', encoding="utf-8")
+        assert _collect_referenced_zh_keys(tmp_path) == set()
+
+    def test_ignores_mismatched_quote_flanks(self, tmp_path):
+        (tmp_path / "mod.py").write_text(
+            "# note about 'chatgpt.a3f21c8e\" mismatched quoting in prose\n", encoding="utf-8"
+        )
         assert _collect_referenced_zh_keys(tmp_path) == set()
 
 
