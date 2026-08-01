@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { getConfig } from '@/lib/app-data'
+import { getConfig, invalidateAppDataCaches } from '@/lib/app-data'
 import { apiFetch } from '@/lib/utils'
 import { catalogZh, type Catalog } from './zh'
 import { catalogEn } from './en'
@@ -79,6 +79,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const setLang = async (next: Lang) => {
     try {
       await apiFetch('/config', { method: 'PUT', body: JSON.stringify({ data: { ui_language: next } }) })
+      invalidateAppDataCaches()
       setLangState(next)
     } catch {
       // no-op: selector visually stays on the previous language
