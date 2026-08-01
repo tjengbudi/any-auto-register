@@ -1,4 +1,6 @@
 """Cursor 平台插件"""
+import json
+
 from core.base_platform import BasePlatform, Account, AccountStatus, RegisterConfig
 from core.base_mailbox import BaseMailbox
 from core.registration import BrowserRegistrationAdapter, OtpSpec, ProtocolMailboxAdapter, ProtocolOAuthAdapter, RegistrationCapability, RegistrationResult
@@ -13,6 +15,17 @@ def _mask_secret(value: str) -> str:
     if len(value) <= 12:
         return value
     return f"{value[:6]}...{value[-4:]}"
+
+
+def _marker(key: str, **params) -> str:
+    # worker 线程无请求上下文，写入标记字符串，由读边界渲染 (AD-3/AD-8) —
+    # No request context in a worker thread; write a marker string, rendered
+    # at the read boundary (AD-3/AD-8).
+    return json.dumps({"i18n_key": key, "i18n_params": params}, ensure_ascii=False)
+
+
+_MISSING_TOKEN_MARKER = _marker("cursor.ba8781bf")
+_QUOTA_NOTE_MARKER = _marker("cursor.e46763f7")
 
 
 @register
@@ -156,7 +169,7 @@ class CursorPlatform(BasePlatform):
             
             token = account.token
             if not token:
-                return {"ok": False, "error": "账号缺少 token"}
+                return {"ok": False, "error": _MISSING_TOKEN_MARKER}
             
             ok, msg = switch_cursor_account(token)
             if not ok:
@@ -169,10 +182,22 @@ class CursorPlatform(BasePlatform):
             usage_summary = summarize_cursor_usage(usage_info)
             current = read_current_cursor_account() or {}
             restart_ok, restart_msg = restart_cursor_ide()
+            # msg/restart_msg 都已经是标记字符串；不能直接拼接两段还没渲染的
+            # JSON，改用一个新的组合模板 key，把两个标记作为它的参数嵌套进去，
+            # render_marker 会自底向上解析 (Design Notes: Composition example) —
+            # msg/restart_msg are already marker strings; two still-encoded
+            # markers must never be string-concatenated. Compose them instead
+            # via a new template key whose params nest the two markers;
+            # render_marker resolves them bottom-up.
+            composed_message = (
+                _marker("cursor.9311bf9d", switch_msg=msg, restart_msg=restart_msg)
+                if restart_ok
+                else msg
+            )
             return {
                 "ok": True,
                 "data": {
-                    "message": f"{msg}。{restart_msg}" if restart_ok else msg,
+                    "message": composed_message,
                     "valid": bool(user_info),
                     "remote_user": user_info,
                     "billing_info": billing_info,
@@ -185,7 +210,7 @@ class CursorPlatform(BasePlatform):
                     },
                     "desktop_app_state": get_cursor_desktop_state(),
                     "restart": {"ok": restart_ok, "message": restart_msg},
-                    "quota_note": "Cursor 可查询 usage，但部分账号只返回已用量；maxRequestUsage/maxTokenUsage 可能为空，无法保证总能计算剩余额度。",
+                    "quota_note": _QUOTA_NOTE_MARKER,
                 }
             }
         
@@ -202,7 +227,7 @@ class CursorPlatform(BasePlatform):
             
             token = account.token
             if not token:
-                return {"ok": False, "error": "账号缺少 token"}
+                return {"ok": False, "error": _MISSING_TOKEN_MARKER}
             
             user_info = get_cursor_user_info(token)
             if user_info:
@@ -228,17 +253,17 @@ class CursorPlatform(BasePlatform):
                             "matches_target": current.get("token") == token if current.get("token") else False,
                         },
                         "desktop_app_state": get_cursor_desktop_state(),
-                        "quota_note": "Cursor 可查询 usage，但部分账号只返回已用量；maxRequestUsage/maxTokenUsage 可能为空，无法保证总能计算剩余额度。",
+                        "quota_note": _QUOTA_NOTE_MARKER,
                     },
                 }
-            return {"ok": False, "error": "获取用户信息失败"}
+            return {"ok": False, "error": _marker("cursor.2339340a")}
 
         elif action_id == "generate_trial_link":
             from platforms.cursor.switch import generate_cursor_checkout_link, get_cursor_billing_info
 
             token = account.token
             if not token:
-                return {"ok": False, "error": "账号缺少 token"}
+                return {"ok": False, "error": _MISSING_TOKEN_MARKER}
 
             billing_info = get_cursor_billing_info(token) or {}
             checkout_url = generate_cursor_checkout_link(
@@ -249,12 +274,12 @@ class CursorPlatform(BasePlatform):
                 yearly=False,
             )
             if not checkout_url:
-                return {"ok": False, "error": "生成 7 天 Pro 链接失败"}
+                return {"ok": False, "error": _marker("cursor.7de91b87")}
             return {
                 "ok": True,
                 "data": {
                     "url": checkout_url,
-                    "message": "7 天 Cursor Pro 试用链接已生成",
+                    "message": _marker("cursor.ecfa3a44"),
                     "billing_info": billing_info,
                     "trial_eligible": billing_info.get("trialEligible"),
                     "trial_length_days": billing_info.get("trialLengthDays"),

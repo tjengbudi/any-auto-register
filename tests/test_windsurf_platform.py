@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from types import SimpleNamespace
 
 from core.base_platform import Account, RegisterConfig
@@ -443,7 +444,8 @@ def test_windsurf_payment_link_browser_uses_checkout_ui_flow(monkeypatch):
     assert result["data"]["payment_channel"] == "checkout"
     assert result["data"]["cashier_url"] == "https://checkout.stripe.com/c/pay/cs_test_ui"
     assert result["data"]["checkout_url"] == "https://checkout.stripe.com/c/pay/cs_test_ui"
-    assert result["data"]["message"] == "Windsurf Pro Trial Stripe 链接已生成"
+    marker = json.loads(result["data"]["message"])
+    assert marker == {"i18n_key": "windsurf.23cba581", "i18n_params": {}}
 
 
 def test_windsurf_payment_link_browser_can_return_checkout_only(monkeypatch):
@@ -473,7 +475,8 @@ def test_windsurf_payment_link_browser_can_return_checkout_only(monkeypatch):
     assert result["ok"] is True
     assert result["data"]["payment_channel"] == "checkout"
     assert result["data"]["cashier_url"] == "https://checkout.stripe.com/c/pay/cs_test_checkout_only"
-    assert result["data"]["message"] == "Windsurf Pro Trial Stripe 链接已生成"
+    marker = json.loads(result["data"]["message"])
+    assert marker == {"i18n_key": "windsurf.23cba581", "i18n_params": {}}
 
 
 def test_local_solver_surfaces_unsolvable_error(monkeypatch):

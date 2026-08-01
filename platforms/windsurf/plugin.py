@@ -1,6 +1,7 @@
 """Windsurf 平台插件。"""
 from __future__ import annotations
 
+import json
 import random
 
 from core.base_mailbox import BaseMailbox
@@ -192,7 +193,10 @@ class WindsurfPlatform(BasePlatform):
         context = extract_windsurf_account_context(account)
         session_token = context["session_token"]
         if not session_token:
-            return {"ok": False, "error": "账号缺少 session_token"}
+            # worker 线程无请求上下文，写入标记字符串，由读边界渲染 (AD-3/AD-8) —
+            # No request context in a worker thread; write a marker string,
+            # rendered at the read boundary (AD-3/AD-8).
+            return {"ok": False, "error": json.dumps({"i18n_key": "windsurf.ba57068f", "i18n_params": {}}, ensure_ascii=False)}
 
         self.log(f"正在切换到: {account.email}")
         proxy = self.config.proxy if self.config else None
@@ -213,7 +217,7 @@ class WindsurfPlatform(BasePlatform):
     def _handle_generate_link_browser(self, account: Account, params: dict) -> dict:
         """Handle generate_link_browser capability for Windsurf."""
         if not str(account.password or "").strip():
-            return {"ok": False, "error": "账号缺少 Windsurf 密码，无法执行浏览器自动化"}
+            return {"ok": False, "error": json.dumps({"i18n_key": "windsurf.0abfa13e", "i18n_params": {}}, ensure_ascii=False)}
 
         turnstile_token = str(params.get("turnstile_token") or "").strip()
         if turnstile_token:
@@ -241,7 +245,7 @@ class WindsurfPlatform(BasePlatform):
             "ok": True,
             "data": {
                 **result,
-                "message": "Windsurf Pro Trial Stripe 链接已生成",
+                "message": json.dumps({"i18n_key": "windsurf.23cba581", "i18n_params": {}}, ensure_ascii=False),
             },
         }
 

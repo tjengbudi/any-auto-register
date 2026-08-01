@@ -4,6 +4,7 @@ import threading
 
 from core.proxy_pool import proxy_pool
 from domain.proxies import ProxyBulkCreateCommand, ProxyCheckSummary, ProxyCreateCommand, ProxyRecord
+from i18n import t
 from infrastructure.proxies_repository import ProxiesRepository
 
 
@@ -31,9 +32,9 @@ class ProxiesService:
             return None
         return {"is_active": value}
 
-    def trigger_check(self) -> dict:
+    def trigger_check(self, lang: str = "zh") -> dict:
         threading.Thread(target=proxy_pool.check_all, daemon=True, name="proxy-check").start()
-        return {"message": "检测任务已启动"}
+        return {"message": t("application.bd201104", lang)}
 
     @staticmethod
     def _serialize(item: ProxyRecord) -> dict:

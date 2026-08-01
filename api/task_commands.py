@@ -46,7 +46,7 @@ async def stream_logs(task_id: str, since: int = 0, lang: str = Depends(get_ui_l
     if not query_service.get_task(task_id):
         raise HTTPException(404, t("api.d1817495", lang))
     return StreamingResponse(
-        command_service.stream_task_events(task_id, since=since),
+        command_service.stream_task_events(task_id, since=since, lang=lang),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

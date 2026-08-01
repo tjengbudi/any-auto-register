@@ -1,4 +1,6 @@
 """Trae.ai 平台插件"""
+import json
+
 from core.base_platform import BasePlatform, Account, AccountStatus, RegisterConfig
 from core.base_mailbox import BaseMailbox
 from core.registration import BrowserRegistrationAdapter, OtpSpec, ProtocolMailboxAdapter, ProtocolOAuthAdapter, RegistrationCapability, RegistrationResult
@@ -115,7 +117,7 @@ class TraePlatform(BasePlatform):
             region = account.region or ""
             
             if not token:
-                return {"ok": False, "error": "账号缺少 token"}
+                return {"ok": False, "error": json.dumps({"i18n_key": "trae.ba8781bf", "i18n_params": {}}, ensure_ascii=False)}
             
             ok, msg = switch_trae_account(token, user_id, email, region)
             if not ok:
@@ -134,12 +136,12 @@ class TraePlatform(BasePlatform):
             
             token = account.token
             if not token:
-                return {"ok": False, "error": "账号缺少 token"}
+                return {"ok": False, "error": json.dumps({"i18n_key": "trae.ba8781bf", "i18n_params": {}}, ensure_ascii=False)}
             
             user_info = get_trae_user_info(token)
             if user_info:
                 return {"ok": True, "data": user_info}
-            return {"ok": False, "error": "获取用户信息失败"}
+            return {"ok": False, "error": json.dumps({"i18n_key": "trae.2339340a", "i18n_params": {}}, ensure_ascii=False)}
         
         elif action_id == "get_cashier_url":
             from platforms.trae.core import TraeRegister
@@ -152,7 +154,7 @@ class TraePlatform(BasePlatform):
                     token = account.token
                 cashier_url = reg.step7_create_order(token)
             if not cashier_url:
-                return {"ok": False, "error": "获取升级链接失败，token 可能已过期，请重新注册"}
-            return {"ok": True, "data": {"cashier_url": cashier_url, "message": "请在浏览器中打开升级链接完成 Pro 订阅"}}
+                return {"ok": False, "error": json.dumps({"i18n_key": "trae.4f63142e", "i18n_params": {}}, ensure_ascii=False)}
+            return {"ok": True, "data": {"cashier_url": cashier_url, "message": json.dumps({"i18n_key": "trae.2a2280d2", "i18n_params": {}}, ensure_ascii=False)}}
 
         raise NotImplementedError(f"未知操作: {action_id}")

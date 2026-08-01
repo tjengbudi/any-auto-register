@@ -1,6 +1,8 @@
 """anything.com 平台插件。"""
 from __future__ import annotations
 
+import json
+
 from core.base_mailbox import BaseMailbox
 from core.base_platform import Account, AccountStatus, BasePlatform, RegisterConfig
 from core.registration import LinkSpec, ProtocolMailboxAdapter, RegistrationResult
@@ -118,11 +120,14 @@ class AnythingPlatform(BasePlatform):
             summary = dict(state.get("summary") or {})
             organization_id = str(summary.get("organization_id") or "").strip()
             if not organization_id:
-                return {"ok": False, "error": "未获取到 organization_id，无法生成 Anything 支付链接"}
+                # worker 线程无请求上下文，写入标记字符串，由读边界渲染 (AD-3/AD-8) —
+                # No request context in a worker thread; write a marker
+                # string, rendered at the read boundary (AD-3/AD-8).
+                return {"ok": False, "error": json.dumps({"i18n_key": "anything.54adad92", "i18n_params": {}}, ensure_ascii=False)}
 
             lookup = str(params.get("lookup") or ANYTHING_CHECKOUT_LOOKUPS.get("pro_20_monthly") or "").strip()
             if not lookup:
-                return {"ok": False, "error": "未提供 checkout lookup"}
+                return {"ok": False, "error": json.dumps({"i18n_key": "anything.21311389", "i18n_params": {}}, ensure_ascii=False)}
 
             client = AnythingClient(proxy=self.config.proxy if self.config else None, log_fn=self.log)
             checkout = client.create_checkout_session_with_lookup(
@@ -140,7 +145,7 @@ class AnythingPlatform(BasePlatform):
                     "lookup": checkout["lookup"],
                     "organization_id": organization_id,
                     "account_state": summary,
-                    "message": "Anything 支付链接已生成",
+                    "message": json.dumps({"i18n_key": "anything.b0b3ec51", "i18n_params": {}}, ensure_ascii=False),
                 },
             }
 

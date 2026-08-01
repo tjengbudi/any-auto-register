@@ -1,4 +1,5 @@
 """ChatGPT / Codex CLI 平台插件"""
+import json
 import secrets
 from core.base_platform import BasePlatform, Account, AccountStatus, RegisterConfig
 from core.base_mailbox import BaseMailbox
@@ -299,13 +300,28 @@ class ChatGPTPlatform(BasePlatform):
             )
             local_state = read_current_codex_account()
             restart_ok, restart_msg = restart_codex_app()
-            message_parts = [switch_data.get("message", "Codex credentials written")]
-            if close_msg:
-                message_parts.append(close_msg)
-            if restart_msg:
-                message_parts.append(restart_msg)
+            switch_msg = switch_data.get("message", "Codex credentials written")
+            # switch_msg/close_msg/restart_msg 都已经是标记字符串；不能直接拼接
+            # 三段还没渲染的 JSON（"Never string-concatenate two still-encoded
+            # markers"），改用一个组合模板 key，把三个标记作为参数嵌套进去，
+            # render_marker 会自底向上解析 (Design Notes: Composition example) —
+            # switch_msg/close_msg/restart_msg are already marker strings;
+            # still-encoded markers must never be string-concatenated.
+            # Compose them via a template key whose params nest the three
+            # markers; render_marker resolves them bottom-up.
+            composed_message = json.dumps(
+                {
+                    "i18n_key": "chatgpt.14d3b9d2",
+                    "i18n_params": {
+                        "switch_msg": switch_msg,
+                        "close_msg": close_msg,
+                        "restart_msg": restart_msg,
+                    },
+                },
+                ensure_ascii=False,
+            )
             data = {
-                "message": ".".join(part for part in message_parts if part),
+                "message": composed_message,
                 "close": {"ok": close_ok, "message": close_msg},
                 "restart": {"ok": restart_ok, "message": restart_msg},
                 "local_app_account": local_state,

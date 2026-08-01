@@ -1,0 +1,363 @@
+"""story 3.6 -- end-to-end coverage for the worker-thread marker convention and
+the four request-scoped `t(key, lang)` sites.
+
+Two shapes are exercised:
+  - Worker-thread plugin/switch sites write a `json.dumps({"i18n_key", ...})`
+    marker; a read boundary with `lang` renders it via render_marker/render_result
+    before the response is built (api/actions.py, api/tasks.py,
+    api/task_commands.py -> application/task_commands.py).
+  - The four request-scoped sites (api/provider_settings.py, api/auth.py,
+    application/proxies.py via api/proxies.py, infrastructure/system_runtime.py
+    via api/system.py) render directly via t(key, lang) at return time.
+"""
+from __future__ import annotations
+
+import asyncio
+import json
+
+from core.base_platform import Account, RegisterConfig
+from platforms.kiro.plugin import KiroPlatform
+
+
+def _create_account(client, platform: str, **overrides) -> int:
+    payload = {"platform": platform, "email": "test@example.com", "password": "", **overrides}
+    resp = client.post("/api/accounts", json=payload)
+    assert resp.status_code == 200
+    return resp.json()["id"]
+
+
+def _set_lang(client, lang: str) -> None:
+    if lang != "zh":
+        resp = client.put("/api/config", json={"data": {"ui_language": lang}})
+        assert resp.status_code == 200
+
+
+# --- sync action (api/actions.py::execute_action) --------------------------
+#
+# windsurf's "switch_desktop" capability defaults to sync=True (no
+# capability_overrides entry sets sync=False for it) and its
+# _handle_switch_desktop fails deterministically -- no network call -- when
+# the account carries no session_token/token, returning the
+# `windsurf.ba57068f` marker this story minted.
+
+
+def test_sync_action_marker_renders_english(client):
+    _set_lang(client, "en")
+    account_id = _create_account(client, "windsurf")
+    resp = client.post(f"/api/actions/windsurf/{account_id}/switch_desktop", json={"params": {}})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["sync"] is True
+    assert body["ok"] is False
+    assert body["error"] == "The account is missing a session_token"
+    # Never a raw key or unparsed JSON.
+    assert "i18n_key" not in body["error"]
+
+
+def test_sync_action_marker_renders_chinese_default(client):
+    account_id = _create_account(client, "windsurf")
+    resp = client.post(f"/api/actions/windsurf/{account_id}/switch_desktop", json={"params": {}})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["error"] == "账号缺少 session_token"
+
+
+# --- compound cursor success: switch + restart compose into one coherent
+#     sentence, never two concatenated still-encoded markers -----------------
+
+
+def test_cursor_switch_restart_composition_renders_one_coherent_english_sentence(monkeypatch):
+    import platforms.cursor.switch as cursor_switch
+    from i18n import render_result
+    from platforms.cursor.plugin import CursorPlatform
+
+    switch_marker = json.dumps({"i18n_key": "cursor.e29d05fa", "i18n_params": {}}, ensure_ascii=False)
+    restart_marker = json.dumps({"i18n_key": "cursor.2b2a1772", "i18n_params": {}}, ensure_ascii=False)
+
+    monkeypatch.setattr(cursor_switch, "switch_cursor_account", lambda token: (True, switch_marker))
+    monkeypatch.setattr(cursor_switch, "restart_cursor_ide", lambda: (True, restart_marker))
+    monkeypatch.setattr(cursor_switch, "get_cursor_user_info", lambda token: {})
+    monkeypatch.setattr(cursor_switch, "get_cursor_billing_info", lambda token: {})
+    monkeypatch.setattr(cursor_switch, "has_cursor_valid_payment_method", lambda token: None)
+    monkeypatch.setattr(cursor_switch, "get_cursor_usage", lambda token, sub: {})
+    monkeypatch.setattr(cursor_switch, "summarize_cursor_usage", lambda usage: None)
+    monkeypatch.setattr(cursor_switch, "read_current_cursor_account", lambda: {})
+    monkeypatch.setattr(cursor_switch, "get_cursor_desktop_state", lambda *a, **k: {"available": False})
+
+    platform = CursorPlatform(RegisterConfig())
+    account = Account(platform="cursor", email="user@example.com", password="", token="tok")
+    result = platform.execute_action("switch_account", account, {})
+    assert result["ok"] is True
+
+    rendered = render_result(result, "en")
+    assert rendered["data"]["message"] == (
+        "Switch succeeded; restart Cursor IDE for the new account to take effect. Cursor IDE restarted"
+    )
+    # Not two still-encoded markers concatenated together.
+    assert "i18n_key" not in rendered["data"]["message"]
+    # data.restart.message renders correctly on its own too.
+    assert rendered["data"]["restart"]["message"] == "Cursor IDE restarted"
+
+
+# --- async action read back via GET /api/tasks/{id} -------------------------
+
+
+def _finish_task_with_marker_error(marker_key: str) -> str:
+    from application.tasks import TASK_STATUS_FAILED, TaskLogger, create_platform_action_task
+
+    task = create_platform_action_task({"platform": "blink", "account_id": 1, "action_id": "get_account_state"})
+    task_id = task["id"]
+    marker = json.dumps({"i18n_key": marker_key, "i18n_params": {}}, ensure_ascii=False)
+    TaskLogger(task_id).finish(TASK_STATUS_FAILED, error=marker)
+    return task_id
+
+
+def test_async_task_error_marker_renders_english(client):
+    _set_lang(client, "en")
+    task_id = _finish_task_with_marker_error("blink.41497ce5")
+    resp = client.get(f"/api/tasks/{task_id}")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["error"] == "Could not obtain workspace_id; unable to generate the Blink payment link"
+    assert "i18n_key" not in body["error"]
+
+
+def test_async_task_error_marker_renders_chinese_default(client):
+    task_id = _finish_task_with_marker_error("blink.41497ce5")
+    resp = client.get(f"/api/tasks/{task_id}")
+    assert resp.status_code == 200
+    assert resp.json()["error"] == "未获取到 workspace_id，无法生成 Blink 支付链接"
+
+
+def test_async_task_result_data_message_and_error_render_english(client):
+    # I/O matrix row "Async action, read after completion": result.data's
+    # message/error fields must render, not just the top-level task error.
+    from application.tasks import TASK_STATUS_SUCCEEDED, TaskLogger, create_platform_action_task
+
+    task = create_platform_action_task({"platform": "blink", "account_id": 1, "action_id": "generate_checkout_link"})
+    task_id = task["id"]
+    logger = TaskLogger(task_id)
+    logger.set_result_data(
+        {
+            "message": json.dumps({"i18n_key": "blink.efe9de30", "i18n_params": {}}, ensure_ascii=False),
+            "nested": {"error": json.dumps({"i18n_key": "blink.8932cb51", "i18n_params": {}}, ensure_ascii=False)},
+        }
+    )
+    logger.finish(TASK_STATUS_SUCCEEDED)
+
+    _set_lang(client, "en")
+    resp = client.get(f"/api/tasks/{task_id}")
+    assert resp.status_code == 200
+    result = resp.json()["result"]
+    assert result["data"]["message"] == "Blink Pro payment link generated"
+    assert result["data"]["nested"]["error"] == "Blink did not return a payment link"
+
+
+# --- Task History list (api/tasks.py::list_tasks) ---------------------------
+
+
+def test_list_tasks_marker_renders_english(client):
+    _set_lang(client, "en")
+    task_id = _finish_task_with_marker_error("blink.41497ce5")
+    resp = client.get("/api/tasks")
+    assert resp.status_code == 200
+    items = {item["task_id"]: item for item in resp.json()["items"]}
+    assert items[task_id]["error"] == "Could not obtain workspace_id; unable to generate the Blink payment link"
+
+
+# --- poll-fallback events (api/tasks.py::list_task_events) ------------------
+
+
+def test_list_task_events_marker_renders_english(client):
+    from application.tasks import append_task_event, create_platform_action_task
+
+    task = create_platform_action_task({"platform": "blink", "account_id": 1, "action_id": "get_account_state"})
+    task_id = task["id"]
+    marker = json.dumps({"i18n_key": "blink.8932cb51", "i18n_params": {}}, ensure_ascii=False)
+    append_task_event(task_id, "task failed", event_type="state", level="error", detail={"status": "failed", "error": marker})
+
+    _set_lang(client, "en")
+    resp = client.get(f"/api/tasks/{task_id}/events")
+    assert resp.status_code == 200
+    events = resp.json()["items"]
+    # events[0] is the "task created" event append_task_event auto-writes;
+    # the marker-bearing one is the one this test appended.
+    marker_event = next(e for e in events if "error" in e.get("detail", {}))
+    assert marker_event["detail"]["error"] == "Blink did not return a payment link"
+
+
+# --- SSE live stream (api/task_commands.py::stream_logs ->
+#     application/task_commands.py::TaskCommandsService.stream_task_events) --
+
+
+def test_sse_stream_marker_renders_english(client):
+    from application.task_commands import TaskCommandsService
+    from application.tasks import TASK_STATUS_FAILED, TaskLogger, append_task_event, create_platform_action_task
+
+    task = create_platform_action_task({"platform": "blink", "account_id": 1, "action_id": "get_account_state"})
+    task_id = task["id"]
+    marker = json.dumps({"i18n_key": "blink.8932cb51", "i18n_params": {}}, ensure_ascii=False)
+    append_task_event(task_id, "task failed", event_type="state", level="error", detail={"status": "failed", "error": marker})
+    TaskLogger(task_id).finish(TASK_STATUS_FAILED, error=marker)
+
+    async def _collect() -> list[dict]:
+        frames = []
+        service = TaskCommandsService()
+        async for chunk in service.stream_task_events(task_id, since=0, lang="en"):
+            if chunk.startswith("data: "):
+                frames.append(json.loads(chunk[len("data: "):].strip()))
+            if len(frames) >= 10:
+                break
+        return frames
+
+    frames = asyncio.run(_collect())
+    # The first event frame is the "task created" event append_task_event
+    # auto-writes; the marker-bearing one is the one this test appended.
+    event_frames = [f for f in frames if "error" in f.get("detail", {})]
+    assert event_frames, frames
+    assert event_frames[0]["detail"]["error"] == "Blink did not return a payment link"
+    done_frames = [f for f in frames if f.get("done")]
+    assert done_frames, frames
+    assert done_frames[0]["line"] == "Blink did not return a payment link"
+
+
+# --- Windsurf post-registration failure log line (source-language, no
+#     request/lang context) ---------------------------------------------------
+
+
+def test_windsurf_auto_upgrade_log_line_renders_source_language(monkeypatch):
+    from application.tasks import TaskLogger, _auto_followup_windsurf_payment
+
+    logged: list[tuple[str, str]] = []
+
+    class _RecordingLogger(TaskLogger):
+        def __init__(self):
+            self.task_id = "task_test"
+
+        def log(self, message, *, level="info", event_type="log", detail=None):
+            logged.append((message, level))
+
+        def record_error(self, error):
+            logged.append((error, "recorded_error"))
+
+    class _Platform:
+        def execute_action(self, action_id, account, params):
+            marker = json.dumps({"i18n_key": "windsurf.0abfa13e", "i18n_params": {}}, ensure_ascii=False)
+            return {"ok": False, "error": marker}
+
+    account = Account(platform="windsurf", email="user@example.com", password="secret", token="tok")
+    _auto_followup_windsurf_payment(
+        platform_name="windsurf",
+        payload={"executor_type": "protocol", "extra": {}},
+        platform=_Platform(),
+        account=account,
+        logger=_RecordingLogger(),
+    )
+
+    messages = [m for m, _ in logged]
+    assert any("Windsurf 注册后自动升级失败: 账号缺少 Windsurf 密码，无法执行浏览器自动化" == m for m in messages)
+    # Never leaks the raw marker JSON into the log line.
+    assert not any("i18n_key" in m for m in messages)
+
+
+# --- kiro default-with-upstream: an upstream (non-marker) error string
+#     passes through render_result untouched --------------------------------
+
+
+def test_kiro_refresh_upstream_error_passes_through_untouched(monkeypatch):
+    import platforms.kiro.switch as kiro_switch
+
+    monkeypatch.setattr(
+        kiro_switch,
+        "refresh_kiro_token",
+        lambda *a, **k: (False, {"error": "自定义已存在的错误"}),
+    )
+    # KiroPlatform.execute_action imports refresh_kiro_token lazily inside the
+    # method body, so patching platforms.kiro.switch is enough -- no separate
+    # patch needed on the plugin module.
+    platform = KiroPlatform(RegisterConfig())
+    account = Account(
+        platform="kiro",
+        email="user@example.com",
+        password="",
+        token="",
+        extra={"refreshToken": "rt", "clientId": "cid", "clientSecret": "secret"},
+    )
+    result = platform.execute_action("refresh_token", account, {})
+    assert result["ok"] is False
+    assert result["error"] == "自定义已存在的错误"
+
+
+# --- four request-scoped sites: api/provider_settings.py, api/auth.py,
+#     application/proxies.py, infrastructure/system_runtime.py -------------
+
+
+def test_provider_settings_test_endpoint_renders_english(client):
+    _set_lang(client, "en")
+    resp = client.post(
+        "/api/provider-settings/test",
+        json={"provider_type": "captcha", "provider_key": "yescaptcha_api", "config": {}, "auth": {}},
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["ok"] is True
+    assert body["message"] == "Captcha service testing is not supported online yet; please verify it in a registration task"
+
+
+def test_provider_settings_test_endpoint_renders_chinese_default(client):
+    resp = client.post(
+        "/api/provider-settings/test",
+        json={"provider_type": "captcha", "provider_key": "yescaptcha_api", "config": {}, "auth": {}},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["message"] == "验证码服务暂不支持在线测试，请在注册任务中验证"
+
+
+def test_auth_login_failure_renders_english(client, monkeypatch):
+    # ui_language 要先在 APP_PASSWORD 生效前设置，否则 PUT /api/config 本身
+    # 也会被鉴权中间件拦下 —
+    # Set ui_language before APP_PASSWORD takes effect, or PUT /api/config
+    # itself gets blocked by the auth middleware too.
+    _set_lang(client, "en")
+    monkeypatch.setenv("APP_PASSWORD", "correct-horse")
+    resp = client.post("/api/auth/login", json={"password": "wrong"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["ok"] is False
+    assert body["error"] == "Incorrect password"
+
+
+def test_auth_login_failure_renders_chinese_default(client, monkeypatch):
+    monkeypatch.setenv("APP_PASSWORD", "correct-horse")
+    resp = client.post("/api/auth/login", json={"password": "wrong"})
+    assert resp.status_code == 200
+    assert resp.json()["error"] == "密码错误"
+
+
+def test_proxies_check_trigger_renders_english(client, monkeypatch):
+    import application.proxies as proxies_module
+
+    monkeypatch.setattr(proxies_module.proxy_pool, "check_all", lambda: None)
+    _set_lang(client, "en")
+    resp = client.post("/api/proxies/check")
+    assert resp.status_code == 200
+    assert resp.json()["message"] == "The check task has started"
+
+
+def test_solver_restart_renders_english(client, monkeypatch):
+    import infrastructure.system_runtime as system_runtime_module
+
+    monkeypatch.setattr(system_runtime_module, "restart", lambda: None)
+    _set_lang(client, "en")
+    resp = client.post("/api/solver/restart")
+    assert resp.status_code == 200
+    assert resp.json()["message"] == "Restarting"
+
+
+def test_solver_restart_renders_chinese_default(client, monkeypatch):
+    import infrastructure.system_runtime as system_runtime_module
+
+    monkeypatch.setattr(system_runtime_module, "restart", lambda: None)
+    resp = client.post("/api/solver/restart")
+    assert resp.status_code == 200
+    assert resp.json()["message"] == "重启中"

@@ -10,5 +10,5 @@ class SystemService:
     def solver_status(self) -> dict:
         return self.runtime.solver_status()
 
-    def restart_solver(self) -> dict:
-        return self.runtime.restart_solver()
+    def restart_solver(self, lang: str = "zh") -> dict:
+        return self.runtime.restart_solver(lang)

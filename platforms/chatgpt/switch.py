@@ -7,6 +7,7 @@ ChatGPT / Codex 本地桌面端切号与状态查询。
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import platform
@@ -27,6 +28,13 @@ def _build_proxies(proxy: Optional[str]) -> dict | None:
     if not proxy:
         return None
     return {"http": proxy, "https": proxy}
+
+
+def _marker(key: str, **params) -> str:
+    # worker 线程无请求上下文，写入标记字符串，由读边界渲染 (AD-3/AD-8) —
+    # No request context in a worker thread; write a marker string, rendered
+    # at the read boundary (AD-3/AD-8).
+    return json.dumps({"i18n_key": key, "i18n_params": params}, ensure_ascii=False)
 
 
 def _mask_secret(value: str) -> str:
@@ -130,7 +138,7 @@ def close_codex_app() -> tuple[bool, str]:
         if system == "Darwin":
             subprocess.run(["osascript", "-e", 'quit app "Codex"'], capture_output=True, timeout=5)
             time.sleep(1.5)
-            return True, "已尝试关闭 Codex"
+            return True, _marker("chatgpt.24c36656")
         if system == "Windows":
             subprocess.run(
                 ["taskkill", "/IM", "Codex.exe", "/F"],
@@ -139,13 +147,13 @@ def close_codex_app() -> tuple[bool, str]:
                 timeout=5,
             )
             time.sleep(1.5)
-            return True, "已尝试关闭 Codex"
+            return True, _marker("chatgpt.24c36656")
         subprocess.run(["pkill", "-f", "codex"], capture_output=True, timeout=5)
         time.sleep(1.5)
-        return True, "已尝试关闭 Codex"
+        return True, _marker("chatgpt.24c36656")
     except Exception as exc:
         logger.warning("关闭 Codex 失败: %s", exc)
-        return False, f"关闭 Codex 失败: {exc}"
+        return False, _marker("chatgpt.7e8674eb", reason=str(exc))
 
 
 def restart_codex_app() -> tuple[bool, str]:
@@ -154,8 +162,8 @@ def restart_codex_app() -> tuple[bool, str]:
         if system == "Darwin":
             if os.path.exists("/Applications/Codex.app"):
                 subprocess.Popen(["open", "-a", "Codex"])
-                return True, "Codex 已重启"
-            return True, "未找到 /Applications/Codex.app，请手动启动 Codex"
+                return True, _marker("chatgpt.c5f65fdd")
+            return True, _marker("chatgpt.21e96f09")
         if system == "Windows":
             localappdata = os.environ.get("LOCALAPPDATA", "")
             for exe in (
@@ -164,27 +172,27 @@ def restart_codex_app() -> tuple[bool, str]:
             ):
                 if os.path.exists(exe):
                     subprocess.Popen([exe])
-                    return True, "Codex 已重启"
-            return True, "未找到 Codex.exe，请手动启动 Codex"
+                    return True, _marker("chatgpt.c5f65fdd")
+            return True, _marker("chatgpt.6d73e11d")
         for binary in ("/usr/bin/codex", os.path.expanduser("~/.local/bin/codex")):
             if os.path.exists(binary):
                 subprocess.Popen([binary])
-                return True, "Codex 已重启"
+                return True, _marker("chatgpt.c5f65fdd")
         subprocess.Popen(["codex"])
-        return True, "Codex 已重启"
+        return True, _marker("chatgpt.c5f65fdd")
     except Exception as exc:
         logger.warning("启动 Codex 失败: %s", exc)
-        return False, f"启动 Codex 失败: {exc}"
+        return False, _marker("chatgpt.d912a29d", reason=str(exc))
 
 
 def switch_codex_account(session_token: str = "", cookies: str = "") -> tuple[bool, dict]:
     resolved_session = extract_session_token(session_token, cookies)
     if not resolved_session:
-        return False, {"error": "缺少 __Secure-next-auth.session-token，无法切换本地 Codex 桌面端账号"}
+        return False, {"error": _marker("chatgpt.36d0f3f8")}
 
     cookies_path = _get_codex_cookies_path()
     if not os.path.exists(cookies_path):
-        return False, {"error": f"未找到 Codex Cookies 数据库: {cookies_path}"}
+        return False, {"error": _marker("chatgpt.7084aa01", path=cookies_path)}
 
     cookie_map = _parse_cookie_header(cookies)
     cookie_map["__Secure-next-auth.session-token"] = resolved_session
@@ -234,10 +242,10 @@ def switch_codex_account(session_token: str = "", cookies: str = "") -> tuple[bo
             conn.close()
     except Exception as exc:
         logger.error("写入 Codex Cookies 失败: %s", exc)
-        return False, {"error": f"写入 Codex Cookies 失败: {exc}"}
+        return False, {"error": _marker("chatgpt.3ea22b5f", reason=str(exc))}
 
     return True, {
-        "message": "已写入 Codex 本地 Cookies，准备重启桌面端",
+        "message": _marker("chatgpt.29992db3"),
         "cookies_path": cookies_path,
         "cookie_names": sorted(cookie_map.keys()),
         "session_token_preview": _mask_secret(resolved_session),
@@ -344,7 +352,7 @@ def fetch_chatgpt_account_state(
         "platform": "chatgpt",
         "desktop_app": "Codex",
         "session_token_present": bool(extract_session_token(session_token, cookies)),
-        "quota_note": "ChatGPT 未公开稳定的剩余额度接口，当前返回订阅状态和账号 profile 信息。",
+        "quota_note": _marker("chatgpt.67362fda"),
     }
 
     resolved_session = extract_session_token(session_token, cookies)
@@ -398,6 +406,6 @@ def fetch_chatgpt_account_state(
             state["profile_error"] = profile
     else:
         state["valid"] = False
-        state["profile_error"] = "缺少 access_token，且无法通过 session_token 刷新"
+        state["profile_error"] = _marker("chatgpt.4687c57b")
 
     return state

@@ -125,17 +125,26 @@ def switch_cursor_account(token: str) -> Tuple[bool, str]:
         content = json.dumps(storage_data, indent=2, ensure_ascii=False)
         _atomic_write(storage_path, content)
         
-        return True, "切换成功，请重启 Cursor IDE 使新账号生效"
-    
+        # worker 线程无请求上下文，写入标记字符串，由读边界渲染 (AD-3/AD-8) —
+        # No request context in a worker thread; write a marker string,
+        # rendered at the read boundary (AD-3/AD-8).
+        return True, json.dumps({"i18n_key": "cursor.e29d05fa", "i18n_params": {}}, ensure_ascii=False)
+
     except Exception as e:
         logger.error(f"Cursor 账号切换失败: {e}")
-        return False, f"切换失败: {str(e)}"
+        return False, json.dumps({"i18n_key": "cursor.fe53dc8a", "i18n_params": {"reason": str(e)}}, ensure_ascii=False)
 
 
 def restart_cursor_ide() -> Tuple[bool, str]:
     """关闭并重启 Cursor IDE"""
     system = platform.system()
-    
+
+    # worker 线程无请求上下文，写入标记字符串，由读边界渲染 (AD-3/AD-8) —
+    # No request context in a worker thread; write marker strings, rendered
+    # at the read boundary (AD-3/AD-8).
+    restarted_marker = json.dumps({"i18n_key": "cursor.2b2a1772", "i18n_params": {}}, ensure_ascii=False)
+    closed_marker = json.dumps({"i18n_key": "cursor.ba27ed39", "i18n_params": {}}, ensure_ascii=False)
+
     try:
         if system == "Darwin":  # macOS
             # 关闭 Cursor
@@ -150,8 +159,8 @@ def restart_cursor_ide() -> Tuple[bool, str]:
             cursor_app = "/Applications/Cursor.app"
             if os.path.exists(cursor_app):
                 subprocess.Popen(["open", "-a", "Cursor"])
-                return True, "Cursor IDE 已重启"
-            return True, "已关闭 Cursor IDE（未找到应用路径，请手动启动）"
+                return True, restarted_marker
+            return True, closed_marker
         
         elif system == "Windows":
             # 关闭 Cursor
@@ -168,8 +177,8 @@ def restart_cursor_ide() -> Tuple[bool, str]:
             cursor_exe = os.path.join(localappdata, "Programs", "Cursor", "Cursor.exe")
             if os.path.exists(cursor_exe):
                 subprocess.Popen([cursor_exe])
-                return True, "Cursor IDE 已重启"
-            return True, "已关闭 Cursor IDE（未找到应用路径，请手动启动）"
+                return True, restarted_marker
+            return True, closed_marker
         
         else:  # Linux
             # 关闭 Cursor
@@ -180,17 +189,17 @@ def restart_cursor_ide() -> Tuple[bool, str]:
             for path in ["/usr/bin/cursor", os.path.expanduser("~/.local/bin/cursor")]:
                 if os.path.exists(path):
                     subprocess.Popen([path])
-                    return True, "Cursor IDE 已重启"
+                    return True, restarted_marker
             
             try:
                 subprocess.Popen(["cursor"])
-                return True, "Cursor IDE 已重启"
+                return True, restarted_marker
             except FileNotFoundError:
-                return True, "已关闭 Cursor IDE（未找到应用路径，请手动启动）"
+                return True, closed_marker
     
     except Exception as e:
         logger.error(f"Cursor IDE 重启失败: {e}")
-        return False, f"重启失败: {str(e)}"
+        return False, json.dumps({"i18n_key": "cursor.c744b509", "i18n_params": {"reason": str(e)}}, ensure_ascii=False)
 
 
 def read_current_cursor_account() -> dict | None:

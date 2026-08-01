@@ -21,6 +21,7 @@ from core.datetime_utils import format_local_clock, serialize_datetime
 from core.db import AccountModel, TaskEventModel, TaskLog, TaskModel, engine, save_account
 from core.platform_accounts import build_platform_account
 from core.registry import get
+from i18n import render_marker, render_result
 from infrastructure.platform_runtime import PlatformRuntime
 
 TASK_TYPE_REGISTER = "register"
@@ -673,7 +674,15 @@ def _auto_followup_windsurf_payment(
         logger.log(message, level="error")
         return
     if not result.get("ok"):
-        message = f"Windsurf 注册后自动升级失败: {result.get('error') or 'unknown error'}"
+        # 这里没有请求/lang 上下文；result['error'] 可能是 windsurf 插件写入的
+        # 标记字符串，用源语言 (zh) 渲染成可读文本再拼进日志行，跟 ~891-895
+        # 的同类修复一致，不是解析出的 lang —
+        # No request/lang context here; result['error'] may be a marker
+        # string the windsurf plugin wrote. Render it in the source language
+        # (zh) into readable text before interpolating into the log line,
+        # mirroring the ~891-895 fix below -- not a resolved lang.
+        error_text = render_marker(result.get("error") or "", "zh") or "unknown error"
+        message = f"Windsurf 注册后自动升级失败: {error_text}"
         logger.record_error(message)
         logger.log(message, level="error")
         return
@@ -890,7 +899,14 @@ def _execute_platform_action_task(payload: dict[str, Any], logger: TaskLogger) -
     logger.set_result_data(result.data)
     message = ""
     if isinstance(result.data, dict):
-        message = str(result.data.get("message", "") or "")
+        # 这条日志没有请求/lang 上下文；result.data 里可能有 worker 线程写入的
+        # 标记字符串，用源语言 (zh) 渲染成可读文本，迁移后日志才不会变成原始
+        # 标记 JSON —
+        # This log line has no request/lang context; result.data may carry
+        # marker strings a worker thread wrote. Render them in the source
+        # language (zh) into readable text so the log doesn't turn into raw
+        # marker JSON after this migration.
+        message = str(render_result(result.data, "zh").get("message", "") or "")
     if message:
         logger.log(message, event_type="summary")
     logger.set_progress(1, 1)

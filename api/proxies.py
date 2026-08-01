@@ -57,5 +57,5 @@ def toggle_proxy(proxy_id: int, lang: str = Depends(get_ui_language)):
 
 
 @router.post("/check")
-def check_proxies():
-    return service.trigger_check()
+def check_proxies(lang: str = Depends(get_ui_language)):
+    return service.trigger_check(lang)

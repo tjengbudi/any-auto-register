@@ -1,31 +1,55 @@
 {
+  "anything": {
+    "0bb1e680": "Generate payment link",
+    "21311389": "No checkout lookup provided",
+    "3a43d2c8": "Check account status",
+    "54adad92": "Could not obtain organization_id; unable to generate the Anything payment link",
+    "b0b3ec51": "Anything payment link generated"
+  },
   "api": {
     "0e7924db": "SMSBower API Key is not configured",
     "0fa0f821": "Provider setting not found",
     "2197e510": "Failed to create task",
     "345790e2": "Proxy not found",
+    "373ed38b": "Testing is not supported for provider type: {provider_type}",
+    "4585c822": "Incorrect password",
+    "49b6634f": "Provider definition not found: {provider_key}",
     "4ab0a7ed": "Proxy already exists",
+    "5ba6ccaa": "Mailbox driver not found: {driver_type}",
     "69060eb1": "HeroSMS API Key is not configured",
+    "6a99b2f1": "Captcha service testing is not supported online yet; please verify it in a registration task",
+    "8582fccb": "Test succeeded! Available mailbox: {email}",
+    "8f3a35dc": "Test failed: {reason}",
+    "ac935cc5": "SMS service testing is not supported online yet; please verify it in a registration task",
     "af8bb650": "Account not found",
     "d1817495": "Task not found",
-    "f4a7f40a": "Provider definition not found"
-  },
-  "anything": {
-    "0bb1e680": "Generate payment link",
-    "3a43d2c8": "Check account status"
+    "f4a7f40a": "Provider definition not found",
+    "fd1afaf0": "Test succeeded! Generated mailbox: {email}"
   },
   "application": {
     "38258a58": "Visible browser (auto)",
     "415fd6aa": "System mailbox",
+    "558518b1": "Task failed",
+    "6f96c2ad": "Task cancelled",
+    "9145106d": "Task interrupted",
     "94b52a85": "Third-party account",
+    "bd201104": "The check task has started",
     "c161fc9b": "Headless browser (auto)",
+    "e9a880e5": "Task completed",
     "ec83bb04": "Protocol mode"
   },
   "blink": {
     "3c077658": "Create API Key",
+    "41497ce5": "Could not obtain workspace_id; unable to generate the Blink payment link",
+    "4ae438e0": "Blink did not return the API Key value",
+    "58f150e3": "Blink API Key created",
+    "74e4501a": "No price_id configured for plan_id={plan_id}",
+    "8594c2fa": "Could not obtain workspace_id; unable to create a Blink API Key",
+    "8932cb51": "Blink did not return a payment link",
     "8e7f6e2f": "Generate Pro payment link",
     "a7517bf2": "Check account status/quota",
-    "c073886a": "Key name"
+    "c073886a": "Key name",
+    "efe9de30": "Blink Pro payment link generated"
   },
   "cerebras": {
     "3a43d2c8": "Check account status"
@@ -33,10 +57,23 @@
   "chatgpt": {
     "0b5daa92": "Region",
     "0bb1e680": "Generate payment link",
+    "14d3b9d2": "{switch_msg}. {close_msg}. {restart_msg}",
+    "21e96f09": "/Applications/Codex.app not found; please start Codex manually",
+    "24c36656": "Attempted to close Codex",
     "26dc9dcc": "Refresh token",
+    "29992db3": "Codex local cookies written; preparing to restart the desktop app",
+    "36d0f3f8": "Missing __Secure-next-auth.session-token; cannot switch the local Codex desktop account",
+    "3ea22b5f": "Failed to write Codex cookies: {reason}",
+    "4687c57b": "Missing access_token, and it could not be refreshed via session_token",
     "59e65e56": "Switch to Codex desktop",
+    "67362fda": "ChatGPT has no public stable remaining-quota API; the current response returns subscription status and account profile info.",
+    "6d73e11d": "Codex.exe not found; please start Codex manually",
+    "7084aa01": "Codex cookies database not found: {path}",
+    "7e8674eb": "Failed to close Codex: {reason}",
     "a4965ed9": "Upload CPA",
     "c1cfa134": "Plan",
+    "c5f65fdd": "Codex restarted",
+    "d912a29d": "Failed to start Codex: {reason}",
     "d9186615": "Upload Team Manager",
     "e57e69cb": "Check account status/subscription"
   },
@@ -100,9 +137,20 @@
     "ff93499b": "Remaining quota"
   },
   "cursor": {
+    "2339340a": "Failed to get user info",
+    "2b2a1772": "Cursor IDE restarted",
     "5b67f763": "Switch to desktop app",
     "73608a10": "Generate 7-day Pro link",
-    "da0f5916": "Check account status / quota"
+    "7de91b87": "Failed to generate the 7-day Pro link",
+    "9311bf9d": "{switch_msg}. {restart_msg}",
+    "ba27ed39": "Cursor IDE closed (install path not found; please start it manually)",
+    "ba8781bf": "The account is missing a token",
+    "c744b509": "Restart failed: {reason}",
+    "da0f5916": "Check account status / quota",
+    "e29d05fa": "Switch succeeded; restart Cursor IDE for the new account to take effect",
+    "e46763f7": "Cursor usage can be queried, but some accounts only return usage consumed; maxRequestUsage/maxTokenUsage may be empty, so the remaining quota cannot always be computed.",
+    "ecfa3a44": "7-day Cursor Pro trial link generated",
+    "fe53dc8a": "Switch failed: {reason}"
   },
   "infrastructure": {
     "06bfac32": "FreeMail (auto-generated)",
@@ -143,6 +191,7 @@
     "77ba1789": "Reuse numbers up to the cap",
     "7837a490": "Self-hosted mailbox service; supports username/password or Admin Token auth",
     "788bdadf": "Select a service...",
+    "831e7a7a": "Restarting",
     "86a89f8e": "SMS-Activate SMS-receiving platform (sms-activate.guru)",
     "87884820": "2Captcha cloud captcha-solving service; supports Turnstile and other types",
     "8fe53b2d": "Custom-domain mailbox based on Cloudflare Worker; requires self-deploying the Worker backend",
@@ -189,21 +238,38 @@
     "ffdcce0a": "Select a country..."
   },
   "kiro": {
+    "04b73b69": "Kiro can query subscription, trial and credits usage through the Web Portal, but this depends on a sessionToken browser session; without one, only the token refresh validation result is returned.",
     "26dc9dcc": "Refresh token",
+    "42414eea": "The account has no refreshToken/clientId/clientSecret; remote refresh validation cannot run",
     "5b67f763": "Switch to desktop app",
-    "da0f5916": "Check account status / quota"
+    "6106f0a1": "Refresh failed",
+    "c72eda8a": "Missing refreshToken / clientId / clientSecret",
+    "cfa125f5": "The account has no refreshToken/clientId/clientSecret; skipping remote refresh validation",
+    "da0f5916": "Check account status / quota",
+    "e64ec6cd": "Could not resolve UserId from the Kiro Web Portal session"
   },
   "trae": {
+    "2339340a": "Failed to get user info",
+    "2a2280d2": "Please open the upgrade link in your browser to complete the Pro subscription",
     "3012e673": "Get user info",
+    "4f63142e": "Failed to get the upgrade link; the token may have expired, please re-register",
     "5b67f763": "Switch to desktop app",
+    "ba8781bf": "The account is missing a token",
     "c90d6d67": "Get upgrade link"
   },
   "windsurf": {
+    "0abfa13e": "The account is missing a Windsurf password; browser automation cannot run",
+    "23cba581": "Windsurf Pro Trial Stripe link generated",
     "4253b3b0": "Generate Pro Trial link (browser)",
     "5372389d": "Switch desktop app (protocol only)",
+    "6465fac2": "Missing session_token; cannot switch",
+    "6829304a": "The Windsurf account switch command was sent; please confirm in Windsurf",
     "6967c1c1": "Wait seconds (default 180)",
+    "970d11d0": "Got the OTT but could not open the deep link; please open Windsurf manually",
+    "ba57068f": "The account is missing a session_token",
     "c0168f40": "Headless mode",
     "ccf81eca": "Turnstile Token (optional, auto captcha)",
-    "e4f9e3fa": "Generate Pro Trial link (auto captcha)"
+    "e4f9e3fa": "Generate Pro Trial link (auto captcha)",
+    "fe53dc8a": "Switch failed: {reason}"
   }
 }

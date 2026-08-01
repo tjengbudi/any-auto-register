@@ -444,3 +444,130 @@ class TestUntranslatedEmptyValue:
     def test_empty_value_in_zh_degrades_to_raw_key(self, monkeypatch):
         _set_catalogs(monkeypatch, zh={"chatgpt": {"a3f21c8e": ""}})
         assert i18n.t("chatgpt.a3f21c8e", "zh") == "chatgpt.a3f21c8e"
+
+
+class TestRenderMarker:
+    """story 3.6 — render_marker(value, lang): the worker-thread marker convention."""
+
+    def test_parses_marker_and_renders(self, monkeypatch):
+        _set_catalogs(
+            monkeypatch,
+            zh={"cursor": {"a1b2c3d4": "账号缺少 token"}},
+            en={"cursor": {"a1b2c3d4": "The account is missing a token"}},
+        )
+        marker = json.dumps({"i18n_key": "cursor.a1b2c3d4", "i18n_params": {}}, ensure_ascii=False)
+        assert i18n.render_marker(marker, "en") == "The account is missing a token"
+
+    def test_marker_with_scalar_params_renders(self, monkeypatch):
+        _set_catalogs(
+            monkeypatch,
+            zh={"kiro": {"deadbeef": "刷新失败: {code}"}},
+            en={"kiro": {"deadbeef": "Refresh failed: {code}"}},
+        )
+        marker = json.dumps({"i18n_key": "kiro.deadbeef", "i18n_params": {"code": 500}}, ensure_ascii=False)
+        assert i18n.render_marker(marker, "en") == "Refresh failed: 500"
+
+    def test_nested_marker_param_resolves_bottom_up(self, monkeypatch):
+        # Mirrors the cursor switch+restart composition example in the spec's
+        # Design Notes: a param value is itself another marker string.
+        _set_catalogs(
+            monkeypatch,
+            zh={
+                "cursor": {
+                    "switchkey": "切换成功",
+                    "restartkey": "已重启",
+                    "composekey": "{switch_msg}。{restart_msg}",
+                }
+            },
+            en={
+                "cursor": {
+                    "switchkey": "Switched",
+                    "restartkey": "Restarted",
+                    "composekey": "{switch_msg} {restart_msg}",
+                }
+            },
+        )
+        switch_marker = json.dumps({"i18n_key": "cursor.switchkey", "i18n_params": {}}, ensure_ascii=False)
+        restart_marker = json.dumps({"i18n_key": "cursor.restartkey", "i18n_params": {}}, ensure_ascii=False)
+        composed = json.dumps(
+            {
+                "i18n_key": "cursor.composekey",
+                "i18n_params": {"switch_msg": switch_marker, "restart_msg": restart_marker},
+            },
+            ensure_ascii=False,
+        )
+        assert i18n.render_marker(composed, "en") == "Switched Restarted"
+        # Never leaves an unresolved marker's raw JSON inside the rendered text.
+        assert "i18n_key" not in i18n.render_marker(composed, "en")
+
+    def test_plain_text_passes_through_unchanged(self):
+        assert i18n.render_marker("账号缺少 token", "en") == "账号缺少 token"
+
+    def test_malformed_json_passes_through_unchanged(self):
+        assert i18n.render_marker("{not valid json", "en") == "{not valid json"
+
+    def test_unrelated_json_shape_passes_through_unchanged(self):
+        value = json.dumps({"foo": "bar"})
+        assert i18n.render_marker(value, "en") == value
+
+    def test_wrong_field_types_pass_through_unchanged(self):
+        # i18n_key not a string, i18n_params not a dict -- shape mismatch.
+        value = json.dumps({"i18n_key": 123, "i18n_params": {}})
+        assert i18n.render_marker(value, "en") == value
+        value = json.dumps({"i18n_key": "cursor.x", "i18n_params": "nope"})
+        assert i18n.render_marker(value, "en") == value
+
+    def test_non_string_value_passes_through_unchanged(self):
+        assert i18n.render_marker(None, "en") is None
+        assert i18n.render_marker(42, "en") == 42
+
+    def test_excess_nesting_depth_returns_raw_marker_without_crashing(self, monkeypatch):
+        # A pathological chain of nested markers deeper than the depth cap
+        # must degrade instead of recursing without bound.
+        zh_catalog: dict = {"deep": {"base": "leaf value"}}
+        current = json.dumps({"i18n_key": "deep.base", "i18n_params": {}}, ensure_ascii=False)
+        for depth in range(8):
+            subkey = f"lvl{depth}"
+            zh_catalog["deep"][subkey] = "{inner}"
+            current = json.dumps(
+                {"i18n_key": f"deep.{subkey}", "i18n_params": {"inner": current}},
+                ensure_ascii=False,
+            )
+        _set_catalogs(monkeypatch, zh=zh_catalog)
+        # Must not raise (RecursionError or otherwise); degrades to text
+        # instead of resolving the whole unbounded chain.
+        result = i18n.render_marker(current, "zh")
+        assert isinstance(result, str)
+
+
+class TestRenderResult:
+    """story 3.6 — render_result(value, lang): recursive dict/list walk."""
+
+    def test_renders_every_string_in_nested_structure(self, monkeypatch):
+        _set_catalogs(
+            monkeypatch,
+            zh={"blink": {"aaaaaaaa": "未获取到 workspace_id"}},
+            en={"blink": {"aaaaaaaa": "workspace_id not found"}},
+        )
+        marker = json.dumps({"i18n_key": "blink.aaaaaaaa", "i18n_params": {}}, ensure_ascii=False)
+        value = {
+            "ok": False,
+            "data": {"nested": [marker, "plain text", {"deeper": marker}]},
+            "count": 3,
+            "flag": None,
+        }
+        rendered = i18n.render_result(value, "en")
+        assert rendered["data"]["nested"][0] == "workspace_id not found"
+        assert rendered["data"]["nested"][1] == "plain text"
+        assert rendered["data"]["nested"][2]["deeper"] == "workspace_id not found"
+        assert rendered["count"] == 3
+        assert rendered["flag"] is None
+
+    def test_non_dict_non_list_non_string_passes_through(self):
+        assert i18n.render_result(42, "en") == 42
+        assert i18n.render_result(None, "en") is None
+        assert i18n.render_result(True, "en") is True
+
+    def test_empty_containers_pass_through(self):
+        assert i18n.render_result({}, "en") == {}
+        assert i18n.render_result([], "en") == []

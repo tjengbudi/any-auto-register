@@ -192,20 +192,23 @@ def switch_windsurf_account(
         (success, message)
     """
     if not session_token:
-        return False, "缺少 session_token，无法切换"
+        # worker 线程无请求上下文，写入标记字符串，由读边界渲染 (AD-3/AD-8) —
+        # No request context in a worker thread; write a marker string,
+        # rendered at the read boundary (AD-3/AD-8).
+        return False, json.dumps({"i18n_key": "windsurf.6465fac2", "i18n_params": {}}, ensure_ascii=False)
 
     try:
         ott = _get_one_time_auth_token(session_token, proxy=proxy)
         logger.info(f"获取 OTT 成功: {ott[:20]}...")
 
         if not _open_deep_link(ott):
-            return False, "获取 OTT 成功但无法打开 deep link，请手动打开 Windsurf"
+            return False, json.dumps({"i18n_key": "windsurf.970d11d0", "i18n_params": {}}, ensure_ascii=False)
 
-        return True, "Windsurf 账号切换指令已发送，请在 Windsurf 中确认"
+        return True, json.dumps({"i18n_key": "windsurf.6829304a", "i18n_params": {}}, ensure_ascii=False)
 
     except Exception as e:
         logger.error(f"Windsurf 账号切换失败: {e}")
-        return False, f"切换失败: {str(e)}"
+        return False, json.dumps({"i18n_key": "windsurf.fe53dc8a", "i18n_params": {"reason": str(e)}}, ensure_ascii=False)
 
 
 def restart_windsurf_ide() -> Tuple[bool, str]:

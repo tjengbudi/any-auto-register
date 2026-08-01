@@ -84,7 +84,10 @@ def refresh_kiro_token(
 ) -> Tuple[bool, dict]:
     """刷新 Kiro OIDC token，返回 (ok, {accessToken, refreshToken, expiresIn})"""
     if not refresh_token or not client_id or not client_secret:
-        return False, {"error": "缺少 refreshToken / clientId / clientSecret"}
+        # worker 线程无请求上下文，写入标记字符串，由读边界渲染 (AD-3/AD-8) —
+        # No request context in a worker thread; write a marker string,
+        # rendered at the read boundary (AD-3/AD-8).
+        return False, {"error": json.dumps({"i18n_key": "kiro.c72eda8a", "i18n_params": {}}, ensure_ascii=False)}
     try:
         r = cffi_requests.post(
             f"{OIDC_ENDPOINT}/token",
@@ -215,7 +218,7 @@ def get_kiro_portal_state(
     if not user_id:
         return {
             "available": False,
-            "error": "无法从 Kiro Web Portal 会话中解析 UserId",
+            "error": json.dumps({"i18n_key": "kiro.e64ec6cd", "i18n_params": {}}, ensure_ascii=False),
             "profile_arn": actual_profile_arn,
         }
 

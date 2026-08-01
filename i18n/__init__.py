@@ -12,7 +12,7 @@ import string
 from pathlib import Path
 from typing import Any
 
-__all__ = ["t", "load", "selfcheck", "CatalogError", "LOCALES"]
+__all__ = ["t", "load", "selfcheck", "CatalogError", "LOCALES", "render_marker", "render_result"]
 
 _logger = logging.getLogger(__name__)
 
@@ -265,3 +265,109 @@ def t(key: str, lang: str, **params: str | int | float | bool | None) -> str:
             _logger.debug("i18n: zh 回退渲染同样失败，key=%s", key, exc_info=True)
 
     return key
+
+
+# story 3.6 新增：worker-thread 站点写入的标记字符串约定 —
+# story 3.6 addition: the marker-string convention worker-thread sites write.
+#
+# 无请求上下文的 worker 线程（platforms/*/plugin.py、*/switch.py）不再在产生结果
+# 的地方渲染，而是写入 json.dumps({"i18n_key", "i18n_params"})；读边界（已解析出
+# lang 的地方）用 render_marker/render_result 在响应构建前统一渲染 ——
+# Worker threads with no request context no longer render where a result is
+# produced; they write json.dumps({"i18n_key", "i18n_params"}) instead, and a
+# read boundary that already has `lang` renders it uniformly via
+# render_marker/render_result before the response is built.
+_MARKER_KEYS = frozenset({"i18n_key", "i18n_params"})
+
+# 嵌套标记解析的深度上限，防止参数里循环/超深引用把渲染拖入无限递归 ——
+# Depth cap for nested-marker resolution, guarding against a cyclic or overly
+# deep param chain dragging the render into unbounded recursion.
+_MAX_MARKER_DEPTH = 5
+
+
+def _parse_marker(value: str) -> tuple[str, dict] | None:
+    """把 value 解析为 (i18n_key, i18n_params)；形状不吻合时返回 None —
+    Parse `value` into (i18n_key, i18n_params); returns None when the shape
+    does not match exactly.
+    """
+    try:
+        parsed = json.loads(value)
+    except (ValueError, TypeError):
+        return None
+    if not isinstance(parsed, dict) or set(parsed.keys()) != _MARKER_KEYS:
+        return None
+    key = parsed["i18n_key"]
+    params = parsed["i18n_params"]
+    if not isinstance(key, str) or not isinstance(params, dict):
+        return None
+    return key, params
+
+
+def render_marker(value: str, lang: str, *, _depth: int = 0) -> str:
+    """把一个可能是标记字符串的 value 渲染为 lang 对应的文本 —
+    Render a possibly-marker string `value` into `lang`'s text.
+
+    只有 value 精确解析为 {"i18n_key": str, "i18n_params": dict} 时才会被当作标记；
+    其余任何值（普通文本、不相关的 JSON、格式不吻合）原样返回，因此这个函数可以
+    安全地套用在任意字符串上，不需要调用方先判断类型 ——
+    Only a value that parses to exactly {"i18n_key": str, "i18n_params": dict}
+    is treated as a marker; anything else (plain text, unrelated JSON, a
+    mismatched shape) passes through unchanged, so this is safe to apply to
+    any string without the caller pre-checking its shape.
+    """
+    if not isinstance(value, str):
+        return value
+    parsed = _parse_marker(value)
+    if parsed is None:
+        return value
+    key, params = parsed
+    if _depth >= _MAX_MARKER_DEPTH:
+        # 深度耗尽时仍尝试渲染外层 key（不解析更深的嵌套参数），避免把未解码的
+        # 标记 JSON 当作文本片段展示给用户 ——
+        # Even at the depth cap, still render the outer key (without resolving
+        # deeper-nested params) instead of showing the raw, undecoded marker
+        # JSON as a text fragment.
+        _logger.debug("i18n: 标记嵌套超过最大深度，key=%s", key)
+        return t(key, lang)
+
+    # i18n_params 的值本身可能又是一个标记字符串（cursor 组合模板的例子）；
+    # 先自底向上解析成纯文本，再作为标量参数喂给 t() ——
+    # A param value may itself be another marker string (the cursor
+    # composition template). Resolve bottom-up into plain text first, then
+    # feed the result to t() as a scalar param.
+    resolved_params: dict[str, Any] = {}
+    for param_key, param_value in params.items():
+        if isinstance(param_value, str):
+            resolved_params[param_key] = render_marker(param_value, lang, _depth=_depth + 1)
+        else:
+            resolved_params[param_key] = param_value
+
+    try:
+        return t(key, lang, **resolved_params)
+    except TypeError:
+        # i18n_params 里若有和 t() 形参同名的键（如 "lang"/"key"），** 展开会在
+        # 进入 t() 之前抛出；退化到裸 key（而不是原始标记 JSON），跟 t() 自身
+        # 用尽回退链后的最终形态一致 ——
+        # A params key shadowing t()'s own parameter names raises at the **
+        # expansion, before t() is even entered. Degrade to the bare key
+        # (not the raw marker JSON) to match the shape of t()'s own
+        # exhausted-fallback-chain result.
+        _logger.debug("i18n: 标记参数与 t() 形参冲突，key=%s", key)
+        return key
+
+
+def render_result(value: Any, lang: str) -> Any:
+    """递归遍历 dict/list，对遇到的每个字符串套用 render_marker —
+    Recursively walk dicts/lists, applying render_marker to every string found.
+
+    非字符串、非 dict/list 的值（数字、布尔、None、日期字符串等）原样返回 ——
+    Non-string, non-dict/list values (numbers, booleans, None, date strings,
+    etc.) pass through unchanged.
+    """
+    if isinstance(value, dict):
+        return {k: render_result(v, lang) for k, v in value.items()}
+    if isinstance(value, list):
+        return [render_result(v, lang) for v in value]
+    if isinstance(value, str):
+        return render_marker(value, lang)
+    return value

@@ -4,8 +4,9 @@ import time
 import threading
 
 import requests
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from api.deps import get_ui_language
 from application.system import SystemService
 from core.version import __version__
 
@@ -74,8 +75,8 @@ def solver_status():
 
 
 @router.post("/solver/restart")
-def solver_restart():
-    return service.restart_solver()
+def solver_restart(lang: str = Depends(get_ui_language)):
+    return service.restart_solver(lang)
 
 
 @router.get("/version")

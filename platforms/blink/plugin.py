@@ -1,4 +1,6 @@
 """blink.new 平台插件"""
+import json
+
 from core.base_mailbox import BaseMailbox
 from core.base_platform import Account, AccountStatus, BasePlatform, RegisterConfig
 from core.registration import LinkSpec, ProtocolMailboxAdapter, RegistrationResult
@@ -119,12 +121,24 @@ class BlinkPlatform(BasePlatform):
             summary = dict(state.get("summary") or {})
             workspace_id = str(state.get("workspace_id") or summary.get("workspace_id") or "")
             if not workspace_id:
-                return {"ok": False, "error": "未获取到 workspace_id，无法生成 Blink 支付链接"}
+                # worker 线程无请求上下文，写入标记字符串，读边界渲染 (AD-3/AD-8) —
+                # No request context in a worker thread; write a marker string,
+                # rendered at the read boundary (AD-3/AD-8).
+                return {"ok": False, "error": json.dumps({"i18n_key": "blink.41497ce5", "i18n_params": {}}, ensure_ascii=False)}
 
             plan_id = str(params.get("plan_id") or "pro").strip().lower() or "pro"
             price_id = str(params.get("price_id") or BLINK_PRICE_IDS.get(plan_id) or "").strip()
             if not price_id:
-                return {"ok": False, "error": f"未配置 plan_id={plan_id} 对应的 price_id"}
+                # worker 线程无请求上下文，写入标记字符串，读边界渲染 (AD-3/AD-8) —
+                # No request context in a worker thread; write a marker string,
+                # rendered at the read boundary (AD-3/AD-8).
+                return {
+                    "ok": False,
+                    "error": json.dumps(
+                        {"i18n_key": "blink.74e4501a", "i18n_params": {"plan_id": plan_id}},
+                        ensure_ascii=False,
+                    ),
+                }
 
             workspace_slug = str(state.get("workspace_slug") or summary.get("workspace_slug") or "").strip()
             cancel_url = str(
@@ -146,7 +160,7 @@ class BlinkPlatform(BasePlatform):
             )
             url = str(checkout.get("url") or "").strip()
             if not url:
-                return {"ok": False, "error": "Blink 未返回支付链接"}
+                return {"ok": False, "error": json.dumps({"i18n_key": "blink.8932cb51", "i18n_params": {}}, ensure_ascii=False)}
             return {
                 "ok": True,
                 "data": {
@@ -158,7 +172,7 @@ class BlinkPlatform(BasePlatform):
                     "plan_id": plan_id,
                     "price_id": price_id,
                     "account_state": summary,
-                    "message": "Blink Pro 支付链接已生成",
+                    "message": json.dumps({"i18n_key": "blink.efe9de30", "i18n_params": {}}, ensure_ascii=False),
                 },
             }
 
@@ -167,7 +181,7 @@ class BlinkPlatform(BasePlatform):
             summary = dict(state.get("summary") or {})
             workspace_id = str(state.get("workspace_id") or summary.get("workspace_id") or "").strip()
             if not workspace_id:
-                return {"ok": False, "error": "未获取到 workspace_id，无法创建 Blink API Key"}
+                return {"ok": False, "error": json.dumps({"i18n_key": "blink.8594c2fa", "i18n_params": {}}, ensure_ascii=False)}
 
             workspace_slug = str(state.get("workspace_slug") or summary.get("workspace_slug") or "").strip()
             raw_name = str(params.get("name") or "").strip()
@@ -184,7 +198,7 @@ class BlinkPlatform(BasePlatform):
             )
             api_key = str(payload.get("key_value") or "").strip()
             if not api_key:
-                return {"ok": False, "error": "Blink 未返回 API Key 明文"}
+                return {"ok": False, "error": json.dumps({"i18n_key": "blink.4ae438e0", "i18n_params": {}}, ensure_ascii=False)}
             return {
                 "ok": True,
                 "data": {
@@ -195,7 +209,7 @@ class BlinkPlatform(BasePlatform):
                     "api_key": api_key,
                     "workspace_id": workspace_id,
                     "workspace_slug": workspace_slug,
-                    "message": "Blink API Key 已创建",
+                    "message": json.dumps({"i18n_key": "blink.58f150e3", "i18n_params": {}}, ensure_ascii=False),
                 },
             }
 
