@@ -14,6 +14,38 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _diff_seed_fields(item: ProviderDefinitionModel, seed: dict) -> list[str]:
+    """比较已存在的行与种子数据的字段差异。
+    Compare an existing row's fields against the seed data.
+
+    返回字段名列表（按检查顺序），列出当前值与种子值不同的字段；
+    仅用于日志展示，不影响 ensure_seeded() 随后的赋值。
+    Returns the field names (in check order) whose current value differs
+    from the seed; used only to build the warning log, it has no effect on
+    the assignment that ensure_seeded() performs afterwards.
+    """
+    diffs: list[str] = []
+    if item.label != seed.get("label", seed["provider_key"]):
+        diffs.append("label")
+    if item.description != seed.get("description", ""):
+        diffs.append("description")
+    if item.driver_type != seed.get("driver_type", seed["provider_key"]):
+        diffs.append("driver_type")
+    if item.default_auth_mode != seed.get("default_auth_mode", ""):
+        diffs.append("default_auth_mode")
+    if item.enabled != seed.get("enabled", True):
+        diffs.append("enabled")
+    if item.category != seed.get("category", ""):
+        diffs.append("category")
+    if item.get_auth_modes() != list(seed.get("auth_modes") or []):
+        diffs.append("auth_modes")
+    if item.get_fields() != list(seed.get("fields") or []):
+        diffs.append("fields")
+    if item.is_builtin is not True:
+        diffs.append("is_builtin")
+    return diffs
+
+
 _BUILTIN_DEFINITIONS: list[dict] = [
     # ── mailbox ──────────────────────────────────────────────────────
     {
@@ -411,6 +443,16 @@ class ProviderDefinitionsRepository:
                         created_at=_utcnow(),
                     )
                     logger.info("种子数据: 新增 %s/%s", seed["provider_type"], seed["provider_key"])
+                else:
+                    # 检测将被种子覆盖的字段 — detect the fields about to be overwritten
+                    overwritten = _diff_seed_fields(item, seed)
+                    if overwritten:
+                        logger.warning(
+                            "种子数据: %s/%s 的字段 %s 与种子不同，已被种子值覆盖",
+                            seed["provider_type"],
+                            seed["provider_key"],
+                            ", ".join(overwritten),
+                        )
 
                 # 更新元数据（每次启动都同步，确保代码变更生效）
                 item.label = seed.get("label", seed["provider_key"])
