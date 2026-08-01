@@ -1,14 +1,23 @@
 """Catalog integrity tests: zh.json is authoritative, en/vi orphans fail the
-suite, translation gaps only ever show up in a structured coverage report.
+suite, translation gaps only ever show up in a structured coverage report,
+and every zh key the code actually reads must carry a non-empty en value.
 
-Story 1.4. Reads i18n/zh.json, i18n/en.json, i18n/vi.json directly via
-`json.load` and never imports the `i18n` package or uses the `client`
-fixture from conftest.py -- see test_does_not_use_i18n_module_or_client_fixture
-below for an automated check of that constraint.
+Story 1.4 (plus DW-29's reference-aware parity follow-up). Reads
+i18n/zh.json, i18n/en.json, i18n/vi.json directly via `json.load` and never
+imports the `i18n` package or uses the `client` fixture from conftest.py --
+see test_does_not_use_i18n_module_or_client_fixture below for an automated
+check of that constraint.
+
+DW-29 note: `vi` is deliberately exempt from the reference-aware parity
+check below -- ARCHITECTURE-SPINE.md:205 freezes it as structure-with-no-
+values for this release, so a referenced key having no `vi` value is
+expected, not a defect. See test_every_referenced_zh_key_has_a_non_empty_en_translation.
 """
 from __future__ import annotations
 
 import json
+import os
+import re
 import sys
 from pathlib import Path
 
@@ -82,6 +91,49 @@ def _build_coverage_report(
     return report
 
 
+# catalog-conventions.md's Python key shape: machine-minted `<owner>.<hash8>`,
+# hash8 = lowercase hex, width 8. TypeScript keys are hand-authored camelCase
+# in a disjoint namespace, so this pattern never matches a TS-owned key --
+# it is scanned for anyway (per DW-29's decision) in case a TS/TSX call site
+# ever forwards a Python-owned key through, e.g., a backend-rendered payload.
+# Matches single-, double- and backtick-quoted literals; a key built via
+# concatenation, an f-string, or a variable is out of reach for a textual
+# scan and stays out of scope, same as the rest of this literal-based check.
+_KEY_REFERENCE_PATTERN = re.compile(r"""["'`]([A-Za-z][A-Za-z0-9_]*\.[0-9a-f]{8})["'`]""")
+
+_REFERENCE_SCAN_ROOT = _CATALOG_DIR.parent
+_REFERENCE_SOURCE_EXTENSIONS = (".py", ".ts", ".tsx")
+# Vendored deps, VCS internals, caches and build output hold no call sites of
+# our own and are large enough (.venv, node_modules) to be worth pruning
+# during the walk rather than filtering after listing every file.
+_REFERENCE_EXCLUDED_DIR_NAMES = {
+    "node_modules", ".git", "__pycache__", "tests", ".venv", ".pytest_cache", "dist", "build",
+}
+
+
+def _iter_reference_source_files(root: Path):
+    """Yield non-test .py/.ts/.tsx files under root, pruning vendor/build/test dirs."""
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = sorted(d for d in dirnames if d not in _REFERENCE_EXCLUDED_DIR_NAMES)
+        for filename in sorted(filenames):
+            path = Path(dirpath) / filename
+            if path.suffix not in _REFERENCE_SOURCE_EXTENSIONS:
+                continue
+            stem = path.stem
+            if stem == "test" or stem.startswith("test_") or stem.endswith(("_test", ".test", ".spec")):
+                continue
+            yield path
+
+
+def _collect_referenced_zh_keys(root: Path) -> set[str]:
+    """`owner.hash8` keys referenced as string literals across source files."""
+    referenced: set[str] = set()
+    for path in _iter_reference_source_files(root):
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        referenced.update(_KEY_REFERENCE_PATTERN.findall(text))
+    return referenced
+
+
 def _write_catalogs(base_dir: Path, *, zh=None, en=None, vi=None) -> None:
     for locale, data in (("zh", zh), ("en", en), ("vi", vi)):
         (base_dir / f"{locale}.json").write_text(
@@ -112,6 +164,53 @@ def test_no_orphaned_keys_in_target_locales(_shipped_flat):
     orphans = _collect_orphans(zh_flat, target_flats)
 
     assert not orphans, f"orphaned keys (locale:key) with no zh.json counterpart: {orphans}"
+
+
+def test_every_referenced_zh_key_has_a_non_empty_en_translation(_shipped_flat):
+    """Reference-aware parity gate: every zh key referenced by an
+    `<owner>.<hash8>`-shaped string literal in source must have a non-empty
+    en.json value. This is a textual literal scan, not a `t()` call-site
+    trace -- it cannot see a key built via concatenation, an f-string, or a
+    variable, and (by design, see below) ignores a literal that doesn't
+    match an existing zh key.
+
+    Narrower than test_no_orphaned_keys_in_target_locales above, which only
+    catches the opposite direction (a target-locale key with no zh
+    counterpart), and orthogonal to test_translation_coverage_report below,
+    which asserts range invariants rather than coverage -- neither one
+    catches a referenced key shipping untranslated. This test scans non-test
+    .py/.ts/.tsx sources for the `<owner>.<hash8>` key shape and asserts
+    every referenced zh key survives translation into en, so a future story
+    that wires one of today's currently-dead zh keys without translating it
+    fails here instead of shipping silent untranslated text to English
+    users.
+
+    `vi` is deliberately exempt from this check: ARCHITECTURE-SPINE.md:205
+    freezes it as structure-with-no-values for this release, so a referenced
+    key having no `vi` value is expected, not a defect this test should
+    catch.
+    """
+    zh_flat = _shipped_flat[_SOURCE_LOCALE]
+    en_flat = _shipped_flat["en"]
+
+    referenced = _collect_referenced_zh_keys(_REFERENCE_SCAN_ROOT)
+    assert referenced, (
+        f"no owner.hash8 key references found under {_REFERENCE_SCAN_ROOT} -- "
+        "the scan root or extension/exclusion filters are likely misconfigured"
+    )
+    # A referenced literal with no zh.json counterpart at all (typo, stale
+    # rename) is a different bug than an untranslated real key, and out of
+    # this test's scope -- see test_no_orphaned_keys_in_target_locales for
+    # the orphan-detection direction this doesn't cover.
+    referenced_zh_keys = referenced & set(zh_flat)
+
+    untranslated = sorted(
+        key
+        for key in referenced_zh_keys
+        if not (isinstance(en_flat.get(key), str) and en_flat.get(key) != "")
+    )
+
+    assert not untranslated, f"referenced zh keys with no non-empty en.json translation: {untranslated}"
 
 
 def test_translation_coverage_report(_shipped_flat):
@@ -206,6 +305,44 @@ class TestBuildCoverageReport:
             "en": {"translated": 0, "total": 0},
             "vi": {"translated": 0, "total": 0},
         }
+
+
+# ---------------------------------------------------------------------------
+# DW-29 reference scan: synthetic source trees under tmp_path, exercising
+# _collect_referenced_zh_keys's filtering rules in isolation from the real
+# (large, mostly-vendored) repo tree the acceptance test above scans.
+# ---------------------------------------------------------------------------
+
+
+class TestCollectReferencedZhKeys:
+    def test_collects_owner_hash8_literal_from_py_file(self, tmp_path):
+        (tmp_path / "mod.py").write_text('t("chatgpt.a3f21c8e", lang)\n', encoding="utf-8")
+        assert _collect_referenced_zh_keys(tmp_path) == {"chatgpt.a3f21c8e"}
+
+    def test_matches_single_double_and_backtick_quotes(self, tmp_path):
+        (tmp_path / "mod.ts").write_text(
+            "const a = 'core.11112222'\nconst b = \"core.33334444\"\nconst c = `core.55556666`\n",
+            encoding="utf-8",
+        )
+        assert _collect_referenced_zh_keys(tmp_path) == {
+            "core.11112222", "core.33334444", "core.55556666",
+        }
+
+    def test_ignores_non_source_extensions(self, tmp_path):
+        (tmp_path / "notes.md").write_text('"chatgpt.a3f21c8e"\n', encoding="utf-8")
+        assert _collect_referenced_zh_keys(tmp_path) == set()
+
+    def test_excludes_files_under_excluded_dir_names(self, tmp_path):
+        vendored = tmp_path / "node_modules" / "pkg"
+        vendored.mkdir(parents=True)
+        (vendored / "mod.ts").write_text('"vendor.deadbeef"\n', encoding="utf-8")
+        assert _collect_referenced_zh_keys(tmp_path) == set()
+
+    def test_excludes_test_prefixed_and_bare_test_named_files(self, tmp_path):
+        (tmp_path / "test_mod.py").write_text('"chatgpt.a3f21c8e"\n', encoding="utf-8")
+        (tmp_path / "test.ts").write_text('"core.11112222"\n', encoding="utf-8")
+        (tmp_path / "widget.test.tsx").write_text('"core.33334444"\n', encoding="utf-8")
+        assert _collect_referenced_zh_keys(tmp_path) == set()
 
 
 # ---------------------------------------------------------------------------
