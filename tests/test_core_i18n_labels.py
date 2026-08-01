@@ -10,6 +10,7 @@ which no existing test touches.
 from __future__ import annotations
 
 import os
+from unittest.mock import patch
 
 from i18n import t
 from core.capability_registry import STANDARD_CAPABILITIES
@@ -54,3 +55,16 @@ def test_build_desktop_app_state_renders_status_and_ready_labels_by_lang():
         install_paths=[EXISTING_DIR], lang="en",
     )
     assert installed_not_configured_en["ready_label"] == "Not configured"
+
+
+def test_build_desktop_app_state_renders_running_status_label_by_lang():
+    with patch("core.desktop_apps.is_process_running", return_value=True) as mock_running:
+        running_en = build_desktop_app_state(
+            app_id="x", app_name="X", process_patterns=["anything"], lang="en",
+        )
+        running_zh = build_desktop_app_state(
+            app_id="x", app_name="X", process_patterns=["anything"], lang="zh",
+        )
+    assert running_en["status_label"] == "Running"
+    assert running_zh["status_label"] == "已打开"
+    mock_running.assert_called_with(["anything"])
