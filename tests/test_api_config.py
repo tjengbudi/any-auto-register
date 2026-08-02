@@ -24,6 +24,20 @@ def test_ui_language_rejects_wrong_case(client):
     assert resp.json()["ui_language"] == "zh"
 
 
+def test_ui_language_rejection_renders_chinese_default(client):
+    resp = client.put("/api/config", json={"data": {"ui_language": "EN"}})
+    assert resp.status_code == 400
+    assert resp.json()["detail"] == "ui_language 必须是以下之一: zh, en, vi"
+
+
+def test_ui_language_rejection_renders_english(client):
+    resp = client.put("/api/config", json={"data": {"ui_language": "en"}})
+    assert resp.status_code == 200
+    resp = client.put("/api/config", json={"data": {"ui_language": "en-US"}})
+    assert resp.status_code == 400
+    assert resp.json()["detail"] == "ui_language must be one of zh, en, vi"
+
+
 def test_ui_language_rejects_malformed_locale(client):
     resp = client.put("/api/config", json={"data": {"ui_language": "en-US"}})
     assert resp.status_code == 400

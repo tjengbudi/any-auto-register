@@ -285,12 +285,16 @@ class ChatGPTPlatform(BasePlatform):
 
             session_token = extract_session_token(a.session_token, a.cookies)
             if not session_token:
-                return {"ok": False, "error": "Switch to Codex desktop requires session_token"}
+                return {
+                    "ok": False,
+                    "error": json.dumps({"i18n_key": "chatgpt.26eac015", "i18n_params": {}}, ensure_ascii=False),
+                }
 
             close_ok, close_msg = close_codex_app()
             switch_ok, switch_data = switch_codex_account(session_token=session_token, cookies=a.cookies)
             if not switch_ok:
-                return {"ok": False, "error": switch_data.get("error", "Switch failed")}
+                fallback = json.dumps({"i18n_key": "chatgpt.d08fd422", "i18n_params": {}}, ensure_ascii=False)
+                return {"ok": False, "error": switch_data.get("error", fallback)}
 
             remote_state = fetch_chatgpt_account_state(
                 access_token=a.access_token,

@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from api.deps import get_ui_language
+from api.deps import get_ui_language, render_detail
 from application.config import ConfigService
 
 router = APIRouter(prefix="/config", tags=["config"])
@@ -25,8 +25,8 @@ def get_config_options(lang: str = Depends(get_ui_language)):
 
 
 @router.put("")
-def update_config(body: ConfigUpdateRequest):
+def update_config(body: ConfigUpdateRequest, lang: str = Depends(get_ui_language)):
     try:
         return service.update_config(body.data)
     except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
+        raise HTTPException(400, render_detail(exc, lang)) from exc

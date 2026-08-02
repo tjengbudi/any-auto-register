@@ -62,6 +62,96 @@ def test_sync_action_marker_renders_chinese_default(client):
     assert body["error"] == "账号缺少 session_token"
 
 
+# --- chatgpt switch_desktop guard-clause and fallback markers (DW-41) -------
+#
+# ChatGPTPlatform does not override _handle_switch_desktop, so the standard
+# capability dispatch (BasePlatform._handle_capability) never reaches
+# _execute_platform_action's "switch_desktop" branch -- a pre-existing,
+# unrelated routing gap, out of this bundle's scope. These tests call
+# _execute_platform_action directly to exercise the two markers DW-41 fixes.
+
+
+def test_chatgpt_switch_desktop_missing_session_token_renders_english():
+    from i18n import render_marker
+    from platforms.chatgpt.plugin import ChatGPTPlatform
+
+    platform = ChatGPTPlatform(RegisterConfig())
+    account = Account(platform="chatgpt", email="user@example.com", password="", token="")
+    result = platform._execute_platform_action("switch_desktop", account, {})
+    assert result["ok"] is False
+    assert render_marker(result["error"], "en") == "Switch to Codex desktop requires session_token"
+    assert "i18n_key" not in render_marker(result["error"], "en")
+
+
+def test_chatgpt_switch_desktop_missing_session_token_renders_chinese_default():
+    from i18n import render_marker
+    from platforms.chatgpt.plugin import ChatGPTPlatform
+
+    platform = ChatGPTPlatform(RegisterConfig())
+    account = Account(platform="chatgpt", email="user@example.com", password="", token="")
+    result = platform._execute_platform_action("switch_desktop", account, {})
+    assert render_marker(result["error"], "zh") == "切换到 Codex 桌面版需要 session_token"
+
+
+def test_chatgpt_switch_desktop_upstream_failure_without_error_key_renders_english(monkeypatch):
+    import platforms.chatgpt.switch as chatgpt_switch
+    from i18n import render_marker
+    from platforms.chatgpt.plugin import ChatGPTPlatform
+
+    monkeypatch.setattr(chatgpt_switch, "close_codex_app", lambda: (True, "closed"))
+    monkeypatch.setattr(chatgpt_switch, "switch_codex_account", lambda session_token="", cookies="": (False, {}))
+
+    platform = ChatGPTPlatform(RegisterConfig())
+    account = Account(
+        platform="chatgpt", email="user@example.com", password="", token="", extra={"session_token": "tok"}
+    )
+    result = platform._execute_platform_action("switch_desktop", account, {})
+    assert result["ok"] is False
+    assert render_marker(result["error"], "en") == "Switch failed"
+
+
+def test_chatgpt_switch_desktop_upstream_failure_without_error_key_renders_chinese_default(monkeypatch):
+    import platforms.chatgpt.switch as chatgpt_switch
+    from i18n import render_marker
+    from platforms.chatgpt.plugin import ChatGPTPlatform
+
+    monkeypatch.setattr(chatgpt_switch, "close_codex_app", lambda: (True, "closed"))
+    monkeypatch.setattr(chatgpt_switch, "switch_codex_account", lambda session_token="", cookies="": (False, {}))
+
+    platform = ChatGPTPlatform(RegisterConfig())
+    account = Account(
+        platform="chatgpt", email="user@example.com", password="", token="", extra={"session_token": "tok"}
+    )
+    result = platform._execute_platform_action("switch_desktop", account, {})
+    assert render_marker(result["error"], "zh") == "切换失败"
+
+
+def test_chatgpt_switch_desktop_upstream_error_key_passes_through_untouched(monkeypatch):
+    """When switch_data carries its own "error" key (a marker or plain text),
+    the DW-41 fallback default must never override it."""
+    import platforms.chatgpt.switch as chatgpt_switch
+    from i18n import render_marker
+    from platforms.chatgpt.plugin import ChatGPTPlatform
+
+    # Deliberately a different key than the DW-41 fallback (chatgpt.d08fd422),
+    # so this test cannot pass by accident if the fallback ever overwrites it.
+    upstream_marker = json.dumps({"i18n_key": "windsurf.ba57068f", "i18n_params": {}}, ensure_ascii=False)
+    monkeypatch.setattr(chatgpt_switch, "close_codex_app", lambda: (True, "closed"))
+    monkeypatch.setattr(
+        chatgpt_switch,
+        "switch_codex_account",
+        lambda session_token="", cookies="": (False, {"error": upstream_marker}),
+    )
+
+    platform = ChatGPTPlatform(RegisterConfig())
+    account = Account(
+        platform="chatgpt", email="user@example.com", password="", token="", extra={"session_token": "tok"}
+    )
+    result = platform._execute_platform_action("switch_desktop", account, {})
+    assert render_marker(result["error"], "en") == "The account is missing a session_token"
+    assert render_marker(result["error"], "en") != "Switch failed"
+
+
 # --- compound cursor success: switch + restart compose into one coherent
 #     sentence, never two concatenated still-encoded markers -----------------
 

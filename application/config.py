@@ -22,7 +22,11 @@ class ConfigService:
 
     def update_config(self, data: dict[str, str]) -> dict:
         if "ui_language" in data and data["ui_language"] not in LOCALES:
-            raise ValueError(f"ui_language must be one of {', '.join(LOCALES)}")
+            locales = ", ".join(LOCALES)
+            exc = ValueError(f"ui_language must be one of {locales}")
+            exc.i18n_key = "application.92334d3a"
+            exc.i18n_params = {"locales": locales}
+            raise exc
         updated, ignored = self.repository.update_flat(data)
         return {"ok": True, "updated": updated, "ignored": ignored}
 

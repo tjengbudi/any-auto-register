@@ -32,6 +32,7 @@
     "558518b1": "Task failed",
     "6f96c2ad": "Task cancelled",
     "9145106d": "Task interrupted",
+    "92334d3a": "ui_language must be one of {locales}",
     "94b52a85": "Third-party account",
     "bd201104": "The check task has started",
     "c161fc9b": "Headless browser (auto)",
@@ -61,6 +62,7 @@
     "21e96f09": "/Applications/Codex.app not found; please start Codex manually",
     "24c36656": "Attempted to close Codex",
     "26dc9dcc": "Refresh token",
+    "26eac015": "Switch to Codex desktop requires session_token",
     "29992db3": "Codex local cookies written; preparing to restart the desktop app",
     "36d0f3f8": "Missing __Secure-next-auth.session-token; cannot switch the local Codex desktop account",
     "3ea22b5f": "Failed to write Codex cookies: {reason}",
@@ -73,6 +75,7 @@
     "a4965ed9": "Upload CPA",
     "c1cfa134": "Plan",
     "c5f65fdd": "Codex restarted",
+    "d08fd422": "Switch failed",
     "d912a29d": "Failed to start Codex: {reason}",
     "d9186615": "Upload Team Manager",
     "e57e69cb": "Check account status/subscription"
