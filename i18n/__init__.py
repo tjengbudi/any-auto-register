@@ -289,6 +289,19 @@ def _parse_marker(value: str) -> tuple[str, dict] | None:
     """把 value 解析为 (i18n_key, i18n_params)；形状不吻合时返回 None —
     Parse `value` into (i18n_key, i18n_params); returns None when the shape
     does not match exactly.
+
+    "形状吻合"是精确匹配：解码后的对象必须恰好拥有 {"i18n_key", "i18n_params"}
+    这两个键，不多也不少，i18n_key 必须是 str，i18n_params 必须是 dict —
+    "Matches exactly" means an exact key set: the decoded object must have
+    precisely the two keys `i18n_key` (str) and `i18n_params` (dict) -- no
+    more, no fewer.
+
+    这是刻意的精确形状匹配，不是类型收窄上的疏漏：一段碰巧解码成这个精确形状的
+    字符串，即便不是任何标记生产站点写出来的，也会被当作标记渲染，这是设计使然 —
+    This is deliberate exact-shape matching, not a type-narrowing gap: a
+    string that happens to decode into this exact shape is rendered as a
+    marker even when no marker-producing call site ever wrote it -- that is
+    by design, not an accident.
     """
     try:
         parsed = json.loads(value)
@@ -314,6 +327,39 @@ def render_marker(value: str, lang: str, *, _depth: int = 0) -> str:
     is treated as a marker; anything else (plain text, unrelated JSON, a
     mismatched shape) passes through unchanged, so this is safe to apply to
     any string without the caller pre-checking its shape.
+
+    i18n_params 里的值只能是 JSON 标量（AD-7），所以一个标记只能嵌套在字符串类型
+    的参数里；如果某个参数值本身是 dict/list（哪怕里面又装着一个标记形状的字符串），
+    下面的参数循环不会解析它，会原样传给 t()。只有当渲染出的目录字符串里的占位符
+    确实引用了这个参数名时，_StrictFormatter.format_field 已有的标量守卫才会拦下
+    它，把整体渲染降级为裸 i18n_key；如果占位符压根没引用这个参数名，这个值会被
+    悄悄忽略——两种情况下都不会把 Python repr 泄漏到界面上 —
+    `i18n_params` values must be JSON scalars (AD-7), so a marker can only ever
+    nest inside a string-typed param. A dict/list param value -- even one that
+    itself contains a marker-shaped string -- is not resolved by the loop
+    below; it passes through unchanged to `t()`. Only when the rendered
+    catalog string's placeholder actually references that param name does
+    `_StrictFormatter.format_field`'s existing scalar guard catch it and
+    degrade the whole render to the bare `i18n_key`; if no placeholder
+    references that param name, the value is silently ignored instead.
+    Either way, no Python repr ever leaks into the rendered text.
+
+    这个形状没有 sentinel 字段去区分"有意的标记"和"碰巧长成这样"：这不是说参数值
+    永远不会误吻合（一个自家调用点把未校验的调用方字符串塞进 i18n_params，那个
+    字符串本身仍可能巧合成标记形状），而是说每一个标记信封都由自家代码写出，
+    因此没有第三方能生产这个信封形状；加一个 sentinel 字段去堵上参数值那层的
+    巧合风险，会是一次协议形状变更，牵连到 Epic 4 的 detail_json key 路径和
+    Epic 5 还没建的 customer portal，代价大于这个窄范围问题本身 —
+    The shape carries no sentinel field distinguishing an intentional marker
+    from a coincidental one. This is not a claim that a param value can never
+    coincidentally collide -- a first-party call site can embed an unvalidated
+    caller-supplied string into `i18n_params`, and that string can itself
+    happen to be marker-shaped. It is a claim that every marker *envelope* is
+    written by first-party code, so no third party can produce this envelope
+    shape. Adding a sentinel to close the param-value collision case too would
+    be a wire-shape change rippling into Epic 4's `detail_json` key path and
+    Epic 5's not-yet-built customer portal, a cost this narrow scope does not
+    justify.
     """
     if not isinstance(value, str):
         return value

@@ -500,6 +500,48 @@ class TestRenderMarker:
         # Never leaves an unresolved marker's raw JSON inside the rendered text.
         assert "i18n_key" not in i18n.render_marker(composed, "en")
 
+    def test_coincidentally_marker_shaped_payload_renders_as_marker(self, monkeypatch):
+        # Contract pin: exact-key-set matching is deliberate, not accidental.
+        # Any string that decodes to exactly {"i18n_key": str,
+        # "i18n_params": dict} is rendered as a marker even if it was never
+        # produced by a marker-writing call site -- this is by design.
+        _set_catalogs(
+            monkeypatch,
+            zh={"cursor": {"coincidence": "巧合"}},
+            en={"cursor": {"coincidence": "Coincidence"}},
+        )
+        payload = json.dumps(
+            {"i18n_key": "cursor.coincidence", "i18n_params": {}},
+            ensure_ascii=False,
+        )
+        assert i18n.render_marker(payload, "en") == "Coincidence"
+
+    def test_non_scalar_param_with_nested_marker_string_degrades_to_bare_key(
+        self, monkeypatch
+    ):
+        # A dict/list-valued i18n_params entry cannot be resolved by the
+        # str-only branch in render_marker's params loop, even when it
+        # contains a marker-shaped string inside it. It reaches t() unchanged
+        # and _StrictFormatter.format_field's scalar guard (AD-7) degrades
+        # the whole render to the bare i18n_key -- no raw marker JSON and no
+        # Python repr of the list leaks into the rendered text.
+        _set_catalogs(
+            monkeypatch,
+            zh={"kiro": {"deadbeef": "刷新失败: {code}"}},
+            en={"kiro": {"deadbeef": "Refresh failed: {code}"}},
+        )
+        inner_marker = json.dumps(
+            {"i18n_key": "kiro.deadbeef", "i18n_params": {}}, ensure_ascii=False
+        )
+        marker = json.dumps(
+            {"i18n_key": "kiro.deadbeef", "i18n_params": {"code": [inner_marker]}},
+            ensure_ascii=False,
+        )
+        result = i18n.render_marker(marker, "en")
+        assert result == "kiro.deadbeef"
+        assert "i18n_key" not in result
+        assert "[" not in result and "{" not in result
+
     def test_plain_text_passes_through_unchanged(self):
         assert i18n.render_marker("账号缺少 token", "en") == "账号缺少 token"
 
