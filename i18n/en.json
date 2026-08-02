@@ -243,22 +243,34 @@
   "kiro": {
     "04b73b69": "Kiro can query subscription, trial and credits usage through the Web Portal, but this depends on a sessionToken browser session; without one, only the token refresh validation result is returned.",
     "26dc9dcc": "Refresh token",
+    "414ec63b": "Kiro IDE restarted",
     "42414eea": "The account has no refreshToken/clientId/clientSecret; remote refresh validation cannot run",
     "5b67f763": "Switch to desktop app",
     "6106f0a1": "Refresh failed",
+    "9311bf9d": "{switch_msg}. {restart_msg}",
+    "aa840b4a": "Kiro IDE closed (install path not found; please start it manually)",
     "c72eda8a": "Missing refreshToken / clientId / clientSecret",
+    "c744b509": "Restart failed: {reason}",
     "cfa125f5": "The account has no refreshToken/clientId/clientSecret; skipping remote refresh validation",
     "da0f5916": "Check account status / quota",
-    "e64ec6cd": "Could not resolve UserId from the Kiro Web Portal session"
+    "e64ec6cd": "Could not resolve UserId from the Kiro Web Portal session",
+    "f0af92d4": "Switch succeeded; Kiro IDE will automatically use the new account",
+    "fe53dc8a": "Switch failed: {reason}"
   },
   "trae": {
+    "05d8c318": "Trae IDE closed (install path not found; please start it manually)",
     "2339340a": "Failed to get user info",
+    "28619c8c": "Trae IDE restarted",
     "2a2280d2": "Please open the upgrade link in your browser to complete the Pro subscription",
     "3012e673": "Get user info",
+    "40099cb0": "Switch succeeded; restart Trae IDE for the new account to take effect",
     "4f63142e": "Failed to get the upgrade link; the token may have expired, please re-register",
     "5b67f763": "Switch to desktop app",
+    "9311bf9d": "{switch_msg}. {restart_msg}",
     "ba8781bf": "The account is missing a token",
-    "c90d6d67": "Get upgrade link"
+    "c744b509": "Restart failed: {reason}",
+    "c90d6d67": "Get upgrade link",
+    "fe53dc8a": "Switch failed: {reason}"
   },
   "windsurf": {
     "0abfa13e": "The account is missing a Windsurf password; browser automation cannot run",

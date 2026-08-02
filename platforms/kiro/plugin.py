@@ -226,8 +226,20 @@ class KiroPlatform(BasePlatform):
             portal_state = get_kiro_portal_state(access_token, session_token, profile_arn=profile_arn) or {}
             usage_summary = summarize_kiro_usage(portal_state)
             restart_ok, restart_msg = restart_kiro_ide()
+            # msg/restart_msg 都已经是标记字符串；不能直接拼接两段还没渲染的
+            # JSON，改用一个新的组合模板 key，把两个标记作为它的参数嵌套进去，
+            # render_marker 会自底向上解析 (Design Notes: Composition example) —
+            # msg/restart_msg are already marker strings; two still-encoded
+            # markers must never be string-concatenated. Compose them instead
+            # via a new template key whose params nest the two markers;
+            # render_marker resolves them bottom-up.
+            composed_message = (
+                _marker("kiro.9311bf9d", switch_msg=msg, restart_msg=restart_msg)
+                if restart_ok
+                else msg
+            )
             return {"ok": True, "data": {
-                "message": f"{msg}。{restart_msg}" if restart_ok else msg,
+                "message": composed_message,
                 "access_token": access_token,
                 "accessToken": access_token,
                 "refreshToken": refresh_token,

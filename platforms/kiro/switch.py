@@ -387,11 +387,14 @@ def switch_kiro_account(
                 json.dumps(client_reg, indent=2, ensure_ascii=False),
             )
 
-        return True, "切换成功，Kiro IDE 将自动使用新账号"
+        # worker 线程无请求上下文，写入标记字符串，由读边界渲染 (AD-3/AD-8) —
+        # No request context in a worker thread; write a marker string,
+        # rendered at the read boundary (AD-3/AD-8).
+        return True, json.dumps({"i18n_key": "kiro.f0af92d4", "i18n_params": {}}, ensure_ascii=False)
 
     except Exception as e:
         logger.error(f"Kiro 账号切换失败: {e}")
-        return False, f"切换失败: {str(e)}"
+        return False, json.dumps({"i18n_key": "kiro.fe53dc8a", "i18n_params": {"reason": str(e)}}, ensure_ascii=False)
 
 
 def restart_kiro_ide() -> Tuple[bool, str]:
@@ -402,6 +405,12 @@ def restart_kiro_ide() -> Tuple[bool, str]:
 
     sys = platform.system()
 
+    # worker 线程无请求上下文，写入标记字符串，由读边界渲染 (AD-3/AD-8) —
+    # No request context in a worker thread; write marker strings, rendered
+    # at the read boundary (AD-3/AD-8).
+    restarted_marker = json.dumps({"i18n_key": "kiro.414ec63b", "i18n_params": {}}, ensure_ascii=False)
+    closed_marker = json.dumps({"i18n_key": "kiro.aa840b4a", "i18n_params": {}}, ensure_ascii=False)
+
     try:
         if sys == "Darwin":
             subprocess.run(["osascript", "-e", 'quit app "Kiro"'], capture_output=True)
@@ -409,8 +418,8 @@ def restart_kiro_ide() -> Tuple[bool, str]:
             kiro_app = "/Applications/Kiro.app"
             if os.path.exists(kiro_app):
                 subprocess.Popen(["open", "-a", "Kiro"])
-                return True, "Kiro IDE 已重启"
-            return True, "已关闭 Kiro IDE（未找到应用路径，请手动启动）"
+                return True, restarted_marker
+            return True, closed_marker
 
         elif sys == "Windows":
             subprocess.run(
@@ -423,8 +432,8 @@ def restart_kiro_ide() -> Tuple[bool, str]:
             kiro_exe = os.path.join(localappdata, "Programs", "Kiro", "Kiro.exe")
             if os.path.exists(kiro_exe):
                 subprocess.Popen([kiro_exe])
-                return True, "Kiro IDE 已重启"
-            return True, "已关闭 Kiro IDE（未找到应用路径，请手动启动）"
+                return True, restarted_marker
+            return True, closed_marker
 
         else:
             subprocess.run(["pkill", "-f", "kiro"], capture_output=True)
@@ -432,16 +441,16 @@ def restart_kiro_ide() -> Tuple[bool, str]:
             for path in ["/usr/bin/kiro", os.path.expanduser("~/.local/bin/kiro")]:
                 if os.path.exists(path):
                     subprocess.Popen([path])
-                    return True, "Kiro IDE 已重启"
+                    return True, restarted_marker
             try:
                 subprocess.Popen(["kiro"])
-                return True, "Kiro IDE 已重启"
+                return True, restarted_marker
             except FileNotFoundError:
-                return True, "已关闭 Kiro IDE（未找到应用路径，请手动启动）"
+                return True, closed_marker
 
     except Exception as e:
         logger.error(f"Kiro IDE 重启失败: {e}")
-        return False, f"重启失败: {str(e)}"
+        return False, json.dumps({"i18n_key": "kiro.c744b509", "i18n_params": {"reason": str(e)}}, ensure_ascii=False)
 
 
 def read_current_kiro_account() -> dict | None:

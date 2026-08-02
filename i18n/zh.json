@@ -267,25 +267,34 @@
     "47ec367e": "Kiro %s 失败: HTTP %s %s",
     "5b67f763": "切换到桌面应用",
     "6106f0a1": "刷新失败",
+    "9311bf9d": "{switch_msg}。{restart_msg}",
     "9d00012a": "获取 Kiro account/usage 页面失败: HTTP %s",
     "aa840b4a": "已关闭 Kiro IDE（未找到应用路径，请手动启动）",
     "c72eda8a": "缺少 refreshToken / clientId / clientSecret",
+    "c744b509": "重启失败: {reason}",
     "cfa125f5": "当前账号未提供 refreshToken/clientId/clientSecret，跳过远端刷新校验",
     "cfeae2ac": "等待验证码...",
     "da0f5916": "查询账号状态/额度提示",
     "e64ec6cd": "无法从 Kiro Web Portal 会话中解析 UserId",
     "ebe2e7d4": "Kiro %s 异常: %s",
-    "f0af92d4": "切换成功，Kiro IDE 将自动使用新账号"
+    "f0af92d4": "切换成功，Kiro IDE 将自动使用新账号",
+    "fe53dc8a": "切换失败: {reason}"
   },
   "trae": {
+    "05d8c318": "已关闭 Trae IDE（未找到应用路径，请手动启动）",
     "2339340a": "获取用户信息失败",
+    "28619c8c": "Trae IDE 已重启",
     "2a2280d2": "请在浏览器中打开升级链接完成 Pro 订阅",
     "3012e673": "获取用户信息",
+    "40099cb0": "切换成功，请重启 Trae IDE 使新账号生效",
     "4f63142e": "获取升级链接失败，token 可能已过期，请重新注册",
     "5b67f763": "切换到桌面应用",
+    "9311bf9d": "{switch_msg}。{restart_msg}",
     "ba8781bf": "账号缺少 token",
+    "c744b509": "重启失败: {reason}",
     "c90d6d67": "获取升级链接",
-    "cfeae2ac": "等待验证码..."
+    "cfeae2ac": "等待验证码...",
+    "fe53dc8a": "切换失败: {reason}"
   },
   "windsurf": {
     "0abfa13e": "账号缺少 Windsurf 密码，无法执行浏览器自动化",

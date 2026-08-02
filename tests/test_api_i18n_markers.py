@@ -451,3 +451,341 @@ def test_solver_restart_renders_chinese_default(client, monkeypatch):
     resp = client.post("/api/solver/restart")
     assert resp.status_code == 200
     assert resp.json()["message"] == "重启中"
+
+
+# --- DW-36: kiro/trae switch.py + plugin.py returned-payload migration -----
+#
+# switch_kiro_account/restart_kiro_ide/switch_trae_account/restart_trae_ide
+# used to return raw Chinese (ok, msg) tuples; they now return
+# json.dumps({"i18n_key", "i18n_params"}) markers mirroring cursor/switch.py.
+# Tests assert the decoded marker's i18n_key/i18n_params, never rendered
+# text, per DW-36's decision.
+
+
+def test_switch_kiro_account_success_marker(tmp_path, monkeypatch):
+    import platforms.kiro.switch as kiro_switch
+
+    monkeypatch.setattr(kiro_switch, "_get_cache_dir", lambda: str(tmp_path))
+
+    ok, marker = kiro_switch.switch_kiro_account(
+        access_token="at", refresh_token="rt", client_id="cid", client_secret="secret"
+    )
+    assert ok is True
+    assert json.loads(marker) == {"i18n_key": "kiro.f0af92d4", "i18n_params": {}}
+
+
+def test_switch_kiro_account_exception_marker(tmp_path, monkeypatch):
+    import platforms.kiro.switch as kiro_switch
+
+    monkeypatch.setattr(kiro_switch, "_get_cache_dir", lambda: str(tmp_path))
+
+    def _boom(*a, **k):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(kiro_switch, "_atomic_write", _boom)
+
+    ok, marker = kiro_switch.switch_kiro_account(access_token="at", refresh_token="rt")
+    assert ok is False
+    assert json.loads(marker) == {"i18n_key": "kiro.fe53dc8a", "i18n_params": {"reason": "boom"}}
+
+
+def test_switch_trae_account_success_marker(tmp_path, monkeypatch):
+    import platforms.trae.switch as trae_switch
+
+    storage_path = str(tmp_path / "storage.json")
+    monkeypatch.setattr(trae_switch, "_get_trae_storage_path", lambda: storage_path)
+
+    ok, marker = trae_switch.switch_trae_account("tok")
+    assert ok is True
+    assert json.loads(marker) == {"i18n_key": "trae.40099cb0", "i18n_params": {}}
+
+
+def test_switch_trae_account_exception_marker(tmp_path, monkeypatch):
+    import platforms.trae.switch as trae_switch
+
+    storage_path = str(tmp_path / "storage.json")
+    monkeypatch.setattr(trae_switch, "_get_trae_storage_path", lambda: storage_path)
+
+    def _boom(*a, **k):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(trae_switch, "_atomic_write", _boom)
+
+    ok, marker = trae_switch.switch_trae_account("tok")
+    assert ok is False
+    assert json.loads(marker) == {"i18n_key": "trae.fe53dc8a", "i18n_params": {"reason": "boom"}}
+
+
+# --- restart_kiro_ide / restart_trae_ide: restart / closed-fallback /
+#     exception paths, all forced onto the Linux OS branch for determinism --
+
+
+def test_restart_kiro_ide_restarts_successfully(monkeypatch):
+    import os
+    import platform
+    import subprocess
+    import time
+
+    import platforms.kiro.switch as kiro_switch
+
+    monkeypatch.setattr(platform, "system", lambda: "Linux")
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: None)
+    monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: None)
+    monkeypatch.setattr(os.path, "exists", lambda path: path == "/usr/bin/kiro")
+    monkeypatch.setattr(time, "sleep", lambda *a, **k: None)
+
+    ok, marker = kiro_switch.restart_kiro_ide()
+    assert ok is True
+    assert json.loads(marker) == {"i18n_key": "kiro.414ec63b", "i18n_params": {}}
+
+
+def test_restart_kiro_ide_falls_back_to_closed_marker(monkeypatch):
+    import os
+    import platform
+    import subprocess
+    import time
+
+    import platforms.kiro.switch as kiro_switch
+
+    def _popen(args, *a, **k):
+        raise FileNotFoundError("no kiro binary")
+
+    monkeypatch.setattr(platform, "system", lambda: "Linux")
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: None)
+    monkeypatch.setattr(subprocess, "Popen", _popen)
+    monkeypatch.setattr(os.path, "exists", lambda path: False)
+    monkeypatch.setattr(time, "sleep", lambda *a, **k: None)
+
+    ok, marker = kiro_switch.restart_kiro_ide()
+    assert ok is True
+    assert json.loads(marker) == {"i18n_key": "kiro.aa840b4a", "i18n_params": {}}
+
+
+def test_restart_kiro_ide_exception_marker(monkeypatch):
+    import platform
+    import subprocess
+
+    import platforms.kiro.switch as kiro_switch
+
+    def _run(*a, **k):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(platform, "system", lambda: "Linux")
+    monkeypatch.setattr(subprocess, "run", _run)
+
+    ok, marker = kiro_switch.restart_kiro_ide()
+    assert ok is False
+    assert json.loads(marker) == {"i18n_key": "kiro.c744b509", "i18n_params": {"reason": "boom"}}
+
+
+def test_restart_trae_ide_restarts_successfully(monkeypatch):
+    import os
+    import platform
+    import subprocess
+    import time
+
+    import platforms.trae.switch as trae_switch
+
+    monkeypatch.setattr(platform, "system", lambda: "Linux")
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: None)
+    monkeypatch.setattr(subprocess, "Popen", lambda *a, **k: None)
+    monkeypatch.setattr(os.path, "exists", lambda path: path == "/usr/bin/trae")
+    monkeypatch.setattr(time, "sleep", lambda *a, **k: None)
+
+    ok, marker = trae_switch.restart_trae_ide()
+    assert ok is True
+    assert json.loads(marker) == {"i18n_key": "trae.28619c8c", "i18n_params": {}}
+
+
+def test_restart_trae_ide_falls_back_to_closed_marker(monkeypatch):
+    import os
+    import platform
+    import subprocess
+    import time
+
+    import platforms.trae.switch as trae_switch
+
+    def _popen(args, *a, **k):
+        raise FileNotFoundError("no trae binary")
+
+    monkeypatch.setattr(platform, "system", lambda: "Linux")
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: None)
+    monkeypatch.setattr(subprocess, "Popen", _popen)
+    monkeypatch.setattr(os.path, "exists", lambda path: False)
+    monkeypatch.setattr(time, "sleep", lambda *a, **k: None)
+
+    ok, marker = trae_switch.restart_trae_ide()
+    assert ok is True
+    assert json.loads(marker) == {"i18n_key": "trae.05d8c318", "i18n_params": {}}
+
+
+def test_restart_trae_ide_exception_marker(monkeypatch):
+    import platform
+    import subprocess
+
+    import platforms.trae.switch as trae_switch
+
+    def _run(*a, **k):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(platform, "system", lambda: "Linux")
+    monkeypatch.setattr(subprocess, "run", _run)
+
+    ok, marker = trae_switch.restart_trae_ide()
+    assert ok is False
+    assert json.loads(marker) == {"i18n_key": "trae.c744b509", "i18n_params": {"reason": "boom"}}
+
+
+# --- compound kiro/trae success: switch + restart compose into one marker,
+#     structure asserted (not rendered text), per DW-36's decision ----------
+
+
+def test_kiro_switch_restart_composition_marker_structure(monkeypatch):
+    import platforms.kiro.switch as kiro_switch
+    from i18n import render_marker
+    from platforms.kiro.plugin import KiroPlatform
+
+    switch_marker = json.dumps({"i18n_key": "kiro.f0af92d4", "i18n_params": {}}, ensure_ascii=False)
+    restart_marker = json.dumps({"i18n_key": "kiro.414ec63b", "i18n_params": {}}, ensure_ascii=False)
+
+    monkeypatch.setattr(kiro_switch, "switch_kiro_account", lambda **kwargs: (True, switch_marker))
+    monkeypatch.setattr(kiro_switch, "restart_kiro_ide", lambda: (True, restart_marker))
+    monkeypatch.setattr(kiro_switch, "read_current_kiro_account", lambda: {})
+    monkeypatch.setattr(kiro_switch, "get_kiro_portal_state", lambda *a, **k: {})
+    monkeypatch.setattr(kiro_switch, "summarize_kiro_usage", lambda *a, **k: None)
+    monkeypatch.setattr(kiro_switch, "get_kiro_desktop_state", lambda *a, **k: {"available": False})
+
+    platform_ = KiroPlatform(RegisterConfig())
+    account = Account(
+        platform="kiro", email="user@example.com", password="", token="tok", extra={"accessToken": "tok"}
+    )
+    result = platform_.execute_action("switch_account", account, {})
+    assert result["ok"] is True
+
+    message = result["data"]["message"]
+    decoded = json.loads(message)
+    assert decoded["i18n_key"] == "kiro.9311bf9d"
+    assert decoded["i18n_params"] == {"switch_msg": switch_marker, "restart_msg": restart_marker}
+
+    # Light resolution check confirming the composed key resolves to
+    # non-key, non-marker text in both languages -- the primary assertion
+    # above is structural.
+    rendered_en = render_marker(message, "en")
+    assert rendered_en != message
+    assert "i18n_key" not in rendered_en
+    rendered_zh = render_marker(message, "zh")
+    assert rendered_zh != message
+    assert "i18n_key" not in rendered_zh
+
+
+def test_kiro_switch_restart_composition_uses_switch_message_when_restart_fails(monkeypatch):
+    """When restart_ok is False, data.message is the bare switch marker --
+    matching cursor/plugin.py's precedent composition ternary exactly (the
+    restart failure marker is not surfaced here; DW-36 replicates the
+    existing shape, it does not change it)."""
+    import platforms.kiro.switch as kiro_switch
+    from platforms.kiro.plugin import KiroPlatform
+
+    switch_marker = json.dumps({"i18n_key": "kiro.f0af92d4", "i18n_params": {}}, ensure_ascii=False)
+    restart_failure_marker = json.dumps(
+        {"i18n_key": "kiro.c744b509", "i18n_params": {"reason": "boom"}}, ensure_ascii=False
+    )
+
+    monkeypatch.setattr(kiro_switch, "switch_kiro_account", lambda **kwargs: (True, switch_marker))
+    monkeypatch.setattr(kiro_switch, "restart_kiro_ide", lambda: (False, restart_failure_marker))
+    monkeypatch.setattr(kiro_switch, "read_current_kiro_account", lambda: {})
+    monkeypatch.setattr(kiro_switch, "get_kiro_portal_state", lambda *a, **k: {})
+    monkeypatch.setattr(kiro_switch, "summarize_kiro_usage", lambda *a, **k: None)
+    monkeypatch.setattr(kiro_switch, "get_kiro_desktop_state", lambda *a, **k: {"available": False})
+
+    platform_ = KiroPlatform(RegisterConfig())
+    account = Account(
+        platform="kiro", email="user@example.com", password="", token="tok", extra={"accessToken": "tok"}
+    )
+    result = platform_.execute_action("switch_account", account, {})
+    assert result["ok"] is True
+    assert result["data"]["message"] == switch_marker
+    # restart's own failure marker still travels separately in "restart".
+    assert result["data"]["restart"] == {"ok": False, "message": restart_failure_marker}
+
+
+def test_trae_switch_restart_composition_marker_structure(monkeypatch):
+    import platforms.trae.switch as trae_switch
+    from i18n import render_marker
+    from platforms.trae.plugin import TraePlatform
+
+    switch_marker = json.dumps({"i18n_key": "trae.40099cb0", "i18n_params": {}}, ensure_ascii=False)
+    restart_marker = json.dumps({"i18n_key": "trae.28619c8c", "i18n_params": {}}, ensure_ascii=False)
+
+    monkeypatch.setattr(trae_switch, "switch_trae_account", lambda *a, **k: (True, switch_marker))
+    monkeypatch.setattr(trae_switch, "restart_trae_ide", lambda: (True, restart_marker))
+
+    platform_ = TraePlatform(RegisterConfig())
+    account = Account(platform="trae", email="user@example.com", password="", token="tok")
+    result = platform_.execute_action("switch_account", account, {})
+    assert result["ok"] is True
+
+    message = result["data"]["message"]
+    decoded = json.loads(message)
+    assert decoded["i18n_key"] == "trae.9311bf9d"
+    assert decoded["i18n_params"] == {"switch_msg": switch_marker, "restart_msg": restart_marker}
+
+    rendered_en = render_marker(message, "en")
+    assert rendered_en != message
+    assert "i18n_key" not in rendered_en
+    rendered_zh = render_marker(message, "zh")
+    assert rendered_zh != message
+    assert "i18n_key" not in rendered_zh
+
+
+def test_trae_switch_restart_composition_uses_switch_message_when_restart_fails(monkeypatch):
+    """Same precedent-matching behavior as kiro's equivalent test above --
+    when restart_ok is False, data.message is the bare switch marker."""
+    import platforms.trae.switch as trae_switch
+    from platforms.trae.plugin import TraePlatform
+
+    switch_marker = json.dumps({"i18n_key": "trae.40099cb0", "i18n_params": {}}, ensure_ascii=False)
+    restart_failure_marker = json.dumps(
+        {"i18n_key": "trae.c744b509", "i18n_params": {"reason": "boom"}}, ensure_ascii=False
+    )
+
+    monkeypatch.setattr(trae_switch, "switch_trae_account", lambda *a, **k: (True, switch_marker))
+    monkeypatch.setattr(trae_switch, "restart_trae_ide", lambda: (False, restart_failure_marker))
+
+    platform_ = TraePlatform(RegisterConfig())
+    account = Account(platform="trae", email="user@example.com", password="", token="tok")
+    result = platform_.execute_action("switch_account", account, {})
+    assert result["ok"] is True
+    assert result["data"]["message"] == switch_marker
+
+
+# --- resolution smoke test: every DW-36 key resolves for both en and zh,
+#     never falling back to the raw key -------------------------------------
+
+
+def test_dw36_new_and_reused_keys_resolve_for_en_and_zh():
+    from i18n import t
+
+    # Keys with no {param} placeholder resolve with no kwargs; keys that
+    # interpolate need matching params or t()'s formatter degrades to the
+    # raw key (see i18n/__init__.py's _StrictFormatter), which would make
+    # this smoke test indistinguishable from a genuinely missing key.
+    keys_and_params = [
+        # Reused, previously-orphaned kiro.* keys (now live via this bundle).
+        ("kiro.f0af92d4", {}),
+        ("kiro.414ec63b", {}),
+        ("kiro.aa840b4a", {}),
+        # Hand-added dynamic/compose keys.
+        ("kiro.fe53dc8a", {"reason": "boom"}),
+        ("kiro.c744b509", {"reason": "boom"}),
+        ("kiro.9311bf9d", {"switch_msg": "s", "restart_msg": "r"}),
+        ("trae.40099cb0", {}),
+        ("trae.28619c8c", {}),
+        ("trae.05d8c318", {}),
+        ("trae.fe53dc8a", {"reason": "boom"}),
+        ("trae.c744b509", {"reason": "boom"}),
+        ("trae.9311bf9d", {"switch_msg": "s", "restart_msg": "r"}),
+    ]
+    for key, params in keys_and_params:
+        assert t(key, "en", **params) != key, key
+        assert t(key, "zh", **params) != key, key

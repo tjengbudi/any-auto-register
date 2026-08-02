@@ -8,6 +8,13 @@ from core.registration.helpers import resolve_timeout
 from core.registry import register
 
 
+def _marker(key: str, **params) -> str:
+    # worker 线程无请求上下文，写入标记字符串，由读边界渲染 (AD-3/AD-8) —
+    # No request context in a worker thread; write a marker string, rendered
+    # at the read boundary (AD-3/AD-8).
+    return json.dumps({"i18n_key": key, "i18n_params": params}, ensure_ascii=False)
+
+
 @register
 class TraePlatform(BasePlatform):
     name = "trae"
@@ -117,17 +124,29 @@ class TraePlatform(BasePlatform):
             region = account.region or ""
             
             if not token:
-                return {"ok": False, "error": json.dumps({"i18n_key": "trae.ba8781bf", "i18n_params": {}}, ensure_ascii=False)}
-            
+                return {"ok": False, "error": _marker("trae.ba8781bf")}
+
             ok, msg = switch_trae_account(token, user_id, email, region)
             if not ok:
                 return {"ok": False, "error": msg}
-            
+
             restart_ok, restart_msg = restart_trae_ide()
+            # msg/restart_msg 都已经是标记字符串；不能直接拼接两段还没渲染的
+            # JSON，改用一个新的组合模板 key，把两个标记作为它的参数嵌套进去，
+            # render_marker 会自底向上解析 (Design Notes: Composition example) —
+            # msg/restart_msg are already marker strings; two still-encoded
+            # markers must never be string-concatenated. Compose them instead
+            # via a new template key whose params nest the two markers;
+            # render_marker resolves them bottom-up.
+            composed_message = (
+                _marker("trae.9311bf9d", switch_msg=msg, restart_msg=restart_msg)
+                if restart_ok
+                else msg
+            )
             return {
                 "ok": True,
                 "data": {
-                    "message": f"{msg}。{restart_msg}" if restart_ok else msg,
+                    "message": composed_message,
                 }
             }
         
@@ -136,12 +155,12 @@ class TraePlatform(BasePlatform):
             
             token = account.token
             if not token:
-                return {"ok": False, "error": json.dumps({"i18n_key": "trae.ba8781bf", "i18n_params": {}}, ensure_ascii=False)}
-            
+                return {"ok": False, "error": _marker("trae.ba8781bf")}
+
             user_info = get_trae_user_info(token)
             if user_info:
                 return {"ok": True, "data": user_info}
-            return {"ok": False, "error": json.dumps({"i18n_key": "trae.2339340a", "i18n_params": {}}, ensure_ascii=False)}
+            return {"ok": False, "error": _marker("trae.2339340a")}
         
         elif action_id == "get_cashier_url":
             from platforms.trae.core import TraeRegister
@@ -154,7 +173,7 @@ class TraePlatform(BasePlatform):
                     token = account.token
                 cashier_url = reg.step7_create_order(token)
             if not cashier_url:
-                return {"ok": False, "error": json.dumps({"i18n_key": "trae.4f63142e", "i18n_params": {}}, ensure_ascii=False)}
-            return {"ok": True, "data": {"cashier_url": cashier_url, "message": json.dumps({"i18n_key": "trae.2a2280d2", "i18n_params": {}}, ensure_ascii=False)}}
+                return {"ok": False, "error": _marker("trae.4f63142e")}
+            return {"ok": True, "data": {"cashier_url": cashier_url, "message": _marker("trae.2a2280d2")}}
 
         raise NotImplementedError(f"未知操作: {action_id}")
