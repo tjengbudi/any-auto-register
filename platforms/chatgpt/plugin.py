@@ -272,73 +272,6 @@ class ChatGPTPlatform(BasePlatform):
         a.user_id = account.user_id or ""
         a.account_id = account.user_id or ""
 
-        if action_id == "switch_desktop":
-            from platforms.chatgpt.switch import (
-                close_codex_app,
-                extract_session_token,
-                fetch_chatgpt_account_state,
-                get_codex_desktop_state,
-                read_current_codex_account,
-                restart_codex_app,
-                switch_codex_account,
-            )
-
-            session_token = extract_session_token(a.session_token, a.cookies)
-            if not session_token:
-                return {
-                    "ok": False,
-                    "error": json.dumps({"i18n_key": "chatgpt.26eac015", "i18n_params": {}}, ensure_ascii=False),
-                }
-
-            close_ok, close_msg = close_codex_app()
-            switch_ok, switch_data = switch_codex_account(session_token=session_token, cookies=a.cookies)
-            if not switch_ok:
-                fallback = json.dumps({"i18n_key": "chatgpt.d08fd422", "i18n_params": {}}, ensure_ascii=False)
-                return {"ok": False, "error": switch_data.get("error", fallback)}
-
-            remote_state = fetch_chatgpt_account_state(
-                access_token=a.access_token,
-                session_token=session_token,
-                cookies=a.cookies,
-                proxy=proxy,
-            )
-            local_state = read_current_codex_account()
-            restart_ok, restart_msg = restart_codex_app()
-            switch_msg = switch_data.get("message", "Codex credentials written")
-            # switch_msg/close_msg/restart_msg 都已经是标记字符串；不能直接拼接
-            # 三段还没渲染的 JSON（"Never string-concatenate two still-encoded
-            # markers"），改用一个组合模板 key，把三个标记作为参数嵌套进去，
-            # render_marker 会自底向上解析 (Design Notes: Composition example) —
-            # switch_msg/close_msg/restart_msg are already marker strings;
-            # still-encoded markers must never be string-concatenated.
-            # Compose them via a template key whose params nest the three
-            # markers; render_marker resolves them bottom-up.
-            composed_message = json.dumps(
-                {
-                    "i18n_key": "chatgpt.14d3b9d2",
-                    "i18n_params": {
-                        "switch_msg": switch_msg,
-                        "close_msg": close_msg,
-                        "restart_msg": restart_msg,
-                    },
-                },
-                ensure_ascii=False,
-            )
-            data = {
-                "message": composed_message,
-                "close": {"ok": close_ok, "message": close_msg},
-                "restart": {"ok": restart_ok, "message": restart_msg},
-                "local_app_account": local_state,
-                "desktop_app_state": get_codex_desktop_state(),
-                "remote_state": remote_state,
-                "switch_details": switch_data,
-            }
-            if remote_state.get("access_token"):
-                data["access_token"] = remote_state["access_token"]
-            if remote_state.get("refresh_token"):
-                data["refresh_token"] = remote_state["refresh_token"]
-            return {"ok": True, "data": data}
-
         if action_id == "upload_cpa":
             from platforms.chatgpt.cpa_upload import upload_to_cpa, generate_token_json
             token_data = generate_token_json(a)
@@ -407,6 +340,83 @@ class ChatGPTPlatform(BasePlatform):
                 pass
             return {"ok": True, "data": data}
         return {"ok": False, "error": result.error_message}
+
+    def _handle_switch_desktop(self, account: Account, params: dict) -> dict:
+        """Handle switch_desktop capability for ChatGPT."""
+        proxy = self.config.proxy if self.config else None
+        extra = account.extra or {}
+
+        class _A: pass
+        a = _A()
+        a.session_token = extra.get("session_token", "")
+        a.cookies = extra.get("cookies", "")
+        a.access_token = extra.get("access_token") or account.token
+
+        from platforms.chatgpt.switch import (
+            close_codex_app,
+            extract_session_token,
+            fetch_chatgpt_account_state,
+            get_codex_desktop_state,
+            read_current_codex_account,
+            restart_codex_app,
+            switch_codex_account,
+        )
+
+        session_token = extract_session_token(a.session_token, a.cookies)
+        if not session_token:
+            return {
+                "ok": False,
+                "error": json.dumps({"i18n_key": "chatgpt.26eac015", "i18n_params": {}}, ensure_ascii=False),
+            }
+
+        close_ok, close_msg = close_codex_app()
+        switch_ok, switch_data = switch_codex_account(session_token=session_token, cookies=a.cookies)
+        if not switch_ok:
+            fallback = json.dumps({"i18n_key": "chatgpt.d08fd422", "i18n_params": {}}, ensure_ascii=False)
+            return {"ok": False, "error": switch_data.get("error", fallback)}
+
+        remote_state = fetch_chatgpt_account_state(
+            access_token=a.access_token,
+            session_token=session_token,
+            cookies=a.cookies,
+            proxy=proxy,
+        )
+        local_state = read_current_codex_account()
+        restart_ok, restart_msg = restart_codex_app()
+        switch_msg = switch_data.get("message", "Codex credentials written")
+        # switch_msg/close_msg/restart_msg 都已经是标记字符串；不能直接拼接
+        # 三段还没渲染的 JSON（"Never string-concatenate two still-encoded
+        # markers"），改用一个组合模板 key，把三个标记作为参数嵌套进去，
+        # render_marker 会自底向上解析 (Design Notes: Composition example) —
+        # switch_msg/close_msg/restart_msg are already marker strings;
+        # still-encoded markers must never be string-concatenated.
+        # Compose them via a template key whose params nest the three
+        # markers; render_marker resolves them bottom-up.
+        composed_message = json.dumps(
+            {
+                "i18n_key": "chatgpt.14d3b9d2",
+                "i18n_params": {
+                    "switch_msg": switch_msg,
+                    "close_msg": close_msg,
+                    "restart_msg": restart_msg,
+                },
+            },
+            ensure_ascii=False,
+        )
+        data = {
+            "message": composed_message,
+            "close": {"ok": close_ok, "message": close_msg},
+            "restart": {"ok": restart_ok, "message": restart_msg},
+            "local_app_account": local_state,
+            "desktop_app_state": get_codex_desktop_state(),
+            "remote_state": remote_state,
+            "switch_details": switch_data,
+        }
+        if remote_state.get("access_token"):
+            data["access_token"] = remote_state["access_token"]
+        if remote_state.get("refresh_token"):
+            data["refresh_token"] = remote_state["refresh_token"]
+        return {"ok": True, "data": data}
 
     def _handle_generate_link(self, account: Account, params: dict) -> dict:
         """Handle generate_link capability for ChatGPT."""

@@ -63,12 +63,6 @@ def test_sync_action_marker_renders_chinese_default(client):
 
 
 # --- chatgpt switch_desktop guard-clause and fallback markers (DW-41) -------
-#
-# ChatGPTPlatform does not override _handle_switch_desktop, so the standard
-# capability dispatch (BasePlatform._handle_capability) never reaches
-# _execute_platform_action's "switch_desktop" branch -- a pre-existing,
-# unrelated routing gap, out of this bundle's scope. These tests call
-# _execute_platform_action directly to exercise the two markers DW-41 fixes.
 
 
 def test_chatgpt_switch_desktop_missing_session_token_renders_english():
@@ -77,7 +71,7 @@ def test_chatgpt_switch_desktop_missing_session_token_renders_english():
 
     platform = ChatGPTPlatform(RegisterConfig())
     account = Account(platform="chatgpt", email="user@example.com", password="", token="")
-    result = platform._execute_platform_action("switch_desktop", account, {})
+    result = platform.execute_action("switch_desktop", account, {})
     assert result["ok"] is False
     assert render_marker(result["error"], "en") == "Switch to Codex desktop requires session_token"
     assert "i18n_key" not in render_marker(result["error"], "en")
@@ -89,7 +83,7 @@ def test_chatgpt_switch_desktop_missing_session_token_renders_chinese_default():
 
     platform = ChatGPTPlatform(RegisterConfig())
     account = Account(platform="chatgpt", email="user@example.com", password="", token="")
-    result = platform._execute_platform_action("switch_desktop", account, {})
+    result = platform.execute_action("switch_desktop", account, {})
     assert render_marker(result["error"], "zh") == "切换到 Codex 桌面版需要 session_token"
 
 
@@ -105,7 +99,7 @@ def test_chatgpt_switch_desktop_upstream_failure_without_error_key_renders_engli
     account = Account(
         platform="chatgpt", email="user@example.com", password="", token="", extra={"session_token": "tok"}
     )
-    result = platform._execute_platform_action("switch_desktop", account, {})
+    result = platform.execute_action("switch_desktop", account, {})
     assert result["ok"] is False
     assert render_marker(result["error"], "en") == "Switch failed"
 
@@ -122,7 +116,7 @@ def test_chatgpt_switch_desktop_upstream_failure_without_error_key_renders_chine
     account = Account(
         platform="chatgpt", email="user@example.com", password="", token="", extra={"session_token": "tok"}
     )
-    result = platform._execute_platform_action("switch_desktop", account, {})
+    result = platform.execute_action("switch_desktop", account, {})
     assert render_marker(result["error"], "zh") == "切换失败"
 
 
@@ -147,9 +141,27 @@ def test_chatgpt_switch_desktop_upstream_error_key_passes_through_untouched(monk
     account = Account(
         platform="chatgpt", email="user@example.com", password="", token="", extra={"session_token": "tok"}
     )
-    result = platform._execute_platform_action("switch_desktop", account, {})
+    result = platform.execute_action("switch_desktop", account, {})
     assert render_marker(result["error"], "en") == "The account is missing a session_token"
     assert render_marker(result["error"], "en") != "Switch failed"
+
+
+def test_chatgpt_switch_desktop_routes_through_execute_action_not_generic_not_implemented():
+    """DW-43: ChatGPTPlatform now overrides _handle_switch_desktop, so the
+    standard capability dispatch (BasePlatform._handle_capability) reaches it
+    directly via execute_action, instead of falling through to the base
+    class's untranslated "not implemented" string."""
+    from i18n import render_marker
+    from platforms.chatgpt.plugin import ChatGPTPlatform
+
+    platform = ChatGPTPlatform(RegisterConfig())
+    account = Account(platform="chatgpt", email="user@example.com", password="", token="")
+    result = platform.execute_action("switch_desktop", account, {})
+    assert result["ok"] is False
+    rendered = render_marker(result["error"], "en")
+    assert rendered == "Switch to Codex desktop requires session_token"
+    assert rendered != "Capability switch_desktop not implemented for ChatGPT"
+    assert result["error"] != "Capability switch_desktop not implemented for ChatGPT"
 
 
 # --- compound cursor success: switch + restart compose into one coherent
