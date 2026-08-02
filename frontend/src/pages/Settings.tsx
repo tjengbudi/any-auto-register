@@ -765,7 +765,9 @@ export default function Settings({ embedded, defaultTab }: { embedded?: boolean;
     setSaving(true)
     resetSaveNotice()
     try {
-      const response = await updateConfig(form)
+      const payload = { ...form }
+      delete payload.ui_language
+      const response = await updateConfig(payload)
       if (response?.ignored?.length) {
         showIgnored(interpolate(catalog.settings.configIgnoredKeysNotice, { keys: response.ignored.join(', ') }))
       } else {

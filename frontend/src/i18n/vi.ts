@@ -40,6 +40,7 @@ const catalogViRaw: Catalog = {
     languageRowLabel: '',
     savedCheckmark: '',
     configIgnoredKeysNotice: '',
+    languageChangeFailedNotice: '',
     savingEllipsis: '',
     saveButton: '',
     saveConfigButton: '',

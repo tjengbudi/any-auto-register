@@ -103,7 +103,9 @@ function GeneralTab({
     setSaving(true)
     resetSaveNotice()
     try {
-      const response = await updateConfig(form)
+      const payload = { ...form }
+      delete payload.ui_language
+      const response = await updateConfig(payload)
       if (response?.ignored?.length) {
         showIgnored(interpolate(catalog.settings.configIgnoredKeysNotice, { keys: response.ignored.join(', ') }))
       } else {
@@ -111,6 +113,14 @@ function GeneralTab({
       }
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleLanguageChange = async (value: 'zh' | 'en') => {
+    resetSaveNotice()
+    const ok = await setLang(value)
+    if (!ok) {
+      showIgnored(catalog.settings.languageChangeFailedNotice)
     }
   }
 
@@ -134,7 +144,7 @@ function GeneralTab({
           <SettingRow label={catalog.settings.languageRowLabel}>
             <select
               value={lang === 'en' ? 'en' : 'zh'}
-              onChange={(e) => setLang(e.target.value as 'zh' | 'en')}
+              onChange={(e) => handleLanguageChange(e.target.value as 'zh' | 'en')}
               className="control-surface appearance-none"
             >
               {LANGUAGE_OPTIONS.map((o) => (

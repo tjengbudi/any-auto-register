@@ -39,6 +39,7 @@ const catalogEn: Catalog = {
     languageRowLabel: 'Display language',
     savedCheckmark: 'Saved ✓',
     configIgnoredKeysNotice: 'Not saved — unrecognized: {keys}',
+    languageChangeFailedNotice: 'Language change was not saved — try again.',
     savingEllipsis: 'Saving...',
     saveButton: 'Save',
     saveConfigButton: 'Save configuration',

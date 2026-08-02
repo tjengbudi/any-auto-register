@@ -5,6 +5,7 @@ type CacheEntry<T> = {
   value: T | null
   promise: Promise<T> | null
   expiresAt: number
+  generation: number
 }
 
 function createCacheEntry<T>(): CacheEntry<T> {
@@ -12,6 +13,7 @@ function createCacheEntry<T>(): CacheEntry<T> {
     value: null,
     promise: null,
     expiresAt: 0,
+    generation: 0,
   }
 }
 
@@ -32,15 +34,18 @@ function loadCached<T>(
   if (!force && entry.promise) {
     return entry.promise
   }
-  const pending = loader()
+  const generation = entry.generation
+  const pending: Promise<T> = loader()
     .then((value) => {
-      entry.value = value
-      entry.expiresAt = Date.now() + ttlMs
-      entry.promise = null
+      if (entry.generation === generation) {
+        entry.value = value
+        entry.expiresAt = Date.now() + ttlMs
+      }
+      if (entry.promise === pending) entry.promise = null
       return value
     })
     .catch((error) => {
-      entry.promise = null
+      if (entry.promise === pending) entry.promise = null
       throw error
     })
   entry.promise = pending
@@ -55,18 +60,21 @@ export function invalidatePlatformsCache() {
   platformsCache.value = null
   platformsCache.promise = null
   platformsCache.expiresAt = 0
+  platformsCache.generation += 1
 }
 
 export function invalidateConfigCache() {
   configCache.value = null
   configCache.promise = null
   configCache.expiresAt = 0
+  configCache.generation += 1
 }
 
 export function invalidateConfigOptionsCache() {
   configOptionsCache.value = null
   configOptionsCache.promise = null
   configOptionsCache.expiresAt = 0
+  configOptionsCache.generation += 1
 }
 
 export function invalidateAppDataCaches() {

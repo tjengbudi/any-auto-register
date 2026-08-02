@@ -42,13 +42,13 @@ const catalogs: Record<Lang, Catalog> = {
 type LanguageContextValue = {
   lang: Lang
   catalog: Catalog
-  setLang: (next: Lang) => Promise<void>
+  setLang: (next: Lang) => Promise<boolean>
 }
 
 const LanguageContext = createContext<LanguageContextValue>({
   lang: 'zh',
   catalog: catalogZh,
-  setLang: async () => {},
+  setLang: async () => false,
 })
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
@@ -73,16 +73,18 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // 写入失败时静默保留当前语言，不向上抛出未处理的 rejection —
-  // On a failed write, silently keep the current language rather than
-  // letting the rejection go unhandled at the caller.
-  const setLang = async (next: Lang) => {
+  // 写入失败时保留当前语言，不向上抛出未处理的 rejection，改为返回 false 让调用方决定如何提示用户 —
+  // On a failed write, keep the current language and return false instead of throwing,
+  // so the caller decides how to surface the failure to the user.
+  const setLang = async (next: Lang): Promise<boolean> => {
     try {
       await apiFetch('/config', { method: 'PUT', body: JSON.stringify({ data: { ui_language: next } }) })
       invalidateAppDataCaches()
       setLangState(next)
+      return true
     } catch {
-      // no-op: selector visually stays on the previous language
+      // selector visually stays on the previous language; caller decides how to surface the failure
+      return false
     }
   }
 

@@ -38,6 +38,7 @@ const catalogZh = {
     languageRowLabel: '显示语言',
     savedCheckmark: '已保存 ✓',
     configIgnoredKeysNotice: '以下字段未识别，未被保存：{keys}',
+    languageChangeFailedNotice: '语言切换未保存，请重试',
     savingEllipsis: '保存中...',
     saveButton: '保存',
     saveConfigButton: '保存配置',
