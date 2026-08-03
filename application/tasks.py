@@ -21,7 +21,7 @@ from core.datetime_utils import format_local_clock, serialize_datetime
 from core.db import AccountModel, TaskEventModel, TaskLog, TaskModel, engine, save_account
 from core.platform_accounts import build_platform_account
 from core.registry import get
-from i18n import render_marker, render_result
+from i18n import render_marker, render_result, t
 from infrastructure.platform_runtime import PlatformRuntime
 
 TASK_TYPE_REGISTER = "register"
@@ -369,6 +369,9 @@ def claim_next_runnable_task(
     return None
 
 
+_SCALAR_TYPES = (str, int, float, bool, type(None))
+
+
 class TaskLogger:
     def __init__(self, task_id: str):
         self.task_id = task_id
@@ -380,6 +383,21 @@ class TaskLogger:
             event_type=event_type,
             level=level,
             detail=detail,
+        )
+        print(f"[task:{self.task_id}] {message}")
+
+    def log_key(self, key: str, params: dict | None = None, *, level: str = "info", event_type: str = "log") -> None:
+        params = params or {}
+        for name, value in params.items():
+            if not isinstance(value, _SCALAR_TYPES):
+                raise ValueError(f"i18n_params[{name!r}] is not a JSON scalar: {type(value).__name__}")
+        message = t(key, "zh", **params)
+        append_task_event(
+            self.task_id,
+            message,
+            event_type=event_type,
+            level=level,
+            detail={"i18n_key": key, "i18n_params": params},
         )
         print(f"[task:{self.task_id}] {message}")
 
@@ -530,6 +548,7 @@ def _build_platform_instance(platform_name: str, payload: dict[str, Any], logger
         platform.set_logger(logger.log)
     else:
         platform._log_fn = logger.log
+    platform._log_key_fn = logger.log_key
     return platform
 
 

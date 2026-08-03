@@ -62,6 +62,7 @@ class BasePlatform(ABC):
 
         self.config = config or RegisterConfig()
         self._log_fn = print
+        self._log_key_fn = None
         capabilities = get_platform_capabilities(self.name) if self.name else {}
         self.supported_executors = list(capabilities.get("supported_executors", [])) or list(self.supported_executors)
         self.supported_identity_modes = list(capabilities.get("supported_identity_modes", [])) or list(self.supported_identity_modes)
@@ -80,6 +81,12 @@ class BasePlatform(ABC):
 
     def log(self, message: str):
         self._log_fn(message)
+
+    def log_key(self, key: str, **params) -> None:
+        if self._log_key_fn is not None:
+            self._log_key_fn(key, params)
+        else:
+            self._log_fn(t(key, "zh", **params))
 
     def _make_random_password(self, length: int = 16, charset: Optional[str] = None) -> str:
         chars = charset or (string.ascii_letters + string.digits + "!@#$")
@@ -134,6 +141,7 @@ class BasePlatform(ABC):
             email=email,
             password=resolved_password,
             log_fn=self.log,
+            log_key_fn=self._log_key_fn,
         )
 
         if (self.config.executor_type or "") in ("headless", "headed"):

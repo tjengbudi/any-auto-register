@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
+from i18n import t
+
 
 @dataclass(slots=True)
 class RegistrationCapability:
@@ -24,6 +26,7 @@ class RegistrationContext:
     email: str | None
     password: str | None
     log_fn: Callable[[str], None]
+    log_key_fn: Callable[[str, dict], None] | None = None
 
     @property
     def executor_type(self) -> str:
@@ -39,6 +42,12 @@ class RegistrationContext:
 
     def log(self, message: str) -> None:
         self.log_fn(message)
+
+    def log_key(self, key: str, **params) -> None:
+        if self.log_key_fn is not None:
+            self.log_key_fn(key, params)
+        else:
+            self.log_fn(t(key, "zh", **params))
 
 
 @dataclass(slots=True)
