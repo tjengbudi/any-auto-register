@@ -217,7 +217,7 @@ def create_task(
         session.add(task)
         session.commit()
         session.refresh(task)
-    append_task_event(task.id, f"任务已创建: {task_type}", event_type="state")
+    TaskLogger(task.id).log_key("application.540aefd8", {"task_type": task_type}, event_type="state")
     return serialize_task(task)
 
 
@@ -329,15 +329,14 @@ def mark_incomplete_tasks_interrupted() -> None:
         ).all()
         for task in tasks:
             task.status = TASK_STATUS_INTERRUPTED
-            task.error = task.error or "任务在服务重启后被中断"
+            task.error = task.error or _marker("application.6bd7d5bf")
             task.finished_at = _utcnow()
             task.updated_at = _utcnow()
             session.add(task)
         session.commit()
     for task in tasks:
-        append_task_event(
-            task.id,
-            "任务在服务重启后被标记为中断",
+        TaskLogger(task.id).log_key(
+            "application.e0c9f243",
             event_type="state",
             level="warning",
         )
@@ -350,7 +349,7 @@ def request_cancel(task_id: str) -> Optional[dict[str, Any]]:
     )
     if not task:
         return None
-    append_task_event(task_id, "已请求取消任务", event_type="state", level="warning")
+    TaskLogger(task_id).log_key("application.af00eb31", event_type="state", level="warning")
     return serialize_task(task)
 
 
@@ -360,7 +359,7 @@ def _request_cancel_mutation(task: TaskModel) -> None:
     if task.status == TASK_STATUS_PENDING:
         task.status = TASK_STATUS_CANCELLED
         task.finished_at = _utcnow()
-        task.error = task.error or "任务在开始前被取消"
+        task.error = task.error or _marker("application.a5a14331")
     else:
         task.status = TASK_STATUS_CANCEL_REQUESTED
 
@@ -397,6 +396,50 @@ def claim_next_runnable_task(
 
 
 _SCALAR_TYPES = (str, int, float, bool, type(None))
+# "key"/"lang" collide with t()'s and _marker()'s own positional parameter
+# names when forwarded via **params -- an exception carrying either as an
+# i18n_params entry would otherwise crash the call with a "multiple values
+# for argument" TypeError, breaking t()'s documented never-raises contract.
+_RESERVED_PARAM_NAMES = {"key", "lang"}
+
+
+def _exc_key(exc: Exception, fallback_key: str, **fallback_params) -> tuple[str, dict]:
+    """把一个被捕获的异常解析为 (key, params) —— 优先转发它自带的 i18n_key/
+    i18n_params（AD-8/AD-17），否则退回调用方提供的 fallback ——
+    Resolve a caught exception into (key, params) -- forwarding its own
+    i18n_key/i18n_params when present (AD-8/AD-17), else falling back to
+    the caller-supplied fallback.
+
+    今天没有任何 raiser 会让此路径命中 application/tasks.py 里的 except 站点，
+    这是死代码安全的；随着 story 4.4/4.13/4.5-4.12 陆续落地，会自动激活 ——
+    No raiser reaches this path from application/tasks.py's except sites yet,
+    so this is dead-code-safe today; it activates automatically as stories
+    4.4/4.13/4.5-4.12 land.
+
+    转发前校验 i18n_params：非字典、含保留名（key/lang）或含非标量值都退回
+    fallback_key/fallback_params，而不是把一个格式错误的负载传给 t()/log_key()
+    ——
+    Validates i18n_params before forwarding: a non-dict, a reserved name
+    (key/lang), or a non-scalar value all fall back to fallback_key/
+    fallback_params instead of handing t()/log_key() a malformed payload.
+    """
+    key = getattr(exc, "i18n_key", None)
+    if isinstance(key, str) and key:
+        params = getattr(exc, "i18n_params", None)
+        if not isinstance(params, dict):
+            return key, {}
+        if not (params.keys() & _RESERVED_PARAM_NAMES) and all(
+            isinstance(v, _SCALAR_TYPES) for v in params.values()
+        ):
+            return key, params
+    return fallback_key, fallback_params
+
+
+def _marker(key: str, **params) -> str:
+    # worker 线程无请求上下文，写入标记字符串，由读边界渲染 (AD-3/AD-8) —
+    # No request context in a worker thread; write a marker string, rendered
+    # at the read boundary (AD-3/AD-8).
+    return json.dumps({"i18n_key": key, "i18n_params": params}, ensure_ascii=False)
 
 
 class TaskLogger:
@@ -434,7 +477,7 @@ class TaskLogger:
             task.started_at = task.started_at or _utcnow()
 
         _mutate_task(self.task_id, _update)
-        self.log("任务已开始执行", event_type="state")
+        self.log_key("application.7f935d40", event_type="state")
 
     def is_cancel_requested(self) -> bool:
         with Session(engine) as session:
@@ -495,11 +538,20 @@ class TaskLogger:
 
         _mutate_task(self.task_id, _update)
         event_level = "error" if status == TASK_STATUS_FAILED else ("warning" if status in {TASK_STATUS_INTERRUPTED, TASK_STATUS_CANCELLED} else "info")
+        finish_key = "application.260e6363"
+        finish_params = {"status": status}
+        # detail 同时携带 i18n_key/i18n_params（供 serialize_event 按 ui_language
+        # 重渲染这条帧行本身）和 status/error（保留给读边界既有的按字段消费者，
+        # 例如 render_result 会递归解出 error 里可能嵌套的标记字符串）——
+        # detail carries both i18n_key/i18n_params (so serialize_event
+        # re-renders this frame line itself per ui_language) and status/error
+        # (kept for existing per-field consumers at the read boundary, e.g.
+        # render_result recursively decoding a marker nested in `error`).
         self.log(
-            f"任务结束: {status}",
+            t(finish_key, "zh", **finish_params),
             level=event_level,
             event_type="state",
-            detail={"status": status, "error": error},
+            detail={"i18n_key": finish_key, "i18n_params": finish_params, "status": status, "error": error},
         )
 
 
@@ -509,7 +561,8 @@ def _auto_push_any2api(task_logger: TaskLogger, account) -> None:
         from core.any2api_sync import push_account_to_any2api
         push_account_to_any2api(account, log_fn=task_logger.log)
     except Exception as exc:
-        task_logger.log(f"  [Any2API] 自动推送异常: {exc}", level="warning")
+        key, params = _exc_key(exc, "application.140b961d", detail=str(exc))
+        task_logger.log_key(key, params, level="warning")
 
 
 def _auto_upload_cpa(task_logger: TaskLogger, account) -> None:
@@ -540,7 +593,8 @@ def _auto_upload_cpa(task_logger: TaskLogger, account) -> None:
             ok, msg = upload_to_cpa(token_data)
             task_logger.log(f"  [CPA] {'✓ ' + msg if ok else '✗ ' + msg}")
     except Exception as exc:
-        task_logger.log(f"  [CPA] 自动上传异常: {exc}", level="warning")
+        key, params = _exc_key(exc, "application.5667c7df", detail=str(exc))
+        task_logger.log_key(key, params, level="warning")
 
 
 def _build_platform_instance(platform_name: str, payload: dict[str, Any], logger: TaskLogger, resolved_proxy: str | None = None, shared_mailbox=None):
@@ -610,7 +664,10 @@ def _run_single_account_check(account_id: int, logger: TaskLogger | None = None)
 
     result = {"account_id": account_id, "valid": bool(valid), "platform": account.platform, "email": account.email}
     if logger:
-        logger.log(f"{account.email}: {'有效' if valid else '失效'}")
+        logger.log_key(
+            "application.82879908" if valid else "application.fb94d047",
+            {"email": account.email},
+        )
     return valid, result
 
 
@@ -626,7 +683,7 @@ def execute_task(task_id: str) -> None:
     logger.mark_running()
 
     if logger.is_cancel_requested():
-        logger.finish(TASK_STATUS_CANCELLED, error="任务在启动后立即被取消")
+        logger.finish(TASK_STATUS_CANCELLED, error=_marker("application.93ca2096"))
         return
 
     handlers: dict[str, Callable[[dict[str, Any], TaskLogger], None]] = {
@@ -637,7 +694,7 @@ def execute_task(task_id: str) -> None:
     }
     handler = handlers.get(task_type)
     if not handler:
-        logger.finish(TASK_STATUS_FAILED, error=f"未知任务类型: {task_type}")
+        logger.finish(TASK_STATUS_FAILED, error=_marker("application.397fe57c", task_type=task_type))
         return
     handler(payload, logger)
 
@@ -693,7 +750,7 @@ def _auto_followup_windsurf_payment(
         if not _bool_config(extra_cfg.get("auto_payment_link"), True):
             return
     if not str(getattr(account, "password", "") or "").strip() and use_browser:
-        logger.log("Windsurf 注册后自动升级已跳过: 账号缺少密码", level="error")
+        logger.log_key("application.c801829e", level="error")
         return
     extra = dict(payload.get("extra") or {})
     turnstile_token = str(extra.get("turnstile_token") or "").strip()
@@ -711,26 +768,28 @@ def _auto_followup_windsurf_payment(
         params = {}
         if turnstile_token:
             params["turnstile_token"] = turnstile_token
-    logger.log("注册成功，开始自动生成 Windsurf Pro Trial Stripe 链接")
+    logger.log_key("application.2b00f60b")
     try:
         result = platform.execute_action(action_id, account, params)
     except Exception as exc:
-        message = f"Windsurf 注册后自动升级失败: {exc}"
-        logger.record_error(message)
-        logger.log(message, level="error")
+        key, exc_params = _exc_key(exc, "application.58418dba", detail=str(exc))
+        logger.record_error(t(key, "zh", **exc_params))
+        logger.log_key(key, exc_params, level="error")
         return
     if not result.get("ok"):
         # 这里没有请求/lang 上下文；result['error'] 可能是 windsurf 插件写入的
-        # 标记字符串，用源语言 (zh) 渲染成可读文本再拼进日志行，跟 ~891-895
-        # 的同类修复一致，不是解析出的 lang —
+        # 标记字符串，用源语言 (zh) 渲染成可读文本再作为 {detail} 参数嵌入日志
+        # key，跟 ~903-906 的同类修复一致，不是解析出的 lang —
         # No request/lang context here; result['error'] may be a marker
         # string the windsurf plugin wrote. Render it in the source language
-        # (zh) into readable text before interpolating into the log line,
-        # mirroring the ~891-895 fix below -- not a resolved lang.
+        # (zh) into readable text before embedding it as the log key's
+        # {detail} param, mirroring the ~903-906 fix below -- not a resolved
+        # lang.
         error_text = render_marker(result.get("error") or "", "zh") or "unknown error"
-        message = f"Windsurf 注册后自动升级失败: {error_text}"
-        logger.record_error(message)
-        logger.log(message, level="error")
+        key = "application.58418dba"
+        exc_params = {"detail": error_text}
+        logger.record_error(t(key, "zh", **exc_params))
+        logger.log_key(key, exc_params, level="error")
         return
     data = dict(result.get("data") or {})
     if data:
@@ -740,7 +799,7 @@ def _auto_followup_windsurf_payment(
         save_account(account)
     cashier_url = str(data.get("cashier_url") or data.get("url") or "").strip()
     if cashier_url:
-        logger.log(f"Windsurf 自动升级链接已生成: {cashier_url}")
+        logger.log_key("application.ae4fdde7", {"cashier_url": cashier_url})
         logger.add_cashier_url(cashier_url)
 
 
@@ -764,16 +823,17 @@ def _execute_register_task(payload: dict[str, Any], logger: TaskLogger) -> None:
 
     logger.set_progress(0, progress_total)
     if herosms_enabled:
-        logger.log(
-            f"HeroSMS 模式: 成功目标 {target_success}，失败自动补尝试，"
-            f"号码仍可复用时最多额外成功 {hero_extra_max} 个"
+        logger.log_key(
+            "application.1d84190f",
+            {"target_success": target_success, "hero_extra_max": hero_extra_max},
         )
 
     try:
         get(platform_name)
     except Exception as exc:
-        logger.log(f"致命错误: {exc}", level="error")
-        logger.finish(TASK_STATUS_FAILED, error=str(exc))
+        key, params = _exc_key(exc, "application.c45e8cd1", detail=str(exc))
+        logger.log_key(key, params, level="error")
+        logger.finish(TASK_STATUS_FAILED, error=_marker(key, **params))
         return
 
     success = 0
@@ -798,8 +858,9 @@ def _execute_register_task(payload: dict[str, Any], logger: TaskLogger) -> None:
                 proxy=proxy or None,
             )
     except Exception as exc:
-        logger.log(f"邮箱初始化失败: {exc}", level="error")
-        logger.finish(TASK_STATUS_FAILED, error=f"邮箱初始化失败: {exc}")
+        key, params = _exc_key(exc, "application.398704fd", detail=str(exc))
+        logger.log_key(key, params, level="error")
+        logger.finish(TASK_STATUS_FAILED, error=_marker(key, **params))
         return
 
     def _do_one(index: int) -> bool | str:
@@ -808,9 +869,9 @@ def _execute_register_task(payload: dict[str, Any], logger: TaskLogger) -> None:
         resolved_proxy = proxy or proxy_pool.get_next()
         platform = _build_platform_instance(platform_name, payload, logger, resolved_proxy=resolved_proxy, shared_mailbox=shared_mailbox)
         try:
-            logger.log(f"开始注册第 {index + 1}/{count} 个账号")
+            logger.log_key("application.2057a5e7", {"current": index + 1, "count": count})
             if resolved_proxy:
-                logger.log(f"使用代理: {resolved_proxy}")
+                logger.log_key("application.9bcd2849", {"proxy": resolved_proxy})
             account = platform.register(email=email, password=password)
             save_account(account)
             _auto_followup_windsurf_payment(
@@ -823,7 +884,7 @@ def _execute_register_task(payload: dict[str, Any], logger: TaskLogger) -> None:
             if resolved_proxy:
                 proxy_pool.report_success(resolved_proxy)
             logger.record_success()
-            logger.log(f"✓ 注册成功: {account.email}")
+            logger.log_key("application.90bedbfd", {"email": account.email})
             _save_task_log(platform_name, account.email, "success")
             _auto_upload_cpa(logger, account)
             _auto_push_any2api(logger, account)
@@ -831,7 +892,7 @@ def _execute_register_task(payload: dict[str, Any], logger: TaskLogger) -> None:
             overview = dict(extra.get("account_overview") or {})
             cashier_url = str(extra.get("cashier_url") or overview.get("cashier_url") or "")
             if cashier_url:
-                logger.log(f"  [升级链接] {cashier_url}")
+                logger.log_key("application.dedaf641", {"cashier_url": cashier_url})
                 logger.add_cashier_url(cashier_url)
             return True
         except Exception as exc:
@@ -839,7 +900,14 @@ def _execute_register_task(payload: dict[str, Any], logger: TaskLogger) -> None:
                 proxy_pool.report_fail(resolved_proxy)
             error = str(exc)
             logger.record_error(error)
-            logger.log(f"✗ 注册失败: {error}", level="error")
+            # 只迁移这条 log_key 事件，_do_one 的返回值/errors 列表/
+            # final_error 仍保持原始 str(exc) 不做标记化，按本故事的 Never
+            # 边界 ——
+            # Only this log_key event migrates; _do_one's return value, the
+            # errors list, and final_error stay raw str(exc), unmarked, per
+            # this story's Never boundary.
+            key, params = _exc_key(exc, "application.5fbc1595", detail=error)
+            logger.log_key(key, params, level="error")
             _save_task_log(platform_name, email or "", "failed", error=error)
             return error
 
@@ -856,11 +924,13 @@ def _execute_register_task(payload: dict[str, Any], logger: TaskLogger) -> None:
                 from core.base_sms import is_herosms_phone_cache_alive
                 alive, info = is_herosms_phone_cache_alive(sms_settings)
                 if alive:
-                    logger.log(
-                        "HeroSMS 号码仍可复用: "
-                        f"{str(info.get('phone_number') or '')[:5]}**** "
-                        f"剩余 {int(info.get('remaining_seconds') or 0)} 秒，"
-                        f"已成功 {int(info.get('use_count') or 0)} 次"
+                    logger.log_key(
+                        "application.3477d63c",
+                        {
+                            "phone_prefix": str(info.get("phone_number") or "")[:5],
+                            "remaining_seconds": int(info.get("remaining_seconds") or 0),
+                            "use_count": int(info.get("use_count") or 0),
+                        },
                     )
                 return bool(alive)
             except Exception:
@@ -901,8 +971,9 @@ def _execute_register_task(payload: dict[str, Any], logger: TaskLogger) -> None:
                 if logger.is_cancel_requested() and not futures:
                     break
     except Exception as exc:
-        logger.log(f"致命错误: {exc}", level="error")
-        logger.finish(TASK_STATUS_FAILED, error=str(exc))
+        key, params = _exc_key(exc, "application.c45e8cd1", detail=str(exc))
+        logger.log_key(key, params, level="error")
+        logger.finish(TASK_STATUS_FAILED, error=_marker(key, **params))
         return
 
     if herosms_enabled:
@@ -914,10 +985,9 @@ def _execute_register_task(payload: dict[str, Any], logger: TaskLogger) -> None:
             "extra_success": max(0, success - target_success),
             "hero_sms_reuse": True,
         })
-    summary = f"完成: 成功 {success} 个, 失败 {len(errors)} 个"
-    logger.log(summary, event_type="summary")
+    logger.log_key("application.078255bf", {"success": success, "failed": len(errors)}, event_type="summary")
     if logger.is_cancel_requested():
-        logger.finish(TASK_STATUS_CANCELLED, error="任务已取消")
+        logger.finish(TASK_STATUS_CANCELLED, error=_marker("application.6f96c2ad"))
         return
     final_status = TASK_STATUS_FAILED if errors and success == 0 else TASK_STATUS_SUCCEEDED
     final_error = "" if final_status == TASK_STATUS_SUCCEEDED else errors[0]
@@ -962,7 +1032,7 @@ def _execute_platform_action_task(payload: dict[str, Any], logger: TaskLogger) -
 def _execute_account_check_task(payload: dict[str, Any], logger: TaskLogger) -> None:
     account_id = int(payload.get("account_id", 0) or 0)
     if account_id <= 0:
-        logger.finish(TASK_STATUS_FAILED, error="缺少 account_id")
+        logger.finish(TASK_STATUS_FAILED, error=_marker("application.d4596f06"))
         return
     try:
         _, result = _run_single_account_check(account_id, logger)
@@ -971,7 +1041,9 @@ def _execute_account_check_task(payload: dict[str, Any], logger: TaskLogger) -> 
         logger.finish(TASK_STATUS_SUCCEEDED)
     except Exception as exc:
         logger.record_error(str(exc))
-        logger.finish(TASK_STATUS_FAILED, error=str(exc))
+        key, params = _exc_key(exc, "application.b404b7e1", detail=str(exc))
+        logger.log_key(key, params, level="error")
+        logger.finish(TASK_STATUS_FAILED, error=_marker(key, **params))
 
 
 def _execute_account_check_all_task(payload: dict[str, Any], logger: TaskLogger) -> None:
@@ -996,7 +1068,7 @@ def _execute_account_check_all_task(payload: dict[str, Any], logger: TaskLogger)
     completed = 0
     for model in accounts:
         if logger.is_cancel_requested():
-            logger.finish(TASK_STATUS_CANCELLED, error="任务已取消")
+            logger.finish(TASK_STATUS_CANCELLED, error=_marker("application.6f96c2ad"))
             return
         try:
             valid, _ = _run_single_account_check(int(model.id or 0), logger)
@@ -1007,7 +1079,8 @@ def _execute_account_check_all_task(payload: dict[str, Any], logger: TaskLogger)
         except Exception as exc:
             results["error"] += 1
             logger.record_error(str(exc))
-            logger.log(f"{model.email}: 检测异常 {exc}", level="error")
+            key, params = _exc_key(exc, "application.72f5a5b3", email=model.email, detail=str(exc))
+            logger.log_key(key, params, level="error")
         completed += 1
         logger.set_progress(completed, total)
     logger.set_result_data(results)

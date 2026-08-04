@@ -328,19 +328,28 @@ def test_sse_stream_marker_renders_english(client):
 
 
 def test_windsurf_auto_upgrade_log_line_renders_source_language(monkeypatch):
+    """story 4.3 -- this site now migrates its surrounding sentence to
+    application.tasks.py's log_key path (application.58418dba), embedding the
+    inner marker's already-source-language-decoded text as the {detail} param
+    -- never the raw marker JSON, and never a str(exc) interpolation."""
     from application.tasks import TaskLogger, _auto_followup_windsurf_payment
+    from i18n import t
 
-    logged: list[tuple[str, str]] = []
+    logged_keys: list[tuple[str, dict, str]] = []
+    recorded_errors: list[str] = []
 
     class _RecordingLogger(TaskLogger):
         def __init__(self):
             self.task_id = "task_test"
 
         def log(self, message, *, level="info", event_type="log", detail=None):
-            logged.append((message, level))
+            pass
+
+        def log_key(self, key, params=None, *, level="info", event_type="log"):
+            logged_keys.append((key, params or {}, level))
 
         def record_error(self, error):
-            logged.append((error, "recorded_error"))
+            recorded_errors.append(error)
 
     class _Platform:
         def execute_action(self, action_id, account, params):
@@ -356,10 +365,23 @@ def test_windsurf_auto_upgrade_log_line_renders_source_language(monkeypatch):
         logger=_RecordingLogger(),
     )
 
-    messages = [m for m, _ in logged]
-    assert any("Windsurf 注册后自动升级失败: 账号缺少 Windsurf 密码，无法执行浏览器自动化" == m for m in messages)
-    # Never leaks the raw marker JSON into the log line.
-    assert not any("i18n_key" in m for m in messages)
+    failure_events = [entry for entry in logged_keys if entry[0] == "application.58418dba"]
+    assert len(failure_events) == 1
+    key, params, level = failure_events[0]
+    assert params == {"detail": "账号缺少 Windsurf 密码，无法执行浏览器自动化"}
+    assert level == "error"
+    assert t(key, "zh", **params) == "Windsurf 注册后自动升级失败: 账号缺少 Windsurf 密码，无法执行浏览器自动化"
+    # The {detail} param is pre-decoded in the source language (zh) at the
+    # call site -- there is no request/lang context here (see the inline
+    # comment above this call site) -- so an "en" render is still one
+    # coherent sentence with the English wrapper sentence and the zh-decoded
+    # inner detail, never raw marker JSON.
+    rendered_en = t(key, "en", **params)
+    assert rendered_en.startswith("Windsurf post-registration auto-upgrade failed: ")
+    assert rendered_en.endswith("账号缺少 Windsurf 密码，无法执行浏览器自动化")
+    assert "i18n_key" not in rendered_en
+    # record_error keeps receiving the same locally-rendered (zh) text as before this migration.
+    assert recorded_errors == [t(key, "zh", **params)]
 
 
 # --- kiro default-with-upstream: an upstream (non-marker) error string
