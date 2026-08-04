@@ -7,9 +7,17 @@ from platforms.kiro.core import KiroRegister, _pwd, wait_for_otp
 
 
 class KiroProtocolMailboxWorker:
-    def __init__(self, *, proxy: str | None = None, tag: str = "KIRO", log_fn: Callable[[str], None] = print):
+    def __init__(
+        self,
+        *,
+        proxy: str | None = None,
+        tag: str = "KIRO",
+        log_fn: Callable[[str], None] = print,
+        log_key_fn: Callable[[str, dict], None] | None = None,
+    ):
         self.client = KiroRegister(proxy=proxy, tag=tag)
         self.client.log = lambda msg: log_fn(msg)
+        self.client._log_key_fn = log_key_fn
 
     def run(
         self,

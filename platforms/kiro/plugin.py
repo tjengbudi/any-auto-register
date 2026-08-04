@@ -87,6 +87,7 @@ class KiroPlatform(BasePlatform):
             email_hint=ctx.identity.email,
             timeout=resolve_timeout(ctx.extra, ("browser_oauth_timeout", "manual_oauth_timeout"), 300),
             log_fn=ctx.log,
+            log_key_fn=ctx.log_key_fn,
             headless=(ctx.executor_type == "headless"),
             chrome_user_data_dir=ctx.identity.chrome_user_data_dir,
             chrome_cdp_url=ctx.identity.chrome_cdp_url,
@@ -120,7 +121,7 @@ class KiroPlatform(BasePlatform):
         def _build_worker(ctx, artifacts):
             from platforms.kiro.protocol_mailbox import KiroProtocolMailboxWorker
 
-            return KiroProtocolMailboxWorker(proxy=ctx.proxy, tag="KIRO", log_fn=ctx.log)
+            return KiroProtocolMailboxWorker(proxy=ctx.proxy, tag="KIRO", log_fn=ctx.log, log_key_fn=ctx.log_key_fn)
 
         def _run_worker(worker, ctx, artifacts):
             return worker.run(

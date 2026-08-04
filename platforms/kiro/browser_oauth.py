@@ -67,6 +67,7 @@ def register_with_browser_oauth(
     email_hint: str = "",
     timeout: int = 300,
     log_fn=print,
+    log_key_fn=None,
     headless: bool = False,
     chrome_user_data_dir: str = "",
     chrome_cdp_url: str = "",
@@ -74,6 +75,7 @@ def register_with_browser_oauth(
     method_text = browser_login_method_text(oauth_provider)
     reg = KiroRegister(proxy=proxy, tag="KIRO-OAUTH")
     reg.log = log_fn
+    reg._log_key_fn = log_key_fn
     redirect_url = reg.step1_kiro_init()
     if not redirect_url:
         raise RuntimeError("Kiro InitiateLogin 失败")

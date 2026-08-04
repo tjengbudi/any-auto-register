@@ -15,6 +15,8 @@ import cbor2
 from curl_cffi import requests as curl_requests
 from jwcrypto import jwk, jwe
 
+from platforms.kiro._i18n_helpers import _emit_log_key
+
 KIRO="https://app.kiro.dev"
 SIGNIN="https://us-east-1.signin.aws"
 DIR_ID="d-9067642ac7"
@@ -234,8 +236,11 @@ class KiroRegister:
         self._callback_url=None        # step 2 redirect chain 中的 callback_url
         self._workflow_result_handle=None  # step 10 redirect URL 中的 workflowResultHandle
         self._step11_state=None        # step 11 redirect URL 中的 state
+        self._log_key_fn=None
 
     def log(self,msg): print(f"[{self.tag}] {msg}")
+
+    def log_key(self,key,**params): _emit_log_key(self.log,self._log_key_fn,key,**params)
 
     def _capture_cookies(self,resp):
         """捕获 Set-Cookie 响应头中的 cookies.
@@ -319,11 +324,14 @@ class KiroRegister:
                         except: pass
                 self.s.cookies.set("directory-csrf-token", new_val,
                                    domain=domain, path=dir_csrf_path)
-                self.log(f"  ★ directory-csrf-token 已添加 signupCsrfToken={signup_token[:12]}")
+                self.log_key("kiro.fdd9ccc7", signup_token=signup_token[:12])
+                # was: self.log(f"  ★ directory-csrf-token 已添加 signupCsrfToken={signup_token[:12]}")
             elif signup_token:
-                self.log(f"  ★ directory-csrf-token 已有 signupCsrfToken, 跳过")
+                self.log_key("kiro.8dd84f04")
+                # was: self.log(f"  ★ directory-csrf-token 已有 signupCsrfToken, 跳过")
         except Exception as e:
-            self.log(f"  ⚠️ 更新 directory-csrf-token 失败: {e}")
+            self.log_key("kiro.15543f25", e=e)
+            # was: self.log(f"  ⚠️ 更新 directory-csrf-token 失败: {e}")
 
     def _gen_signin_fwcim(self):
         """生成 signin.aws 页面的真实 FWCIM fingerprint."""
@@ -358,7 +366,10 @@ class KiroRegister:
         if r.status_code!=200:
             self.log(f"  ❌ {r.status_code}: {r.text[:500]}"); return None
         try: d=r.json()
-        except: self.log(f"  ❌ 非JSON: {r.text[:300]}"); return None
+        except:
+            self.log_key("kiro.68ea2735", text=r.text[:300])
+            # was: self.log(f"  ❌ 非JSON: {r.text[:300]}")
+            return None
         if d.get("workflowStateHandle"): self.wsh=d["workflowStateHandle"]
         if d.get("stepId") is not None: self.sid=d["stepId"]
         self.log(f"  → sid={self.sid} wsh={str(self.wsh)[:40]}...")
@@ -438,13 +449,17 @@ class KiroRegister:
         try: d=cbor2.loads(r.content)
         except: d=r.json()
         redir=d.get("redirectUrl")
-        if not redir: self.log(f"  ❌ 无redirectUrl: {d}"); return None
+        if not redir:
+            self.log_key("kiro.8ca1acde", d=d)
+            # was: self.log(f"  ❌ 无redirectUrl: {d}")
+            return None
         self.log(f"  ✅ {redir[:100]}...")
         return redir
 
     # ═══ Step 2: oidc → view → portal.sso → wsh ═══
     def step2_get_wsh(self,redir_url):
-        self.log("Step 2: 重定向链...")
+        self.log_key("kiro.9d5181c9")
+        # was: self.log("Step 2: 重定向链...")
         r=self.s.get(redir_url,headers=UA,allow_redirects=True)
         view_url=str(r.url)
         self.log(f"  2a view: {view_url[:120]}")
@@ -452,7 +467,10 @@ class KiroRegister:
         fqs=parse_qs(p.fragment.lstrip("#/?")) if p.fragment else {}
         oid=(qs.get("orchestrator_id") or fqs.get("orchestrator_id",[None]))[0]
         cb=(qs.get("callback_url") or fqs.get("callback_url",[None]))[0]
-        if not oid: self.log("  ❌ 无orchestrator_id"); return False
+        if not oid:
+            self.log_key("kiro.2d4ed105")
+            # was: self.log("  ❌ 无orchestrator_id")
+            return False
         # ★ 保存 orchestrator_id 和 callback_url (Step 12 需要)
         self._orchestrator_id=oid
         self._callback_url=cb
@@ -534,8 +552,10 @@ class KiroRegister:
 
     # ═══ Step 5: TES token ═══
     def step5_get_tes_token(self):
-        self.log("Step 5: 获取 TES token...")
-        self.log("  加载 signin.aws 资源...")
+        self.log_key("kiro.f5783262")
+        # was: self.log("Step 5: 获取 TES token...")
+        self.log_key("kiro.64b2ade7")
+        # was: self.log("  加载 signin.aws 资源...")
         for path in["/assets/js/app.js"]:
             r=self.s.get(f"{SIGNIN}{path}",headers={**UA,"accept":"*/*",
                 "referer":f"{SIGNIN}/platform/{DIR_ID}/login"})
@@ -574,17 +594,22 @@ class KiroRegister:
 
     # ═══ Step 6: profile.aws 页面加载 + /api/start ═══
     def step6_profile_load(self):
-        self.log("Step 6: profile.aws 页面加载...")
+        self.log_key("kiro.e893c416")
+        # was: self.log("Step 6: profile.aws 页面加载...")
         if not self.profile_wf_id:
-            self.log("  ❌ 无workflowID"); return None
+            self.log_key("kiro.ae7f3b77")
+            # was: self.log("  ❌ 无workflowID")
+            return None
         self._setup_profile_cookies()
-        self.log("  6a: GET profile 页面...")
+        self.log_key("kiro.194f437d")
+        # was: self.log("  6a: GET profile 页面...")
         r=self.s.get(f"{PROFILE}?workflowID={self.profile_wf_id}",
             headers={**UA,"accept":"text/html","referer":f"{SIGNIN}/"},
             allow_redirects=True)
         self._capture_cookies(r)
         self._profile_load_ts=time.time()
-        self.log(f"  页面 status: {r.status_code}")
+        self.log_key("kiro.a4f26ecc", status_code=r.status_code)
+        # was: self.log(f"  页面 status: {r.status_code}")
         for res in["/dist/main/app_3d2790dc68bef818e50a.min.js",
                    "/dist/main/app_f95ebcaf22d26fd182da.min.css"]:
             self.s.get(f"{PROFILE}{res}",headers={**UA,"accept":"*/*",
@@ -632,7 +657,8 @@ class KiroRegister:
         reg_code = r.get("registrationCode")
         sign_in_state = r.get("signInState")
         if not reg_code or not sign_in_state:
-            self.log(f"  ❌ 缺少 registrationCode 或 signInState")
+            self.log_key("kiro.17026008")
+            # was: self.log(f"  ❌ 缺少 registrationCode 或 signInState")
             return None
         self.log(f"  ✅ registrationCode: {reg_code[:40]}...")
         try:
@@ -707,7 +733,8 @@ class KiroRegister:
              "priority": "u=1, i"}
 
         # ★ v8 debug: 打印发送的 cookies (用 _safe_cookie_list 避免冲突)
-        self.log("  发送的 cookies (signin.aws):")
+        self.log_key("kiro.fee8ee4d")
+        # was: self.log("  发送的 cookies (signin.aws):")
         for name,val,dom,path in self._safe_cookie_list("signin.aws"):
             self.log(f"    {name}={str(val)[:60]}... (domain={dom}, path={path})")
 
@@ -723,23 +750,28 @@ class KiroRegister:
         self.log(f"  → sid={d.get('stepId')} wsh={d.get('workflowStateHandle','')[:40]}")
         self.log(f"  Resp: {json.dumps(d,ensure_ascii=False)[:400]}")
         if d.get("stepId") != "get-new-password-for-password-creation":
-            self.log(f"  ❌ 预期 get-new-password, 实际 {d.get('stepId')}")
+            self.log_key("kiro.05ccd7c4", step_id=d.get('stepId'))
+            # was: self.log(f"  ❌ 预期 get-new-password, 实际 {d.get('stepId')}")
             return None
-        self.log("  ✅ 进入密码设置步骤")
+        self.log_key("kiro.e4fec139")
+        # was: self.log("  ✅ 进入密码设置步骤")
         self._signup_reg_url = signup_url
         return d
 
     # ═══ Step 10: 设置密码 (JWE加密) ═══
     def step10_set_password(self, pwd, email, step9_resp):
-        self.log("Step 10: 设置密码 (JWE加密)...")
+        self.log_key("kiro.00f0fba0")
+        # was: self.log("Step 10: 设置密码 (JWE加密)...")
         wsh = step9_resp.get("workflowStateHandle", "")
         enc_ctx = (step9_resp.get("workflowResponseData", {})
                    .get("encryptionContextResponse", {}))
         pub_key = enc_ctx.get("publicKey")
         if not pub_key:
-            self.log("  ❌ 无公钥, 无法加密密码")
+            self.log_key("kiro.2efe2d00")
+            # was: self.log("  ❌ 无公钥, 无法加密密码")
             return None
-        self.log(f"  公钥 kid: {pub_key.get('kid')}")
+        self.log_key("kiro.04e9df86", kid=pub_key.get('kid'))
+        # was: self.log(f"  公钥 kid: {pub_key.get('kid')}")
 
         # ★ v10: 不再调用 _setup_signin_js_cookies — 让服务端 Set-Cookie 管理
         # 不再手动操作 aws-usi-authn 路径 — _capture_cookies 已正确处理
@@ -791,7 +823,8 @@ class KiroRegister:
 
         # 10b: JWE 加密密码并提交
         jwe_password = encrypt_password_jwe(pwd, pub_key)
-        self.log(f"  ✅ JWE 加密完成, 长度={len(jwe_password)}")
+        self.log_key("kiro.df8a4e13", length=len(jwe_password))
+        # was: self.log(f"  ✅ JWE 加密完成, 长度={len(jwe_password)}")
         req_id = _uuid()
         fwcim3 = self._gen_signin_fwcim()
         fp_i2 = {"input_type": "FingerPrintRequestInput", "fingerPrint": fwcim3}
@@ -847,7 +880,8 @@ class KiroRegister:
                     cleaned += 1
                 except: pass
         if cleaned:
-            self.log(f"  ★ 已清理 {cleaned} 个非裸域名 cookies")
+            self.log_key("kiro.d6b50cfb", cleaned=cleaned)
+            # was: self.log(f"  ★ 已清理 {cleaned} 个非裸域名 cookies")
 
         # ★ v10 debug: 打印最终 cookies (关键 cookie 打印完整值)
         self.log("  10b cookies:")
@@ -869,7 +903,8 @@ class KiroRegister:
         self.log(f"  → sid={d.get('stepId')}")
         self.log(f"  Resp: {json.dumps(d,ensure_ascii=False)[:400]}")
         if d.get("stepId") != "end-of-user-registration-success":
-            self.log(f"  ❌ 预期 end-of-user-registration-success")
+            self.log_key("kiro.01d0d4ab")
+            # was: self.log(f"  ❌ 预期 end-of-user-registration-success")
             return None
         # ★ 保存 workflowResultHandle (Step 12a 需要作为 authCode)
         redir_url = d.get("redirect", {}).get("url", "")
@@ -878,15 +913,18 @@ class KiroRegister:
             if m_wrh:
                 self._workflow_result_handle = m_wrh.group(1)
                 self.log(f"  ★ workflowResultHandle={self._workflow_result_handle}")
-        self.log("  ✅ 密码设置成功, 注册完成!")
+        self.log_key("kiro.ad4c2cb1")
+        # was: self.log("  ✅ 密码设置成功, 注册完成!")
         return d
 
     # ═══ Step 11: 最终登录 ═══
     def step11_final_login(self, email, step10_resp):
-        self.log("Step 11: 最终登录...")
+        self.log_key("kiro.bbf05401")
+        # was: self.log("Step 11: 最终登录...")
         redir = step10_resp.get("redirect", {}).get("url", "")
         if not redir:
-            self.log("  ❌ 无 redirect URL")
+            self.log_key("kiro.91265973")
+            # was: self.log("  ❌ 无 redirect URL")
             return None
         self.log(f"  redirect: {redir[:120]}...")
         p = urlparse(redir)
@@ -895,7 +933,8 @@ class KiroRegister:
         state = qs.get("state", [None])[0]
         wf_result = qs.get("workflowResultHandle", [None])[0]
         if not login_wsh or not state or not wf_result:
-            self.log(f"  ❌ redirect 参数不完整")
+            self.log_key("kiro.ec312392")
+            # was: self.log(f"  ❌ redirect 参数不完整")
             return None
         fwcim = self._gen_signin_fwcim()
         fp_i = {"input_type": "FingerPrintRequestInput", "fingerPrint": fwcim}
@@ -924,7 +963,8 @@ class KiroRegister:
         d = r.json()
         self.log(f"  → sid={d.get('stepId')}")
         if d.get("stepId") == "end-of-workflow-success":
-            self.log("  ✅ 登录成功! workflow 完成!")
+            self.log_key("kiro.7c09a9cf")
+            # was: self.log("  ✅ 登录成功! workflow 完成!")
             # ★ 保存 redirect URL 中的 state 和 workflowResultHandle (Step 12a 需要)
             redir11 = d.get("redirect", {}).get("url", "")
             if redir11:
@@ -939,9 +979,11 @@ class KiroRegister:
                 wrh11 = qs11.get("workflowResultHandle", [None])[0]
                 if wrh11:
                     self._workflow_result_handle = wrh11
-                    self.log(f"  ★ step11 workflowResultHandle={wrh11} (覆盖 step10 的值)")
+                    self.log_key("kiro.ee0e3c77", wrh11=wrh11)
+                    # was: self.log(f"  ★ step11 workflowResultHandle={wrh11} (覆盖 step10 的值)")
         else:
-            self.log(f"  ⚠️ stepId={d.get('stepId')}, 可能需要额外步骤")
+            self.log_key("kiro.548eb489", step_id=d.get('stepId'))
+            # was: self.log(f"  ⚠️ stepId={d.get('stepId')}, 可能需要额外步骤")
         return d
 
     # ═══ Step 12: Kiro Web Portal OIDC Auth Code Flow → 获取 accessToken + sessionToken ═══
