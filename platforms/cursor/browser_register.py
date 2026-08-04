@@ -13,6 +13,8 @@ from urllib.parse import unquote, urlparse
 
 from camoufox.sync_api import Camoufox
 
+from platforms.cursor._i18n_helpers import _emit_log_key, _raise_keyed
+
 AUTH = "https://authenticator.cursor.sh"
 CURSOR = "https://cursor.com"
 TURNSTILE_SITEKEY = "0x4AAAAAAAMNIvC45A4Wjjln"
@@ -168,7 +170,12 @@ def _is_cf_full_block(page) -> bool:
     return False
 
 
-def _wait_cf_full_block_clear(page, timeout: int = 120, log_fn=print) -> None:
+def _wait_cf_full_block_clear(
+    page,
+    timeout: int = 120,
+    log_fn=print,
+    log_key: Optional[Callable[[str, dict], None]] = None,
+) -> None:
     """等待 CF 全页拦截消失，并主动点击 Interstitial Turnstile checkbox。
     
     CF 全页拦截分两种：
@@ -182,7 +189,8 @@ def _wait_cf_full_block_clear(page, timeout: int = 120, log_fn=print) -> None:
         if not _is_cf_full_block(page):
             break
         if not warned:
-            log_fn("检测到 Cloudflare 全页拦截，尝试点击验证 checkbox...")            
+            _emit_log_key(log_fn, log_key, "cursor.df7412e9")
+            # was: log_fn("检测到 Cloudflare 全页拦截，尝试点击验证 checkbox...")
             warned = True
         # 模拟人类鼠标移动（CF 被动检测会观察鼠标行为）
         try:
@@ -226,7 +234,8 @@ def _wait_cf_full_block_clear(page, timeout: int = 120, log_fn=print) -> None:
                             page.mouse.down()
                             time.sleep(random.uniform(0.08, 0.15))
                             page.mouse.up()
-                            log_fn(f"✅ 点击 Interstitial checkbox 坐标: ({cx:.0f}, {cy:.0f})")
+                            _emit_log_key(log_fn, log_key, "cursor.4552f07c", cx=f"{cx:.0f}", cy=f"{cy:.0f}")
+                            # was: log_fn(f"✅ 点击 Interstitial checkbox 坐标: ({cx:.0f}, {cy:.0f})")
                             clicked = True
                             time.sleep(3)
                             break
@@ -277,7 +286,11 @@ def _is_turnstile_modal_visible(page) -> bool:
         return False
 
 
-def _click_turnstile_in_iframe(page, log_fn=print) -> bool:
+def _click_turnstile_in_iframe(
+    page,
+    log_fn=print,
+    log_key: Optional[Callable[[str, dict], None]] = None,
+) -> bool:
     """在注册 Camoufox 浏览器里直接找到 Turnstile iframe 并点击 checkbox。
     
     Turnstile iframe 内部使用 closed Shadow DOM，JS querySelector 无法访问。
@@ -297,10 +310,12 @@ def _click_turnstile_in_iframe(page, log_fn=print) -> bool:
         time.sleep(0.5)
 
     if not cf_frame_obj:
-        log_fn("未找到 Cloudflare iframe frame，跳过直接点击")
+        _emit_log_key(log_fn, log_key, "cursor.d24e2d16")
+        # was: log_fn("未找到 Cloudflare iframe frame，跳过直接点击")
         return False
 
-    log_fn(f"找到 Turnstile frame: {cf_frame_obj.url[:80]}...")
+    _emit_log_key(log_fn, log_key, "cursor.8aa9560b", frame_url=cf_frame_obj.url[:80])
+    # was: log_fn(f"找到 Turnstile frame: {cf_frame_obj.url[:80]}...")
 
     # 找到 iframe DOM 元素，获取 bounding box
     iframe_el = None
@@ -340,7 +355,8 @@ def _click_turnstile_in_iframe(page, log_fn=print) -> bool:
                 page.mouse.down()
                 time.sleep(random.uniform(0.08, 0.15))
                 page.mouse.up()
-                log_fn(f"✅ 点击 Turnstile checkbox 坐标: ({cx:.0f}, {cy:.0f})")
+                _emit_log_key(log_fn, log_key, "cursor.88676147", cx=f"{cx:.0f}", cy=f"{cy:.0f}")
+                # was: log_fn(f"✅ 点击 Turnstile checkbox 坐标: ({cx:.0f}, {cy:.0f})")
                 time.sleep(1.5)
                 # 如果还没通过，再试一次偏右
                 if _is_turnstile_modal_visible(page):
@@ -352,24 +368,36 @@ def _click_turnstile_in_iframe(page, log_fn=print) -> bool:
                     time.sleep(1)
                 return True
             else:
-                log_fn("bounding box 无效（height=0），跳过点击")
+                _emit_log_key(log_fn, log_key, "cursor.22c71856")
+                # was: log_fn("bounding box 无效（height=0），跳过点击")
         except Exception as e:
-            log_fn(f"bounding box 点击失败: {e}")
+            _emit_log_key(log_fn, log_key, "cursor.cb9a61ec", exc=str(e))
+            # was: log_fn(f"bounding box 点击失败: {e}")
 
     # 兜底：用 Playwright frame 内坐标点击（相对于 frame）
     try:
-        log_fn("尝试 frame 内坐标点击...")
+        _emit_log_key(log_fn, log_key, "cursor.3b78975f")
+        # was: log_fn("尝试 frame 内坐标点击...")
         cf_frame_obj.locator("body").click(position={"x": 24, "y": 32}, timeout=5000)
-        log_fn("✅ frame 内坐标点击成功")
+        _emit_log_key(log_fn, log_key, "cursor.89db44e8")
+        # was: log_fn("✅ frame 内坐标点击成功")
         return True
     except Exception as e:
-        log_fn(f"frame 内点击失败: {e}")
+        _emit_log_key(log_fn, log_key, "cursor.a5464204", exc=str(e))
+        # was: log_fn(f"frame 内点击失败: {e}")
 
-    log_fn("所有点击方式均失败")
+    _emit_log_key(log_fn, log_key, "cursor.649fde05")
+    # was: log_fn("所有点击方式均失败")
     return False
 
 
-def _handle_turnstile(page, log_fn=print, solve_fn=None, wait_secs: int = 12) -> bool:
+def _handle_turnstile(
+    page,
+    log_fn=print,
+    solve_fn=None,
+    wait_secs: int = 12,
+    log_key: Optional[Callable[[str, dict], None]] = None,
+) -> bool:
     """通用 Turnstile 处理：检测到 Turnstile 后点击 checkbox。
     
     可在表单提交后、密码提交后等任意阶段调用。
@@ -390,20 +418,23 @@ def _handle_turnstile(page, log_fn=print, solve_fn=None, wait_secs: int = 12) ->
     if not has_turnstile:
         return False
 
-    log_fn("检测到 Turnstile，尝试直接点击 iframe checkbox...")
-    solved = _click_turnstile_in_iframe(page, log_fn)
+    _emit_log_key(log_fn, log_key, "cursor.1d3354b3")
+    # was: log_fn("检测到 Turnstile，尝试直接点击 iframe checkbox...")
+    solved = _click_turnstile_in_iframe(page, log_fn, log_key)
     if not solved:
         # 尝试 token solver 作为备选
         if solve_fn:
             token = solve_fn(page.url, _get_turnstile_sitekey(page))
             if token:
-                log_fn(f"注入 Turnstile token ({token[:40]}...)")
+                _emit_log_key(log_fn, log_key, "cursor.79923f41", token_prefix=token[:40])
+                # was: log_fn(f"注入 Turnstile token ({token[:40]}...)")
                 _inject_turnstile(page, token)
                 time.sleep(2)
                 _click_continue(page)
                 time.sleep(3)
                 return True
-        log_fn("⚠️ 自动解题失败，等待手动通过（最多90秒）...")
+        _emit_log_key(log_fn, log_key, "cursor.07bbce1e")
+        # was: log_fn("⚠️ 自动解题失败，等待手动通过（最多90秒）...")
         dl = time.time() + 90
         while time.time() < dl:
             if not _is_turnstile_modal_visible(page):
@@ -412,7 +443,8 @@ def _handle_turnstile(page, log_fn=print, solve_fn=None, wait_secs: int = 12) ->
     else:
         time.sleep(3)
         if _is_turnstile_modal_visible(page):
-            log_fn("Turnstile 仍在显示，等待自动通过...")
+            _emit_log_key(log_fn, log_key, "cursor.b4693307")
+            # was: log_fn("Turnstile 仍在显示，等待自动通过...")
             time.sleep(5)
         # Turnstile 通过后如果还没下一步，尝试点 Continue
         if not page.query_selector('input[name="otp"], input[name="code"]'):
@@ -433,6 +465,7 @@ class CursorBrowserRegister:
         otp_callback: Optional[Callable[[], str]] = None,
         phone_callback: Optional[Callable[[], str]] = None,
         log_fn: Callable[[str], None] = print,
+        log_key_fn: Optional[Callable[[str, dict], None]] = None,
     ):
         self.captcha = captcha
         self.headless = headless
@@ -440,20 +473,28 @@ class CursorBrowserRegister:
         self.otp_callback = otp_callback
         self.phone_callback = phone_callback
         self.log = log_fn
+        self._log_key_fn = log_key_fn
+
+    def log_key(self, key: str, **params) -> None:
+        _emit_log_key(self.log, self._log_key_fn, key, **params)
 
     def _solve_turnstile(self, url: str, sitekey: str) -> Optional[str]:
         """调用 Captcha Solver 解决 Turnstile，返回 token 或 None。"""
         if not self.captcha:
-            self.log("未配置 Captcha Solver，跳过自动解题")
+            self.log_key("cursor.f4c4d88f")
+            # was: self.log("未配置 Captcha Solver，跳过自动解题")
             return None
         try:
-            self.log(f"调用 Captcha Solver 解题 ({sitekey[:20]}...)...")
+            self.log_key("cursor.303469c2", sitekey_prefix=sitekey[:20])
+            # was: self.log(f"调用 Captcha Solver 解题 ({sitekey[:20]}...)...")
             token = self.captcha.solve_turnstile(url, sitekey or TURNSTILE_SITEKEY)
             if token:
-                self.log(f"✅ Solver 返回 token: {token[:50]}...")
+                self.log_key("cursor.30c13c08", token_prefix=token[:50])
+                # was: self.log(f"✅ Solver 返回 token: {token[:50]}...")
             return token
         except Exception as e:
-            self.log(f"⚠️ Captcha Solver 失败: {e}")
+            self.log_key("cursor.15569914", exc=str(e))
+            # was: self.log(f"⚠️ Captcha Solver 失败: {e}")
             return None
 
     def run(self, email: str, password: str = "") -> dict:
@@ -497,7 +538,8 @@ class CursorBrowserRegister:
 })();
 """)
 
-            self.log("打开 Cursor 注册页")
+            self.log_key("cursor.d008a97b")
+            # was: self.log("打开 Cursor 注册页")
             # 必须带 state(含随机 nonce)访问，WorkOS 才会生成 authorization_session_id
             # 没有 authorization_session_id，form POST 到 /user_management/initiate_login 会 404
             import json, urllib.parse as _up
@@ -513,7 +555,7 @@ class CursorBrowserRegister:
             page.goto(_signup_url, wait_until="domcontentloaded", timeout=30000)
 
             # 仅等待真正的 CF 全页拦截（不会被内嵌 Turnstile widget 误触发）
-            _wait_cf_full_block_clear(page, log_fn=self.log)  # 默认 120s
+            _wait_cf_full_block_clear(page, log_fn=self.log, log_key=self._log_key_fn)  # 默认 120s
             # CF 通过后等待页面完全加载（CF 通过会触发重定向）
             try:
                 page.wait_for_load_state("domcontentloaded", timeout=15000)
@@ -521,14 +563,16 @@ class CursorBrowserRegister:
                 pass
 
             # 等待注册表单出现
-            self.log("等待注册表单...")
+            self.log_key("cursor.47b30058")
+            # was: self.log("等待注册表单...")
             try:
                 page.wait_for_selector(
                     'input[name="firstName"], input[name="first_name"], input[name="email"]',
                     timeout=60000,  # 60s - CF Managed Challenge 可能需要较长时间
                 )
             except Exception:
-                raise RuntimeError(f"Cursor 注册页未加载表单: {page.url}")
+                _raise_keyed(RuntimeError, "cursor.375fcee3", page_url=page.url)
+                # was: raise RuntimeError(f"Cursor 注册页未加载表单: {page.url}")
 
             # 填 FirstName / LastName
             for sel, val in [
@@ -547,22 +591,27 @@ class CursorBrowserRegister:
             try:
                 page.wait_for_selector(email_sel, timeout=5000)
             except Exception:
-                raise RuntimeError("未找到邮箱输入框")
-            self.log(f"填写邮箱: {email}")
+                _raise_keyed(RuntimeError, "cursor.62a0424a")
+                # was: raise RuntimeError("未找到邮箱输入框")
+            self.log_key("cursor.eaa92c19", email=email)
+            # was: self.log(f"填写邮箱: {email}")
             page.fill(email_sel, email)
             time.sleep(0.5)
 
             # 点 Continue 提交表单
-            self.log("点击 Continue")
+            self.log_key("cursor.138af2e7")
+            # was: self.log("点击 Continue")
             clicked = _click_continue(page)
             if not clicked:
-                self.log("未找到按钮，使用 Enter 提交")
+                self.log_key("cursor.4b48a01b")
+                # was: self.log("未找到按钮，使用 Enter 提交")
                 page.keyboard.press("Enter")
 
             # --- Turnstile 处理 ---
             # 策略：在注册 Camoufox 浏览器里直接点击 iframe 内的 checkbox
             # 外部 Solver 无效（它自己开浏览器，但不会提交表单，看不到 Turnstile）
-            self.log("等待 Turnstile 验证...")
+            self.log_key("cursor.4fa4393e")
+            # was: self.log("等待 Turnstile 验证...")
             turnstile_deadline = time.time() + 15
             has_turnstile = False
             while time.time() < turnstile_deadline:
@@ -570,23 +619,27 @@ class CursorBrowserRegister:
                     has_turnstile = True
                     break
                 if page.query_selector('input[name="otp"], input[name="code"]'):
-                    self.log("已直接跳转到验证码页，跳过 Turnstile")
+                    self.log_key("cursor.6ff239b3")
+                    # was: self.log("已直接跳转到验证码页，跳过 Turnstile")
                     break
                 time.sleep(1)
 
             if has_turnstile:
-                self.log("检测到 Turnstile，尝试直接点击 iframe checkbox...")
-                solved = _click_turnstile_in_iframe(page, self.log)
+                self.log_key("cursor.1d3354b3")
+                # was: self.log("检测到 Turnstile，尝试直接点击 iframe checkbox...")
+                solved = _click_turnstile_in_iframe(page, self.log, self._log_key_fn)
                 if not solved:
                     token = self._solve_turnstile(page.url, _get_turnstile_sitekey(page))
                     if token:
-                        self.log(f"注入 Turnstile token ({token[:40]}...)")
+                        self.log_key("cursor.79923f41", token_prefix=token[:40])
+                        # was: self.log(f"注入 Turnstile token ({token[:40]}...)")
                         _inject_turnstile(page, token)
                         time.sleep(2)
                         _click_continue(page)
                         time.sleep(3)
                     else:
-                        self.log("⚠️ 自动解题失败，等待手动通过（最多90秒）...")
+                        self.log_key("cursor.07bbce1e")
+                        # was: self.log("⚠️ 自动解题失败，等待手动通过（最多90秒）...")
                         dl = time.time() + 90
                         while time.time() < dl:
                             if not _is_turnstile_modal_visible(page):
@@ -598,7 +651,8 @@ class CursorBrowserRegister:
                     # 点击成功后等待 Turnstile 处理完成
                     time.sleep(3)
                     if _is_turnstile_modal_visible(page):
-                        self.log("Turnstile 仍在显示，等待自动通过...")
+                        self.log_key("cursor.b4693307")
+                        # was: self.log("Turnstile 仍在显示，等待自动通过...")
                         time.sleep(5)
 
             # --- 处理密码设置页（Turnstile 通过后 Cursor 要求设置密码）---
@@ -610,7 +664,8 @@ class CursorBrowserRegister:
                     + ''.join(random.choices(string.ascii_lowercase, k=5))
                     + '!'
                 )
-                self.log("检测到密码设置页，填写密码...")
+                self.log_key("cursor.34081b9f")
+                # was: self.log("检测到密码设置页，填写密码...")
                 for el in page.query_selector_all('input[type="password"]'):
                     if el.is_visible():
                         el.fill(use_password)
@@ -623,7 +678,7 @@ class CursorBrowserRegister:
                 pass  # 无密码页，跳过
 
             # --- 密码提交后可能再次出现 Turnstile（如"Welcome to Cursor"页面）---
-            _handle_turnstile(page, self.log, self._solve_turnstile)
+            _handle_turnstile(page, self.log, self._solve_turnstile, log_key=self._log_key_fn)
 
             # --- 检测手机号验证页（"Phone number" + "Send verification code"）---
             try:
@@ -639,7 +694,8 @@ class CursorBrowserRegister:
                 if self.phone_callback:
                     phone_number = self.phone_callback()
                     if phone_number:
-                        self.log(f"检测到手机号验证页，填写手机号: {phone_number[:4]}****")
+                        self.log_key("cursor.1b2350d0", phone_prefix=phone_number[:4])
+                        # was: self.log(f"检测到手机号验证页，填写手机号: {phone_number[:4]}****")
                         phone_input.click()
                         phone_input.fill(str(phone_number).strip())
                         time.sleep(0.5)
@@ -653,7 +709,8 @@ class CursorBrowserRegister:
                             )
                             sms_code = self.phone_callback()  # 复用 callback 获取短信码
                             if sms_code:
-                                self.log(f"填写短信验证码: {sms_code}")
+                                self.log_key("cursor.73be4e51", sms_code=sms_code)
+                                # was: self.log(f"填写短信验证码: {sms_code}")
                                 for digit in str(sms_code).strip():
                                     page.keyboard.press(digit)
                                     time.sleep(0.1)
@@ -661,15 +718,15 @@ class CursorBrowserRegister:
                                 page.keyboard.press("Enter")
                                 time.sleep(3)
                         except Exception as e:
-                            self.log(f"⚠️ 等待短信验证码失败: {e}")
+                            self.log_key("cursor.34ff3305", exc=str(e))
+                            # was: self.log(f"⚠️ 等待短信验证码失败: {e}")
                 else:
-                    raise RuntimeError(
-                        "Cursor 注册需要手机号验证，但未配置 phone_callback。"
-                        "请在 RegisterConfig.extra 中配置接码服务，或手动完成手机号验证。"
-                    )
+                    _raise_keyed(RuntimeError, "cursor.8f383f94")
+                    # was: raise RuntimeError("Cursor 注册需要手机号验证，但未配置 phone_callback。" "请在 RegisterConfig.extra 中配置接码服务，或手动完成手机号验证。")
 
             # 等待验证码输入框（WorkOS email-verification 页面用 6 个独立格子）
-            self.log("等待验证码输入框...")
+            self.log_key("cursor.482bc0b5")
+            # was: self.log("等待验证码输入框...")
             OTP_SELECTORS = [
                 'input[name="otp"]',
                 'input[name="code"]',
@@ -702,15 +759,20 @@ class CursorBrowserRegister:
                 time.sleep(1)
 
             if not otp_input:
-                raise RuntimeError(f"未出现验证码输入框 (url={page.url})")
+                _raise_keyed(RuntimeError, "cursor.284aec86", page_url=page.url)
+                # was: raise RuntimeError(f"未出现验证码输入框 (url={page.url})")
 
             if not self.otp_callback:
-                raise RuntimeError("Cursor 注册需要邮箱验证码但未提供 otp_callback")
-            self.log("等待邮箱验证码")
+                _raise_keyed(RuntimeError, "cursor.d704251c")
+                # was: raise RuntimeError("Cursor 注册需要邮箱验证码但未提供 otp_callback")
+            self.log_key("cursor.c1aefad5")
+            # was: self.log("等待邮箱验证码")
             otp = self.otp_callback()
             if not otp:
-                raise RuntimeError("未获取到验证码")
-            self.log(f"验证码: {otp}")
+                _raise_keyed(RuntimeError, "cursor.13939cce")
+                # was: raise RuntimeError("未获取到验证码")
+            self.log_key("cursor.8f3b2133", otp=otp)
+            # was: self.log(f"验证码: {otp}")
 
             # WorkOS 6格子 OTP：点击第一个格子然后逐键输入
             try:
@@ -728,13 +790,16 @@ class CursorBrowserRegister:
             time.sleep(5)
 
             # 等待 Session Token
-            self.log("等待 WorkosCursorSessionToken")
+            self.log_key("cursor.e13519e0")
+            # was: self.log("等待 WorkosCursorSessionToken")
             tok = _wait_for_token(page, timeout=60)
             if not tok:
-                raise RuntimeError("未获取到 WorkosCursorSessionToken")
+                _raise_keyed(RuntimeError, "cursor.93470dc0")
+                # was: raise RuntimeError("未获取到 WorkosCursorSessionToken")
 
             from platforms.cursor.switch import get_cursor_user_info
             user_info = get_cursor_user_info(tok) or {}
             resolved_email = user_info.get("email", email)
-            self.log(f"注册成功: {resolved_email}")
+            self.log_key("cursor.f5afbbc0", resolved_email=resolved_email)
+            # was: self.log(f"注册成功: {resolved_email}")
             return {"email": resolved_email, "password": "", "token": tok}

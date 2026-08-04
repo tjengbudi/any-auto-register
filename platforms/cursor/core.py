@@ -2,6 +2,8 @@
 import re, uuid, json, urllib.parse, random, string
 from typing import Optional, Callable
 
+from platforms.cursor._i18n_helpers import _emit_log_key
+
 AUTH   = "https://authenticator.cursor.sh"
 CURSOR = "https://cursor.com"
 
@@ -39,12 +41,16 @@ def _multipart(fields: dict, boundary: str) -> bytes:
 
 
 class CursorRegister:
-    def __init__(self, proxy: str = None, log_fn: Callable = print):
+    def __init__(self, proxy: str = None, log_fn: Callable = print, log_key_fn: Optional[Callable[[str, dict], None]] = None):
         from curl_cffi import requests as curl_req
         self.log = log_fn
+        self._log_key_fn = log_key_fn
         self.s = curl_req.Session(impersonate="safari17_0")
         if proxy:
             self.s.proxies = {"http": proxy, "https": proxy}
+
+    def log_key(self, key: str, **params) -> None:
+        _emit_log_key(self.log, self._log_key_fn, key, **params)
 
     def _base_headers(self, next_action, referer, boundary=None):
         ct = f"multipart/form-data; boundary={boundary}" if boundary else "application/x-www-form-urlencoded"
@@ -82,7 +88,8 @@ class CursorRegister:
     def step3_submit_password(self, password, email, state_encoded, captcha_solver=None):
         captcha_token = ""
         if captcha_solver:
-            self.log("获取 Turnstile token...")
+            self.log_key("cursor.f6167694")
+            # was: self.log("获取 Turnstile token...")
             captcha_token = captcha_solver.solve_turnstile(AUTH, TURNSTILE_SITEKEY)
         bd = _boundary()
         referer = f"{AUTH}/sign-up?state={state_encoded}"

@@ -2,6 +2,8 @@
 import re, json, secrets, hashlib, base64, urllib.parse
 from typing import Optional, Callable
 
+from platforms.tavily._i18n_helpers import _emit_log_key
+
 AUTH0_CLIENT_ID   = "RRIAvvXNFxpfTWIozX1mXqLnyUmYSTrQ"
 AUTH0_BASE        = "https://auth.tavily.com"
 APP_BASE          = "https://app.tavily.com"
@@ -10,10 +12,14 @@ TURNSTILE_SITEKEY = "0x4AAAAAAAQFNSW6xordsuIq"
 
 
 class TavilyRegister:
-    def __init__(self, executor, captcha, log_fn: Callable = print):
+    def __init__(self, executor, captcha, log_fn: Callable = print, log_key_fn: Optional[Callable[[str, dict], None]] = None):
         self.ex = executor
         self.captcha = captcha
         self.log = log_fn
+        self._log_key_fn = log_key_fn
+
+    def log_key(self, key: str, **params) -> None:
+        _emit_log_key(self.log, self._log_key_fn, key, **params)
 
     def step1_authorize(self) -> str:
         """GET /authorize → 返回 state"""
@@ -37,13 +43,15 @@ class TavilyRegister:
         return urllib.parse.unquote(m.group(1)) if m else state_val
 
     def step2_solve_captcha(self) -> str:
-        self.log("获取 Turnstile token...")
+        self.log_key("tavily.f6167694")
+        # was: self.log("获取 Turnstile token...")
         token = self.captcha.solve_turnstile(AUTH0_BASE, TURNSTILE_SITEKEY)
         self.log("Turnstile OK")
         return token
 
     def step3_submit_email(self, email: str, state: str, captcha_token: str) -> str:
-        self.log(f"提交邮箱: {email}")
+        self.log_key("tavily.32bd72ad", email=email)
+        # was: self.log(f"提交邮箱: {email}")
         r = self.ex.post(
             f"{AUTH0_BASE}/u/signup/identifier",
             params={"state": state},
@@ -54,7 +62,8 @@ class TavilyRegister:
         return urllib.parse.unquote(m.group(1)) if m else state
 
     def step4_submit_otp(self, otp: str, challenge_state: str) -> str:
-        self.log("提交验证码...")
+        self.log_key("tavily.0ce46d45")
+        # was: self.log("提交验证码...")
         r = self.ex.post(
             f"{AUTH0_BASE}/u/email-identifier/challenge",
             params={"state": challenge_state},
@@ -65,7 +74,8 @@ class TavilyRegister:
         return urllib.parse.unquote(m.group(1)) if m else challenge_state
 
     def step5_submit_password(self, email: str, password: str, pw_state: str) -> str:
-        self.log("设置密码...")
+        self.log_key("tavily.5edf0bbd")
+        # was: self.log("设置密码...")
         r = self.ex.post(
             f"{AUTH0_BASE}/u/signup/password",
             params={"state": pw_state},
@@ -78,7 +88,8 @@ class TavilyRegister:
         return urllib.parse.unquote(m.group(1)) if m else pw_state
 
     def step6_resume_and_get_key(self, resume_state: str) -> str:
-        self.log("完成授权流程...")
+        self.log_key("tavily.1622d5ee")
+        # was: self.log("完成授权流程...")
         self.ex.get(f"{AUTH0_BASE}/authorize/resume", params={"state": resume_state})
         r = self.ex.get(f"{APP_BASE}/api/keys", headers={"accept": "application/json"})
         try:

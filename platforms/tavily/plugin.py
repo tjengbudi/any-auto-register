@@ -4,6 +4,7 @@ from core.base_platform import BasePlatform, Account, AccountStatus, RegisterCon
 from core.base_mailbox import BaseMailbox
 from core.registration import BrowserRegistrationAdapter, LinkSpec, OtpSpec, ProtocolMailboxAdapter, ProtocolOAuthAdapter, RegistrationCapability, RegistrationResult
 from core.registry import register
+from platforms.tavily._i18n_helpers import _raise_keyed
 
 
 @register
@@ -60,6 +61,7 @@ class TavilyPlatform(BasePlatform):
                 verification_link_callback=artifacts.verification_link_callback,
                 api_key_timeout=int(ctx.extra.get("api_key_timeout", 20) or 20),
                 log_fn=ctx.log,
+                log_key_fn=ctx.log_key_fn,
             ),
             browser_register_runner=lambda worker, ctx, artifacts: worker.run(
                 email=ctx.identity.email,
@@ -82,13 +84,15 @@ class TavilyPlatform(BasePlatform):
             email_hint=ctx.identity.email,
             timeout=int(ctx.extra.get("browser_oauth_timeout", ctx.extra.get("manual_oauth_timeout", 300)) or 300),
             log_fn=ctx.log,
+            log_key=ctx.log_key_fn,
             chrome_user_data_dir=ctx.identity.chrome_user_data_dir,
             chrome_cdp_url=ctx.identity.chrome_cdp_url,
         )
 
     def build_protocol_oauth_adapter(self):
         return ProtocolOAuthAdapter(
-            oauth_runner=lambda ctx: (_ for _ in ()).throw(RuntimeError("Tavily 当前仅浏览器模式支持 oauth_browser，请使用 executor_type=headed")),
+            oauth_runner=lambda ctx: _raise_keyed(RuntimeError, "tavily.de051424"),
+            # was: oauth_runner=lambda ctx: (_ for _ in ()).throw(RuntimeError("Tavily 当前仅浏览器模式支持 oauth_browser，请使用 executor_type=headed"))
             result_mapper=lambda ctx, result: self._map_tavily_result(result),
         )
 
@@ -99,6 +103,7 @@ class TavilyPlatform(BasePlatform):
                 executor=artifacts.executor,
                 captcha=artifacts.captcha_solver,
                 log_fn=ctx.log,
+                log_key_fn=ctx.log_key_fn,
             ),
             register_runner=lambda worker, ctx, artifacts: worker.run(
                 email=ctx.identity.email,
