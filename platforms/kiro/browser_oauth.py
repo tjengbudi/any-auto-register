@@ -9,6 +9,7 @@ from core.oauth_browser import (
     finalize_oauth_email,
     oauth_provider_label,
 )
+from platforms.kiro._i18n_helpers import _raise_keyed
 from platforms.kiro.core import KIRO, KiroRegister, UA, _uuid
 
 
@@ -18,9 +19,11 @@ def _exchange_callback_tokens(reg: KiroRegister, callback_url: str):
     auth_code = (query.get("code") or [""])[0]
     redirect_state = (query.get("state") or [""])[0]
     if not auth_code:
-        raise RuntimeError("Kiro OAuth 回调里缺少 code")
+        _raise_keyed(RuntimeError, "kiro.6f57fe44")
+        # was: raise RuntimeError("Kiro OAuth 回调里缺少 code")
     if redirect_state and redirect_state != reg.state:
-        raise RuntimeError("Kiro OAuth state 不匹配")
+        _raise_keyed(RuntimeError, "kiro.63fd1109")
+        # was: raise RuntimeError("Kiro OAuth state 不匹配")
 
     exchange_body = cbor2.dumps({
         "code": auth_code,
@@ -48,11 +51,13 @@ def _exchange_callback_tokens(reg: KiroRegister, callback_url: str):
         cookies={"kiro-visitor-id": reg.vid},
     )
     if response.status_code != 200:
-        raise RuntimeError(f"Kiro ExchangeToken 失败: HTTP {response.status_code}")
+        _raise_keyed(RuntimeError, "kiro.77e70637", status_code=response.status_code)
+        # was: raise RuntimeError(f"Kiro ExchangeToken 失败: HTTP {response.status_code}")
     data = cbor2.loads(response.content)
     access_token = data.get("accessToken", "")
     if not access_token:
-        raise RuntimeError("Kiro ExchangeToken 响应里缺少 accessToken")
+        _raise_keyed(RuntimeError, "kiro.f8e6f158")
+        # was: raise RuntimeError("Kiro ExchangeToken 响应里缺少 accessToken")
     return {
         "accessToken": access_token,
         "csrfToken": data.get("csrfToken", ""),
@@ -78,7 +83,8 @@ def register_with_browser_oauth(
     reg._log_key_fn = log_key_fn
     redirect_url = reg.step1_kiro_init()
     if not redirect_url:
-        raise RuntimeError("Kiro InitiateLogin 失败")
+        _raise_keyed(RuntimeError, "kiro.276321ca")
+        # was: raise RuntimeError("Kiro InitiateLogin 失败")
 
     with OAuthBrowser(
         proxy=proxy,
@@ -103,7 +109,8 @@ def register_with_browser_oauth(
             timeout=timeout,
         )
         if not callback_url:
-            raise RuntimeError(f"Kiro 浏览器登录未在 {timeout} 秒内完成")
+            _raise_keyed(RuntimeError, "kiro.2da6b380", timeout=timeout)
+            # was: raise RuntimeError(f"Kiro 浏览器登录未在 {timeout} 秒内完成")
 
         token_info = _exchange_callback_tokens(reg, callback_url)
         resolved_email = finalize_oauth_email("", email_hint, "Kiro")

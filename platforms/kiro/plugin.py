@@ -6,6 +6,7 @@ from core.base_mailbox import BaseMailbox
 from core.registration import BrowserRegistrationAdapter, OtpSpec, ProtocolMailboxAdapter, ProtocolOAuthAdapter, RegistrationCapability, RegistrationResult
 from core.registration.helpers import resolve_timeout
 from core.registry import register
+from platforms.kiro._i18n_helpers import _raise_keyed
 
 
 def _mask_secret(value: str) -> str:
@@ -101,6 +102,7 @@ class KiroPlatform(BasePlatform):
                 proxy=ctx.proxy,
                 otp_callback=artifacts.otp_callback,
                 log_fn=ctx.log,
+                log_key_fn=ctx.log_key_fn,
             ),
             browser_register_runner=lambda worker, ctx, artifacts: worker.run(
                 email=ctx.identity.email or "",
@@ -342,4 +344,5 @@ class KiroPlatform(BasePlatform):
                 },
             }
 
-        raise NotImplementedError(f"未知操作: {action_id}")
+        _raise_keyed(NotImplementedError, "kiro.701d383a", action_id=action_id)
+        # was: raise NotImplementedError(f"未知操作: {action_id}")
