@@ -96,7 +96,7 @@ class WindsurfPlatform(BasePlatform):
         def _build_worker(ctx, artifacts):
             from platforms.windsurf.protocol_mailbox import WindsurfProtocolMailboxWorker
 
-            return WindsurfProtocolMailboxWorker(proxy=ctx.proxy, log_fn=ctx.log)
+            return WindsurfProtocolMailboxWorker(proxy=ctx.proxy, log_fn=ctx.log, log_key_fn=ctx.log_key_fn)
 
         def _run_worker(worker, ctx, artifacts):
             return worker.run(
@@ -128,6 +128,7 @@ class WindsurfPlatform(BasePlatform):
                 proxy=ctx.proxy,
                 otp_callback=artifacts.otp_callback,
                 log_fn=ctx.log,
+                log_key_fn=ctx.log_key_fn,
             )
 
         def _run_worker(worker, ctx, artifacts):
@@ -155,6 +156,7 @@ class WindsurfPlatform(BasePlatform):
             account,
             proxy=self.config.proxy if self.config else None,
             log_fn=self.log,
+            log_key_fn=self._log_key_fn,
         )
 
     def check_valid(self, account: Account) -> bool:
@@ -198,7 +200,8 @@ class WindsurfPlatform(BasePlatform):
             # rendered at the read boundary (AD-3/AD-8).
             return {"ok": False, "error": json.dumps({"i18n_key": "windsurf.ba57068f", "i18n_params": {}}, ensure_ascii=False)}
 
-        self.log(f"正在切换到: {account.email}")
+        self.log_key("windsurf.df723149", email=account.email)
+        # was: self.log(f"正在切换到: {account.email}")
         proxy = self.config.proxy if self.config else None
         ok, msg = switch_windsurf_account(session_token=session_token, proxy=proxy)
 
@@ -221,9 +224,11 @@ class WindsurfPlatform(BasePlatform):
 
         turnstile_token = str(params.get("turnstile_token") or "").strip()
         if turnstile_token:
-            self.log("使用提供的 Turnstile token 作为浏览器流程回退")
+            self.log_key("windsurf.1e41af50")
+            # was: self.log("使用提供的 Turnstile token 作为浏览器流程回退")
         else:
-            self.log("未提供 Turnstile token，将在页面上自动过验证")
+            self.log_key("windsurf.9957d67a")
+            # was: self.log("未提供 Turnstile token，将在页面上自动过验证")
         headless_param = params.get("headless")
         if headless_param in (None, ""):
             headless = self.config.executor_type == "headless"
@@ -270,7 +275,7 @@ class WindsurfPlatform(BasePlatform):
         context = extract_windsurf_account_context(account)
         if not context["session_token"]:
             return {"ok": False, "error": "Account missing Windsurf session_token"}
-        client = WindsurfClient(proxy=self.config.proxy if self.config else None, log_fn=self.log)
+        client = WindsurfClient(proxy=self.config.proxy if self.config else None, log_fn=self.log, log_key_fn=self._log_key_fn)
         eligible = client.check_pro_trial_eligibility(
             context["session_token"],
             account_id=context["account_id"],
@@ -304,7 +309,7 @@ class WindsurfPlatform(BasePlatform):
                     ),
                 }
 
-        client = WindsurfClient(proxy=self.config.proxy if self.config else None, log_fn=self.log)
+        client = WindsurfClient(proxy=self.config.proxy if self.config else None, log_fn=self.log, log_key_fn=self._log_key_fn)
         trial_eligible = False
         try:
             trial_eligible = client.check_pro_trial_eligibility(

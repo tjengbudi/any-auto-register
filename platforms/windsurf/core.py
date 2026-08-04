@@ -11,10 +11,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 from urllib.parse import quote
 
 from curl_cffi import requests as curl_requests
+
+from platforms.windsurf._i18n_helpers import _emit_log_key, _raise_keyed
 
 
 WINDSURF_BASE = "https://windsurf.com"
@@ -399,7 +401,13 @@ def extract_windsurf_account_context(account: Any) -> dict[str, str]:
 
 
 class WindsurfClient:
-    def __init__(self, *, proxy: str | None = None, log_fn: Callable[[str], None] = print):
+    def __init__(
+        self,
+        *,
+        proxy: str | None = None,
+        log_fn: Callable[[str], None] = print,
+        log_key_fn: Optional[Callable[[str, dict], None]] = None,
+    ):
         self.s = curl_requests.Session()
         self.s.impersonate = "chrome131"
         if proxy:
@@ -413,6 +421,10 @@ class WindsurfClient:
             "dnt": "1",
         })
         self.log = log_fn
+        self._log_key_fn = log_key_fn
+
+    def log_key(self, key: str, **params) -> None:
+        _emit_log_key(self.log, self._log_key_fn, key, **params)
 
     def _json_post(self, path: str, payload: dict[str, Any], *, referer: str = "/account/register") -> dict[str, Any]:
         response = self.s.post(
@@ -430,11 +442,13 @@ class WindsurfClient:
             timeout=30,
         )
         if response.status_code >= 400:
-            raise RuntimeError(f"{path} 失败: HTTP {response.status_code} {response.text[:200]}")
+            _raise_keyed(RuntimeError, "windsurf.16ed427f", path=path, status_code=response.status_code, text=response.text[:200])
+            # was: raise RuntimeError(f"{path} 失败: HTTP {response.status_code} {response.text[:200]}")
         data = response.json()
         if isinstance(data, dict):
             return data
-        raise RuntimeError(f"{path} 返回格式异常")
+        _raise_keyed(RuntimeError, "windsurf.30a21954", path=path)
+        # was: raise RuntimeError(f"{path} 返回格式异常")
 
     def _proto_post(
         self,
@@ -473,7 +487,8 @@ class WindsurfClient:
             timeout=30,
         )
         if response.status_code >= 400:
-            raise RuntimeError(f"{method} 失败: HTTP {response.status_code} {response.text[:200]}")
+            _raise_keyed(RuntimeError, "windsurf.48de3cf3", method=method, status_code=response.status_code, text=response.text[:200])
+            # was: raise RuntimeError(f"{method} 失败: HTTP {response.status_code} {response.text[:200]}")
         return bytes(response.content or b"")
 
     def check_user_login_method(self, email: str) -> None:
@@ -483,18 +498,21 @@ class WindsurfClient:
         return self._json_post("/_devin-auth/connections", {"product": "windsurf", "email": email})
 
     def start_email_signup(self, email: str) -> str:
-        self.log(f"Step1: 发送 Windsurf 验证码到 {email}")
+        self.log_key("windsurf.0cf7bbe1", email=email)
+        # was: self.log(f"Step1: 发送 Windsurf 验证码到 {email}")
         data = self._json_post(
             "/_devin-auth/email/start",
             {"email": email, "mode": "signup", "product": "Windsurf"},
         )
         token = _as_text(data.get("email_verification_token"))
         if not token:
-            raise RuntimeError("Windsurf 未返回 email_verification_token")
+            _raise_keyed(RuntimeError, "windsurf.d965e09d")
+            # was: raise RuntimeError("Windsurf 未返回 email_verification_token")
         return token
 
     def complete_email_signup(self, *, email: str, verification_token: str, code: str, password: str, name: str) -> dict[str, Any]:
-        self.log("Step2: 提交 Windsurf 邮箱验证码")
+        self.log_key("windsurf.a6ab7956")
+        # was: self.log("Step2: 提交 Windsurf 邮箱验证码")
         data = self._json_post(
             "/_devin-auth/email/complete",
             {
@@ -507,19 +525,22 @@ class WindsurfClient:
         )
         auth_token = _as_text(data.get("token"))
         if not auth_token:
-            raise RuntimeError("Windsurf 未返回 auth token")
+            _raise_keyed(RuntimeError, "windsurf.6a81c8ef")
+            # was: raise RuntimeError("Windsurf 未返回 auth token")
         return data
 
     def login_with_password(self, email: str, password: str) -> dict[str, str]:
         """用邮箱+密码登录已有账号，返回 session_token 等信息"""
-        self.log(f"密码登录 Windsurf: {email}")
+        self.log_key("windsurf.ad982c2d", email=email)
+        # was: self.log(f"密码登录 Windsurf: {email}")
         start_data = self._json_post(
             "/_devin-auth/email/start",
             {"email": email, "mode": "login", "product": "Windsurf"},
         )
         verification_token = _as_text(start_data.get("email_verification_token"))
         if not verification_token:
-            raise RuntimeError("Windsurf 登录未返回 email_verification_token")
+            _raise_keyed(RuntimeError, "windsurf.1e4d101d")
+            # was: raise RuntimeError("Windsurf 登录未返回 email_verification_token")
         data = self._json_post(
             "/_devin-auth/email/complete",
             {
@@ -530,11 +551,13 @@ class WindsurfClient:
         )
         auth_token = _as_text(data.get("token"))
         if not auth_token:
-            raise RuntimeError("Windsurf 密码登录未返回 auth token")
+            _raise_keyed(RuntimeError, "windsurf.09b73165")
+            # was: raise RuntimeError("Windsurf 密码登录未返回 auth token")
         return self.post_auth(auth_token)
 
     def post_auth(self, auth_token: str) -> dict[str, str]:
-        self.log("Step3: 兑换 Windsurf session")
+        self.log_key("windsurf.7a91e427")
+        # was: self.log("Step3: 兑换 Windsurf session")
         content = self._proto_post(
             "WindsurfPostAuth",
             _field_string(1, auth_token),
@@ -542,7 +565,8 @@ class WindsurfClient:
         )
         data = parse_post_auth_response(content)
         if not data.get("session_token"):
-            raise RuntimeError("Windsurf 未返回 session_token")
+            _raise_keyed(RuntimeError, "windsurf.914d46da")
+            # was: raise RuntimeError("Windsurf 未返回 session_token")
         return data
 
     def _auth_body(self, session_token: str, *, include_plan_status_flag: bool = False) -> bytes:
@@ -604,7 +628,8 @@ class WindsurfClient:
     ) -> dict[str, str]:
         token = _as_text(turnstile_token)
         if not token:
-            raise RuntimeError("缺少 Turnstile token，无法调用 Windsurf SubscribeToPlan")
+            _raise_keyed(RuntimeError, "windsurf.6471a5e4")
+            # was: raise RuntimeError("缺少 Turnstile token，无法调用 Windsurf SubscribeToPlan")
         success = success_url or f"{WINDSURF_BASE}/subscription/pending?expect_tier=trial"
         cancel = cancel_url or f"{WINDSURF_BASE}/plan?plan_cancelled=true&plan_tier=trial"
         billing_referer = f"/billing/individual?plan=9&turnstile_token={quote(token, safe='')}"
@@ -628,12 +653,14 @@ class WindsurfClient:
         )
         result = parse_subscribe_to_plan_response(content)
         if not result.get("checkout_url"):
-            raise RuntimeError("Windsurf SubscribeToPlan 未返回 checkout_url")
+            _raise_keyed(RuntimeError, "windsurf.a88d587a")
+            # was: raise RuntimeError("Windsurf SubscribeToPlan 未返回 checkout_url")
         return result
 
     def load_account_state(self, *, session_token: str, account_id: str = "", org_id: str = "", fallback_email: str = "") -> dict[str, Any]:
         if not session_token:
-            raise RuntimeError("账号缺少 Windsurf session_token")
+            _raise_keyed(RuntimeError, "windsurf.72782a13")
+            # was: raise RuntimeError("账号缺少 Windsurf session_token")
         current_user = self.get_current_user(session_token, account_id=account_id, org_id=org_id)
         plan_status = self.get_plan_status(session_token, account_id=account_id, org_id=org_id)
         stripe_state: dict[str, Any] = {}
@@ -655,9 +682,10 @@ def load_windsurf_account_state(
     *,
     proxy: str | None = None,
     log_fn: Callable[[str], None] = print,
+    log_key_fn: Optional[Callable[[str, dict], None]] = None,
 ) -> dict[str, Any]:
     context = extract_windsurf_account_context(account)
-    client = WindsurfClient(proxy=proxy, log_fn=log_fn)
+    client = WindsurfClient(proxy=proxy, log_fn=log_fn, log_key_fn=log_key_fn)
     return client.load_account_state(
         session_token=context["session_token"],
         account_id=context["account_id"],
