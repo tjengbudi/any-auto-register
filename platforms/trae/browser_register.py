@@ -64,7 +64,7 @@ def _click_element(page, *selectors, timeout: int = 10) -> bool:
     return False
 
 
-def _get_trae_cloudide_token(page, log_fn=print, log_key: Optional[Callable[[str, dict], None]] = None) -> tuple:
+def _get_trae_cloudide_token(page, log_fn=print, *, log_key: Optional[Callable[[str, dict], None]] = None) -> tuple:
     """注册完成后，用浏览器 session 调用 Trae API 获取 Cloud-IDE JWT token。
 
     流程同 core.py：
@@ -415,13 +415,13 @@ class TraeBrowserRegister:
             # 8. 提取 token
             self.log_key("trae.c42b714b")
             # was: self.log("提取 Trae token...")
-            token, user_id, region = _get_trae_cloudide_token(page, self.log, self._log_key_fn)
+            token, user_id, region = _get_trae_cloudide_token(page, self.log, log_key=self._log_key_fn)
 
             if not token:
                 self.log_key("trae.b7ab0160")
                 # was: self.log("⚠️ 未从 Cookie 获取到 token，尝试等待...")
                 time.sleep(5)
-                token, user_id, region = _get_trae_cloudide_token(page, self.log, self._log_key_fn)
+                token, user_id, region = _get_trae_cloudide_token(page, self.log, log_key=self._log_key_fn)
 
             self.log_key("trae.90bedbfd", email=email)
             # was: self.log(f"✓ 注册成功: {email}")
