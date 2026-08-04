@@ -1009,17 +1009,21 @@ class KiroRegister:
         """
         PORTAL = "https://portal.sso.us-east-1.amazonaws.com"
         OIDC = "https://oidc.us-east-1.amazonaws.com"
-        self.log("Step 12: OIDC Auth Code Flow → 获取 tokens...")
+        self.log_key("kiro.7aadb4f7")
+        # was: self.log("Step 12: OIDC Auth Code Flow → 获取 tokens...")
 
         # 检查必要数据
         if not self._portal_csrf_token:
-            self.log("  ❌ 缺少 portal csrfToken (step 2)")
+            self.log_key("kiro.58e5c346")
+            # was: self.log("  ❌ 缺少 portal csrfToken (step 2)")
             return None
         if not self._workflow_result_handle:
-            self.log("  ❌ 缺少 workflowResultHandle (step 10)")
+            self.log_key("kiro.9452469e")
+            # was: self.log("  ❌ 缺少 workflowResultHandle (step 10)")
             return None
         if not self._step11_state:
-            self.log("  ❌ 缺少 step11 state")
+            self.log_key("kiro.6fa73621")
+            # was: self.log("  ❌ 缺少 step11 state")
             return None
 
         # ── 12a: POST portal.sso/auth/sso-token ──
@@ -1047,13 +1051,15 @@ class KiroRegister:
                         data=sso_body)
         self.log(f"  Status: {r.status_code}")
         if r.status_code != 200:
-            self.log(f"  ❌ sso-token 失败: {r.status_code} {r.text[:500]}")
+            self.log_key("kiro.b53ec813", status_code=r.status_code, body=r.text[:500])
+            # was: self.log(f"  ❌ sso-token 失败: {r.status_code} {r.text[:500]}")
             return None
         sso_resp = r.json()
         bearer_token = sso_resp.get("token", "")
         sso_redirect = sso_resp.get("redirectUrl", "")
         if not bearer_token:
-            self.log(f"  ❌ 无 bearer token: {json.dumps(sso_resp, ensure_ascii=False)[:300]}")
+            self.log_key("kiro.222a6853", body=json.dumps(sso_resp, ensure_ascii=False)[:300])
+            # was: self.log(f"  ❌ 无 bearer token: {json.dumps(sso_resp, ensure_ascii=False)[:300]}")
             return None
         self.log(f"  ✅ bearer token (sessionToken)={bearer_token[:60]}...")
         self.log(f"  redirectUrl={sso_redirect[:120]}...")
@@ -1062,7 +1068,8 @@ class KiroRegister:
         if sso_redirect and 'view.awsapps.com' in sso_redirect:
             # 去掉 fragment (#/...) 只 GET path 部分
             clean_redir = sso_redirect.split('#')[0] if '#' in sso_redirect else sso_redirect
-            self.log(f"  12a2: GET view.awsapps.com (建立 SSO session)...")
+            self.log_key("kiro.8fa49599")
+            # was: self.log(f"  12a2: GET view.awsapps.com (建立 SSO session)...")
             r2 = self.s.get(clean_redir, headers={**UA, "accept": "text/html",
                 "referer": "https://us-east-1.signin.aws/"})
             self.log(f"  view.awsapps status: {r2.status_code}")
@@ -1076,7 +1083,8 @@ class KiroRegister:
             new_orch = (qs_redir.get("orchestrator_id") or fqs.get("orchestrator_id", [None]))[0]
             if new_orch:
                 orch_id = new_orch
-                self.log(f"  ★ 更新 orchestrator_id={orch_id[:60]}...")
+                self.log_key("kiro.9253a1fa", orch_id=orch_id[:60])
+                # was: self.log(f"  ★ 更新 orchestrator_id={orch_id[:60]}...")
 
         # ── 12b: GET portal.sso/token/whoAmI (验证 token) ──
         self.log("  12b: GET portal.sso/token/whoAmI...")
@@ -1117,12 +1125,14 @@ class KiroRegister:
                         headers=auth_result_h, json=auth_result_body)
         self.log(f"  Status: {r.status_code}")
         if r.status_code != 200:
-            self.log(f"  ❌ authentication_result 失败: {r.status_code} {r.text[:500]}")
+            self.log_key("kiro.afe53dcb", status_code=r.status_code, body=r.text[:500])
+            # was: self.log(f"  ❌ authentication_result 失败: {r.status_code} {r.text[:500]}")
             return None
         ar_resp = r.json()
         auth_location = ar_resp.get("location", "")
         if not auth_location:
-            self.log(f"  ❌ 无 location: {json.dumps(ar_resp, ensure_ascii=False)[:300]}")
+            self.log_key("kiro.40a09fac", body=json.dumps(ar_resp, ensure_ascii=False)[:300])
+            # was: self.log(f"  ❌ 无 location: {json.dumps(ar_resp, ensure_ascii=False)[:300]}")
             return None
         self.log(f"  ✅ location={auth_location[:120]}...")
 
@@ -1133,7 +1143,8 @@ class KiroRegister:
         self.log(f"  Status: {r.status_code}")
         redirect_loc = r.headers.get("location") or r.headers.get("Location", "")
         if not redirect_loc:
-            self.log(f"  ❌ 无 redirect location, status={r.status_code}")
+            self.log_key("kiro.e0786201", status_code=r.status_code)
+            # was: self.log(f"  ❌ 无 redirect location, status={r.status_code}")
             return None
         self.log(f"  ✅ redirect → {redirect_loc[:150]}...")
 
@@ -1143,10 +1154,12 @@ class KiroRegister:
         auth_code = qs_loc.get("code", [None])[0]
         redirect_state = qs_loc.get("state", [None])[0]
         if not auth_code:
-            self.log(f"  ❌ redirect URL 中无 code 参数")
+            self.log_key("kiro.32d97959")
+            # was: self.log(f"  ❌ redirect URL 中无 code 参数")
             return None
         if not redirect_state:
-            self.log(f"  ⚠️ redirect URL 中无 state 参数, 回退到 self.state")
+            self.log_key("kiro.7a19d1d7")
+            # was: self.log(f"  ⚠️ redirect URL 中无 state 参数, 回退到 self.state")
             redirect_state = self.state
         self.log(f"  ✅ auth_code={auth_code[:60]}...")
         self.log(f"  ✅ redirect_state={redirect_state[:60]}...")
@@ -1179,20 +1192,23 @@ class KiroRegister:
             cookies={"kiro-visitor-id": self.vid})
         self.log(f"  Status: {r.status_code}")
         if r.status_code != 200:
-            self.log(f"  ❌ ExchangeToken 失败: {r.status_code}")
+            self.log_key("kiro.3c0990bc", status_code=r.status_code)
+            # was: self.log(f"  ❌ ExchangeToken 失败: {r.status_code}")
             try: self.log(f"  {r.text[:500]}")
             except: self.log(f"  (binary response, len={len(r.content)})")
             return None
         try:
             resp_data = cbor2.loads(r.content)
         except Exception as e:
-            self.log(f"  ❌ CBOR 解析失败: {e}")
+            self.log_key("kiro.213ce24d", e=str(e))
+            # was: self.log(f"  ❌ CBOR 解析失败: {e}")
             return None
         access_token = resp_data.get("accessToken", "")
         kiro_csrf = resp_data.get("csrfToken", "")
         expires_in = resp_data.get("expiresIn", 0)
         if not access_token:
-            self.log(f"  ❌ 无 accessToken: {resp_data}")
+            self.log_key("kiro.59e71428", resp_data=str(resp_data))
+            # was: self.log(f"  ❌ 无 accessToken: {resp_data}")
             return None
         self.log(f"  ✅ accessToken={access_token[:60]}...")
         self.log(f"  ✅ csrfToken={kiro_csrf[:30]}...")
@@ -1258,13 +1274,15 @@ class KiroRegister:
                         json=reg_body)
         self.log(f"  Status: {r.status_code}")
         if r.status_code != 200:
-            self.log(f"  ❌ client/register 失败: {r.text[:300]}")
+            self.log_key("kiro.260bd2dd", body=r.text[:300])
+            # was: self.log(f"  ❌ client/register 失败: {r.text[:300]}")
             return None
         reg_resp = r.json()
         client_id = reg_resp.get("clientId", "")
         client_secret = reg_resp.get("clientSecret", "")
         if not client_id or not client_secret:
-            self.log(f"  ❌ 无 clientId/clientSecret")
+            self.log_key("kiro.44550466")
+            # was: self.log(f"  ❌ 无 clientId/clientSecret")
             return None
         self.log(f"  ✅ clientId={client_id[:40]}...")
 
@@ -1280,7 +1298,8 @@ class KiroRegister:
                         json=da_body)
         self.log(f"  Status: {r.status_code}")
         if r.status_code != 200:
-            self.log(f"  ❌ device_authorization 失败: {r.text[:300]}")
+            self.log_key("kiro.ccc00097", body=r.text[:300])
+            # was: self.log(f"  ❌ device_authorization 失败: {r.text[:300]}")
             return None
         da_resp = r.json()
         device_code = da_resp.get("deviceCode", "")
@@ -1288,7 +1307,8 @@ class KiroRegister:
         interval = da_resp.get("interval", 1)
         verification_uri = da_resp.get("verificationUriComplete", "")
         if not device_code or not user_code:
-            self.log(f"  ❌ 无 deviceCode/userCode")
+            self.log_key("kiro.41de66f8")
+            # was: self.log(f"  ❌ 无 deviceCode/userCode")
             return None
         self.log(f"  ✅ userCode={user_code}")
         self.log(f"  ✅ verificationUri={verification_uri[:100]}...")
@@ -1300,7 +1320,8 @@ class KiroRegister:
         #   12h-2: POST portal.sso/session/device → device session token
         #   12h-3: POST oidc/consent_details (body, 含 userSessionId=device_token)
         #   12h-4: POST oidc/device_authorization/associate_token → {location:null}
-        self.log("  12h: 设备授权确认 (直接调用 oidc.amazonaws.com)...")
+        self.log_key("kiro.5658cafc")
+        # was: self.log("  12h: 设备授权确认 (直接调用 oidc.amazonaws.com)...")
 
         oidc_h = {
             **UA,
@@ -1321,7 +1342,8 @@ class KiroRegister:
             json={"userCode": user_code, "userSessionId": bearer_token})
         self.log(f"  Status: {r.status_code} {r.text[:300]}")
         if r.status_code != 200:
-            self.log(f"  ❌ accept_user_code 失败")
+            self.log_key("kiro.2e5b9bd0")
+            # was: self.log(f"  ❌ accept_user_code 失败")
             return None
         accept_resp = r.json()
         device_context = accept_resp.get("deviceContext", {})
@@ -1370,12 +1392,15 @@ class KiroRegister:
                   "userSessionId": device_token})
         self.log(f"  Status: {r.status_code} {r.text[:300]}")
         if r.status_code not in (200, 204):
-            self.log(f"  ❌ associate_token 失败")
+            self.log_key("kiro.6af7be47")
+            # was: self.log(f"  ❌ associate_token 失败")
             return None
-        self.log(f"  ✅ associate_token 完成")
+        self.log_key("kiro.18d84d0a")
+        # was: self.log(f"  ✅ associate_token 完成")
 
         # ── 12i: POST oidc/token → refreshToken ──
-        self.log("  12i: POST oidc/token (轮询获取 refreshToken)...")
+        self.log_key("kiro.6db492b3")
+        # was: self.log("  12i: POST oidc/token (轮询获取 refreshToken)...")
         token_h = {**reg_h, "amz-sdk-invocation-id": _uuid()}
         token_body = {
             "clientId": client_id,
@@ -1397,20 +1422,24 @@ class KiroRegister:
                 err = r.json()
                 err_code = err.get("error", "")
                 if err_code == "authorization_pending":
-                    self.log(f"  轮询中... (authorization_pending)")
+                    self.log_key("kiro.f5115da1")
+                    # was: self.log(f"  轮询中... (authorization_pending)")
                 elif err_code == "slow_down":
                     poll_interval = min(poll_interval + 1, 10)
                     self.log(f"  slow_down, interval={poll_interval}s")
                 else:
-                    self.log(f"  ❌ token 错误: {err_code} - {err.get('error_description','')}")
+                    self.log_key("kiro.a0b5ace8", err_code=err_code, desc=err.get('error_description',''))
+                    # was: self.log(f"  ❌ token 错误: {err_code} - {err.get('error_description','')}")
                     return None
             except:
-                self.log(f"  ❌ token 响应异常: {r.status_code} {r.text[:200]}")
+                self.log_key("kiro.f62bb001", status_code=r.status_code, body=r.text[:200])
+                # was: self.log(f"  ❌ token 响应异常: {r.status_code} {r.text[:200]}")
                 return None
             time.sleep(poll_interval)
 
         if not oidc_token:
-            self.log("  ❌ token 轮询超时")
+            self.log_key("kiro.c68394ca")
+            # was: self.log("  ❌ token 轮询超时")
             return None
 
         oidc_access = oidc_token.get("accessToken", "")
