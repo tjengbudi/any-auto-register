@@ -330,7 +330,7 @@ class KiroRegister:
                 self.log_key("kiro.8dd84f04")
                 # was: self.log(f"  ★ directory-csrf-token 已有 signupCsrfToken, 跳过")
         except Exception as e:
-            self.log_key("kiro.15543f25", e=e)
+            self.log_key("kiro.15543f25", e=str(e))
             # was: self.log(f"  ⚠️ 更新 directory-csrf-token 失败: {e}")
 
     def _gen_signin_fwcim(self):
@@ -450,7 +450,7 @@ class KiroRegister:
         except: d=r.json()
         redir=d.get("redirectUrl")
         if not redir:
-            self.log_key("kiro.8ca1acde", d=d)
+            self.log_key("kiro.8ca1acde", d=str(d))
             # was: self.log(f"  ❌ 无redirectUrl: {d}")
             return None
         self.log(f"  ✅ {redir[:100]}...")
