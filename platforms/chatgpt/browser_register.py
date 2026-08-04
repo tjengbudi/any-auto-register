@@ -11,6 +11,9 @@ from urllib.parse import urljoin, urlparse
 
 from camoufox.sync_api import Camoufox
 
+from i18n import t
+from platforms.chatgpt._i18n_helpers import _emit_log_key, _raise_keyed
+
 from .constants import (
     OPENAI_AUTH,
     CHATGPT_APP,
@@ -202,18 +205,20 @@ def _parse_phone_country_and_local(phone_number: str) -> tuple[str, str, str]:
     return "", num, ""
 
 
-def _select_phone_country_ui(page, dial_code: str, country_name: str, log) -> bool:
+def _select_phone_country_ui(page, dial_code: str, country_name: str, log, log_key: Optional[Callable[[str, dict], None]] = None) -> bool:
     """在 add-phone 页面的国家下拉框中选择对应国家。
 
     OpenAI add-phone 页面使用 React Aria Select 组件，底层有一个隐藏的原生 <select>
     和一个可视的 button trigger + listbox 弹出层。
     """
     if not dial_code and not country_name:
-        log("  无法识别国家码，跳过国家选择")
+        _emit_log_key(log, log_key, "chatgpt.814efd3f")
+        # was: log("  无法识别国家码，跳过国家选择")
         return False
 
     iso_code = PHONE_DIAL_TO_ISO.get(dial_code, "")
-    log(f"  目标国家: {country_name} (+{dial_code}) ISO={iso_code}")
+    _emit_log_key(log, log_key, "chatgpt.2d5ea266", country_name=country_name, dial_code=dial_code, iso_code=iso_code)
+    # was: log(f"  目标国家: {country_name} (+{dial_code}) ISO={iso_code}")
 
     # 先检查当前下拉框是否已经是目标国家
     dial_pattern = f"(+{dial_code})"
@@ -238,7 +243,8 @@ def _select_phone_country_ui(page, dial_code: str, country_name: str, log) -> bo
         dial_pattern,
     )
     if already:
-        log(f"  国家已是目标值: (+{dial_code})")
+        _emit_log_key(log, log_key, "chatgpt.a18d1fbf", dial_code=dial_code)
+        # was: log(f"  国家已是目标值: (+{dial_code})")
         return True
 
     # ═══════════════════════════════════════════════════════════════════
@@ -286,7 +292,8 @@ def _select_phone_country_ui(page, dial_code: str, country_name: str, log) -> bo
         {"isoCode": iso_code, "dialCode": dial_code, "countryName": country_name},
     )
     if native_selected and native_selected.get("ok"):
-        log(f"  ✓ 通过原生 <select> 选择成功: value={native_selected.get('value')}")
+        _emit_log_key(log, log_key, "chatgpt.637d261b", value=native_selected.get('value'))
+        # was: log(f"  ✓ 通过原生 <select> 选择成功: value={native_selected.get('value')}")
         time.sleep(0.5)
         # 验证 UI 是否同步更新
         verify = page.evaluate(
@@ -294,9 +301,11 @@ def _select_phone_country_ui(page, dial_code: str, country_name: str, log) -> bo
             dial_pattern,
         )
         if f"+{dial_code}" in (verify or ""):
-            log(f"  ✓ UI 已同步: {verify}")
+            _emit_log_key(log, log_key, "chatgpt.0a9b0d89", verify=verify)
+            # was: log(f"  ✓ UI 已同步: {verify}")
             return True
-        log(f"  原生 select 已设置但 UI 未同步 ({verify})，尝试 UI 交互...")
+        _emit_log_key(log, log_key, "chatgpt.29bc148a", verify=verify)
+        # was: log(f"  原生 select 已设置但 UI 未同步 ({verify})，尝试 UI 交互...")
 
     # ═══════════════════════════════════════════════════════════════════
     # 策略 2: 通过 React Aria 的 key 属性直接操作
@@ -337,7 +346,8 @@ def _select_phone_country_ui(page, dial_code: str, country_name: str, log) -> bo
             if iso_code:
                 try:
                     select_el.select_option(value=iso_code)
-                    log(f"  ✓ Playwright selectOption(value={iso_code}) 成功")
+                    _emit_log_key(log, log_key, "chatgpt.350b0dae", iso_code=iso_code)
+                    # was: log(f"  ✓ Playwright selectOption(value={iso_code}) 成功")
                     time.sleep(0.5)
                     return True
                 except Exception:
@@ -362,13 +372,16 @@ def _select_phone_country_ui(page, dial_code: str, country_name: str, log) -> bo
                 )
                 if match_value:
                     select_el.select_option(value=match_value)
-                    log(f"  ✓ Playwright selectOption(value={match_value}) 成功")
+                    _emit_log_key(log, log_key, "chatgpt.00d39a57", match_value=match_value)
+                    # was: log(f"  ✓ Playwright selectOption(value={match_value}) 成功")
                     time.sleep(0.5)
                     return True
             except Exception as e:
-                log(f"  selectOption label 匹配失败: {e}")
+                _emit_log_key(log, log_key, "chatgpt.20f1525a", e=e)
+                # was: log(f"  selectOption label 匹配失败: {e}")
     except Exception as e:
-        log(f"  Playwright selectOption 策略失败: {e}")
+        _emit_log_key(log, log_key, "chatgpt.e7f720d7", e=e)
+        # was: log(f"  Playwright selectOption 策略失败: {e}")
 
     # ═══════════════════════════════════════════════════════════════════
     # 策略 4: 点击 trigger 按钮打开 listbox，然后在 listbox 中选择
@@ -405,13 +418,16 @@ def _select_phone_country_ui(page, dial_code: str, country_name: str, log) -> bo
             """,
         )
         if not trigger:
-            log("  ⚠️ 未找到国家选择器触发按钮")
+            _emit_log_key(log, log_key, "chatgpt.1a97a00b")
+            # was: log("  ⚠️ 未找到国家选择器触发按钮")
             return False
-        log("  已通过 JS 点击触发按钮")
+        _emit_log_key(log, log_key, "chatgpt.edc586ff")
+        # was: log("  已通过 JS 点击触发按钮")
     else:
         trigger.scroll_into_view_if_needed()
         trigger.click()
-        log("  已点击国家选择器下拉框")
+        _emit_log_key(log, log_key, "chatgpt.7cf94fd9")
+        # was: log("  已点击国家选择器下拉框")
 
     time.sleep(0.8)
 
@@ -424,10 +440,12 @@ def _select_phone_country_ui(page, dial_code: str, country_name: str, log) -> bo
         time.sleep(0.3)
 
     if not listbox:
-        log("  ⚠️ 下拉框 listbox 未出现")
+        _emit_log_key(log, log_key, "chatgpt.f897b7cf")
+        # was: log("  ⚠️ 下拉框 listbox 未出现")
         return False
 
-    log("  listbox 已出现")
+    _emit_log_key(log, log_key, "chatgpt.0283a45e")
+    # was: log("  listbox 已出现")
 
     # 在 listbox 中查找并点击目标 option
     option = None
@@ -438,7 +456,8 @@ def _select_phone_country_ui(page, dial_code: str, country_name: str, log) -> bo
             if not option:
                 option = page.query_selector(f'[role="option"][{attr}*="{iso_code}"]')
             if option:
-                log(f"  找到 option: [{attr} 含 {iso_code}]")
+                _emit_log_key(log, log_key, "chatgpt.a5c5cbaf", attr=attr, iso_code=iso_code)
+                # was: log(f"  找到 option: [{attr} 含 {iso_code}]")
                 break
 
     if not option:
@@ -468,7 +487,8 @@ def _select_phone_country_ui(page, dial_code: str, country_name: str, log) -> bo
             options = page.query_selector_all('[role="option"]')
             if option_idx < len(options):
                 option = options[option_idx]
-                log(f"  找到 option: 文本匹配 index={option_idx}")
+                _emit_log_key(log, log_key, "chatgpt.f82635a3", option_idx=option_idx)
+                # was: log(f"  找到 option: 文本匹配 index={option_idx}")
 
     if option:
         option.scroll_into_view_if_needed()
@@ -481,13 +501,16 @@ def _select_phone_country_ui(page, dial_code: str, country_name: str, log) -> bo
               return btn ? (btn.innerText || '').trim() : '';
             }""",
         )
-        log(f"  选择后下拉框显示: {new_text}")
+        _emit_log_key(log, log_key, "chatgpt.038dbb02", new_text=new_text)
+        # was: log(f"  选择后下拉框显示: {new_text}")
         if f"+{dial_code}" in (new_text or ""):
-            log(f"  ✓ 国家选择成功: {new_text}")
+            _emit_log_key(log, log_key, "chatgpt.7c783696", new_text=new_text)
+            # was: log(f"  ✓ 国家选择成功: {new_text}")
             return True
 
     # 键盘 type-ahead 搜索
-    log(f"  尝试键盘 type-ahead: {country_name}")
+    _emit_log_key(log, log_key, "chatgpt.8ac9bee0", country_name=country_name)
+    # was: log(f"  尝试键盘 type-ahead: {country_name}")
     page.keyboard.type(country_name, delay=80)
     time.sleep(0.8)
 
@@ -504,10 +527,12 @@ def _select_phone_country_ui(page, dial_code: str, country_name: str, log) -> bo
         }""",
     )
     if f"+{dial_code}" in (final_text or ""):
-        log(f"  ✓ type-ahead 选择成功: {final_text}")
+        _emit_log_key(log, log_key, "chatgpt.ed81fa32", final_text=final_text)
+        # was: log(f"  ✓ type-ahead 选择成功: {final_text}")
         return True
 
-    log(f"  ⚠️ 下拉框已展开但未找到匹配国家: {country_name} (+{dial_code})")
+    _emit_log_key(log, log_key, "chatgpt.0cf274d6", country_name=country_name, dial_code=dial_code)
+    # was: log(f"  ⚠️ 下拉框已展开但未找到匹配国家: {country_name} (+{dial_code})")
     try:
         page.keyboard.press("Escape")
     except Exception:
@@ -597,10 +622,11 @@ def _has_signup_registration_choice(page) -> bool:
     return bool(re.search(r"sign\s*up|register|create\s*account|还没有帐户|还没有账户|請註冊|请注册|去注册|注册", text, flags=re.I))
 
 
-def _click_passwordless_login_if_available(page, log, *, context: str) -> bool:
+def _click_passwordless_login_if_available(page, log, log_key: Optional[Callable[[str, dict], None]] = None, *, context: str) -> bool:
     selector = _click_first(page, PASSWORDLESS_LOGIN_SELECTORS, timeout=1)
     if selector:
-        log(f"{context} 已选择一次性验证码登录: {selector}")
+        _emit_log_key(log, log_key, "chatgpt.1cc33861", context=context, selector=selector)
+        # was: log(f"{context} 已选择一次性验证码登录: {selector}")
         time.sleep(1)
         return True
     try:
@@ -628,7 +654,8 @@ def _click_passwordless_login_if_available(page, log, *, context: str) -> bool:
     except Exception:
         clicked = False
     if clicked:
-        log(f"{context} 已选择一次性验证码登录")
+        _emit_log_key(log, log_key, "chatgpt.5708f22e", context=context)
+        # was: log(f"{context} 已选择一次性验证码登录")
         time.sleep(1)
     return clicked
 
@@ -767,7 +794,7 @@ def _submit_form_with_fallback(page, input_selector: str) -> bool:
         return False
 
 
-def _sync_hidden_birthday_input(page, birthdate: str, log) -> bool:
+def _sync_hidden_birthday_input(page, birthdate: str, log, log_key: Optional[Callable[[str, dict], None]] = None) -> bool:
     try:
         synced = bool(
             page.evaluate(
@@ -787,7 +814,8 @@ def _sync_hidden_birthday_input(page, birthdate: str, log) -> bool:
     except Exception:
         synced = False
     if synced:
-        log(f"about_you 已同步隐藏 birthday: {birthdate}")
+        _emit_log_key(log, log_key, "chatgpt.b8da85bb", birthdate=birthdate)
+        # was: log(f"about_you 已同步隐藏 birthday: {birthdate}")
     return synced
 
 
@@ -961,7 +989,7 @@ def _derive_registration_state_from_page(page) -> dict:
     return state
 
 
-def _recover_signup_password_page(page, log) -> bool:
+def _recover_signup_password_page(page, log, log_key: Optional[Callable[[str, dict], None]] = None) -> bool:
     if not _is_login_password_url(str(page.url or "")):
         return False
     if not _has_signup_registration_choice(page):
@@ -969,15 +997,16 @@ def _recover_signup_password_page(page, log) -> bool:
     selector = _click_first(page, SIGNUP_RECOVERY_SELECTORS, timeout=2)
     if not selector:
         return False
-    log(f"密码页落到登录态，尝试点击注册入口恢复: {selector}")
+    _emit_log_key(log, log_key, "chatgpt.bc8dd545", selector=selector)
+    # was: log(f"密码页落到登录态，尝试点击注册入口恢复: {selector}")
     time.sleep(1.2)
     return True
 
 
-def _wait_for_signup_entry_transition(page, log, timeout: int = 20) -> dict:
+def _wait_for_signup_entry_transition(page, log, log_key: Optional[Callable[[str, dict], None]] = None, timeout: int = 20) -> dict:
     deadline = time.time() + timeout
     while time.time() < deadline:
-        if _click_passwordless_login_if_available(page, log, context="邮箱页提交后"):
+        if _click_passwordless_login_if_available(page, log, log_key, context="邮箱页提交后"):
             time.sleep(0.5)
             continue
         state = _derive_registration_state_from_page(page)
@@ -990,23 +1019,27 @@ def _wait_for_signup_entry_transition(page, log, timeout: int = 20) -> dict:
             "chatgpt_home",
             "oauth_callback",
         }:
-            if state.get("page_type") == "login_password" and _recover_signup_password_page(page, log):
+            if state.get("page_type") == "login_password" and _recover_signup_password_page(page, log, log_key):
                 return _derive_registration_state_from_page(page)
             return state
         error_text = _extract_auth_error_text(page)
         if error_text:
-            raise RuntimeError(f"邮箱页提交失败: {error_text[:300]}")
+            _raise_keyed(RuntimeError, "chatgpt.544304c8", val=error_text[:300])
+            # was: raise RuntimeError(f"邮箱页提交失败: {error_text[:300]}")
         time.sleep(0.25)
-    raise RuntimeError("邮箱页提交后未进入密码/验证码页面")
+    _raise_keyed(RuntimeError, "chatgpt.296b6826")
+    # was: raise RuntimeError("邮箱页提交后未进入密码/验证码页面")
 
 
-def _start_browser_signup_via_page(page, email: str, log) -> dict:
+def _start_browser_signup_via_page(page, email: str, log, log_key: Optional[Callable[[str, dict], None]] = None) -> dict:
     for entry_url in (PLATFORM_LOGIN_ENTRY, f"{OPENAI_AUTH}/log-in"):
         try:
-            log(f"打开 OpenAI 注册入口: {entry_url}")
+            _emit_log_key(log, log_key, "chatgpt.a6a51644", entry_url=entry_url)
+            # was: log(f"打开 OpenAI 注册入口: {entry_url}")
             page.goto(entry_url, wait_until="domcontentloaded", timeout=30000)
         except Exception as exc:
-            log(f"注册入口访问失败: {entry_url} -> {exc}")
+            _emit_log_key(log, log_key, "chatgpt.a559bb96", entry_url=entry_url, exc=exc)
+            # was: log(f"注册入口访问失败: {entry_url} -> {exc}")
             continue
 
         initial_state = _derive_registration_state_from_page(page)
@@ -1023,45 +1056,57 @@ def _start_browser_signup_via_page(page, email: str, log) -> dict:
         if not email_selector:
             continue
         if not _fill_input_like_user(page, email_selector, email):
-            raise RuntimeError("邮箱页填写失败")
-        log(f"邮箱页输入框: {email_selector}")
+            _raise_keyed(RuntimeError, "chatgpt.5456e703")
+            # was: raise RuntimeError("邮箱页填写失败")
+        _emit_log_key(log, log_key, "chatgpt.435ecdb5", email_selector=email_selector)
+        # was: log(f"邮箱页输入框: {email_selector}")
 
         inline_state = _derive_registration_state_from_page(page)
         if inline_state.get("page_type") in {"create_account_password", "login_password"}:
-            if inline_state.get("page_type") == "login_password" and _recover_signup_password_page(page, log):
+            if inline_state.get("page_type") == "login_password" and _recover_signup_password_page(page, log, log_key):
                 return _derive_registration_state_from_page(page)
             return inline_state
 
         submit_selector = _click_first(page, EMAIL_SUBMIT_SELECTORS, timeout=8)
         if submit_selector:
-            log(f"邮箱页已点击继续按钮: {submit_selector}")
+            _emit_log_key(log, log_key, "chatgpt.56d5dc8c", submit_selector=submit_selector)
+            # was: log(f"邮箱页已点击继续按钮: {submit_selector}")
         elif _submit_form_with_fallback(page, email_selector):
-            log("邮箱页未找到可点击 Continue，已使用表单 fallback 提交")
+            _emit_log_key(log, log_key, "chatgpt.15fd5f77")
+            # was: log("邮箱页未找到可点击 Continue，已使用表单 fallback 提交")
         else:
-            raise RuntimeError("邮箱页未找到 Continue 按钮")
+            _raise_keyed(RuntimeError, "chatgpt.9ff61a8d")
+            # was: raise RuntimeError("邮箱页未找到 Continue 按钮")
 
-        return _wait_for_signup_entry_transition(page, log)
+        return _wait_for_signup_entry_transition(page, log, log_key)
 
-    raise RuntimeError("未找到 OpenAI 注册入口邮箱输入框")
+    _raise_keyed(RuntimeError, "chatgpt.290a57a9")
+    # was: raise RuntimeError("未找到 OpenAI 注册入口邮箱输入框")
 
 
-def _start_browser_signup_via_authorize(page, email: str, device_id: str, log) -> dict:
-    log("访问 ChatGPT 首页...")
+def _start_browser_signup_via_authorize(page, email: str, device_id: str, log, log_key: Optional[Callable[[str, dict], None]] = None) -> dict:
+    _emit_log_key(log, log_key, "chatgpt.3f1edf82")
+    # was: log("访问 ChatGPT 首页...")
     page.goto(f"{CHATGPT_APP}/", wait_until="domcontentloaded", timeout=30000)
 
-    log("获取 CSRF token...")
+    _emit_log_key(log, log_key, "chatgpt.5aeeabd5")
+    # was: log("获取 CSRF token...")
     csrf_token = _get_browser_csrf_token(page)
     if not csrf_token:
-        raise RuntimeError("获取 CSRF token 失败")
+        _raise_keyed(RuntimeError, "chatgpt.83b44235")
+        # was: raise RuntimeError("获取 CSRF token 失败")
 
-    log(f"提交邮箱: {email}")
+    _emit_log_key(log, log_key, "chatgpt.32bd72ad", email=email)
+    # was: log(f"提交邮箱: {email}")
     authorize_url = _start_browser_signin(page, email, device_id, csrf_token)
     if not authorize_url:
-        raise RuntimeError("提交邮箱失败，未获取 authorize URL")
+        _raise_keyed(RuntimeError, "chatgpt.768e8dd2")
+        # was: raise RuntimeError("提交邮箱失败，未获取 authorize URL")
 
-    final_url = _browser_authorize(page, authorize_url, log)
+    final_url = _browser_authorize(page, authorize_url, log, log_key)
     if not final_url:
-        raise RuntimeError("访问 authorize URL 失败")
+        _raise_keyed(RuntimeError, "chatgpt.4863bbde")
+        # was: raise RuntimeError("访问 authorize URL 失败")
     return _derive_registration_state_from_page(page)
 
 
@@ -1501,7 +1546,7 @@ def _follow_redirects_for_code(session, start_url: str, log, *, max_redirects: i
     return ""
 
 
-def _complete_oauth_with_session(cookies_dict: dict, oauth_start, proxy: str | None, log) -> dict | None:
+def _complete_oauth_with_session(cookies_dict: dict, oauth_start, proxy: str | None, log, log_key: Optional[Callable[[str, dict], None]] = None) -> dict | None:
     from .oauth import submit_callback_url
     from curl_cffi import requests as cffi_requests
 
@@ -1518,10 +1563,12 @@ def _complete_oauth_with_session(cookies_dict: dict, oauth_start, proxy: str | N
             session_meta = _extract_workspace_from_consent_html(s, consent_url)
             workspaces = list(session_meta.get("workspaces") or [])
         if not workspaces:
-            log("  ⚠️ 缺少 oai-client-auth-session workspaces，OAuth 失败")
+            _emit_log_key(log, log_key, "chatgpt.5f0d00f7")
+            # was: log("  ⚠️ 缺少 oai-client-auth-session workspaces，OAuth 失败")
             return None
         workspace_id = str((workspaces[0] or {}).get("id") or "").strip()
-        log(f"  选择 workspace: {workspace_id}")
+        _emit_log_key(log, log_key, "chatgpt.ae99599f", workspace_id=workspace_id)
+        # was: log(f"  选择 workspace: {workspace_id}")
         ws_resp = s.post(
             "https://auth.openai.com/api/accounts/workspace/select",
             headers={
@@ -1563,7 +1610,8 @@ def _complete_oauth_with_session(cookies_dict: dict, oauth_start, proxy: str | N
             projects = list(orgs[0].get("projects") or [])
             if projects and projects[0].get("id"):
                 org_body["project_id"] = str(projects[0].get("id") or "").strip()
-            log(f"  选择 organization: {org_id}")
+            _emit_log_key(log, log_key, "chatgpt.4df63e8a", org_id=org_id)
+            # was: log(f"  选择 organization: {org_id}")
             org_resp = s.post(
                 "https://auth.openai.com/api/accounts/organization/select",
                 headers={
@@ -1600,7 +1648,8 @@ def _complete_oauth_with_session(cookies_dict: dict, oauth_start, proxy: str | N
 
         callback_url = _follow_redirects_for_code(s, next_url, log)
         if not callback_url:
-            log("  ⚠️ 未能跟到 OAuth callback")
+            _emit_log_key(log, log_key, "chatgpt.2d1a030b")
+            # was: log("  ⚠️ 未能跟到 OAuth callback")
             return None
         result_json = submit_callback_url(
             callback_url=callback_url,
@@ -1610,7 +1659,8 @@ def _complete_oauth_with_session(cookies_dict: dict, oauth_start, proxy: str | N
         )
         return json.loads(result_json)
     except Exception as e:
-        log(f"  OAuth 会话补全异常: {e}")
+        _emit_log_key(log, log_key, "chatgpt.87802bb5", e=e)
+        # was: log(f"  OAuth 会话补全异常: {e}")
         return None
 
 
@@ -1649,30 +1699,36 @@ def _derive_oauth_state_from_page(page) -> dict:
     return _extract_flow_state(None, current_url)
 
 
-def _submit_login_email_via_page(page, email: str, log) -> dict:
+def _submit_login_email_via_page(page, email: str, log, log_key: Optional[Callable[[str, dict], None]] = None) -> dict:
     input_selector = _wait_for_any_selector(page, EMAIL_INPUT_SELECTORS, timeout=15)
     if not input_selector:
-        raise RuntimeError("OAuth 邮箱页未找到输入框")
+        _raise_keyed(RuntimeError, "chatgpt.517c8c0b")
+        # was: raise RuntimeError("OAuth 邮箱页未找到输入框")
     if not _fill_input_like_user(page, input_selector, email):
-        raise RuntimeError("OAuth 邮箱页填写失败")
-    log(f"OAuth 邮箱页输入框: {input_selector}")
+        _raise_keyed(RuntimeError, "chatgpt.f2649838")
+        # was: raise RuntimeError("OAuth 邮箱页填写失败")
+    _emit_log_key(log, log_key, "chatgpt.1edb3a16", input_selector=input_selector)
+    # was: log(f"OAuth 邮箱页输入框: {input_selector}")
     _browser_pause(page)
 
     start_url = str(page.url or "")
     submit_selector = _click_first(page, EMAIL_SUBMIT_SELECTORS, timeout=8)
     if submit_selector:
-        log(f"OAuth 邮箱页已点击继续按钮: {submit_selector}")
+        _emit_log_key(log, log_key, "chatgpt.7b922217", submit_selector=submit_selector)
+        # was: log(f"OAuth 邮箱页已点击继续按钮: {submit_selector}")
     elif _submit_form_with_fallback(page, input_selector):
-        log("OAuth 邮箱页未找到可点击 Continue，已使用表单 fallback 提交")
+        _emit_log_key(log, log_key, "chatgpt.beb0490e")
+        # was: log("OAuth 邮箱页未找到可点击 Continue，已使用表单 fallback 提交")
     else:
-        raise RuntimeError("OAuth 邮箱页未找到 Continue 按钮")
+        _raise_keyed(RuntimeError, "chatgpt.fb166a83")
+        # was: raise RuntimeError("OAuth 邮箱页未找到 Continue 按钮")
 
     deadline = time.time() + 20
     last_url = start_url
     while time.time() < deadline:
         current_url = str(page.url or "")
         last_url = current_url or last_url
-        if _click_passwordless_login_if_available(page, log, context="OAuth 邮箱页提交后"):
+        if _click_passwordless_login_if_available(page, log, log_key, context="OAuth 邮箱页提交后"):
             time.sleep(0.5)
             continue
         state = _derive_oauth_state_from_page(page)
@@ -1700,7 +1756,7 @@ def _submit_login_email_via_page(page, email: str, log) -> dict:
     return {"ok": False, "status": 0, "url": last_url, "data": None, "text": "OAuth 邮箱页提交后未跳转"}
 
 
-def _do_codex_oauth(page, cookies_dict: dict, email: str, password: str, otp_callback, phone_callback, proxy: str | None, log) -> dict | None:
+def _do_codex_oauth(page, cookies_dict: dict, email: str, password: str, otp_callback, phone_callback, proxy: str | None, log, log_key: Optional[Callable[[str, dict], None]] = None) -> dict | None:
     """在真实浏览器会话内完成 Codex OAuth，返回完整 token 包。"""
     from .oauth import generate_oauth_url
     from .constants import CODEX_CLIENT_ID, CODEX_REDIRECT_URI, CODEX_SCOPE
@@ -1723,7 +1779,8 @@ def _do_codex_oauth(page, cookies_dict: dict, email: str, password: str, otp_cal
         except Exception as exc:
             callback_url = _extract_callback_url_from_exception(exc)
             if callback_url:
-                log(f"  OAuth bootstrap 直接捕获 callback: {callback_url[:100]}...")
+                _emit_log_key(log, log_key, "chatgpt.33abf55e", callback_url=callback_url[:100])
+                # was: log(f"  OAuth bootstrap 直接捕获 callback: {callback_url[:100]}...")
                 return _submit_callback_result(callback_url, oauth_start, proxy)
             raise
 
@@ -1754,78 +1811,97 @@ def _do_codex_oauth(page, cookies_dict: dict, email: str, password: str, otp_cal
                 and page_oauth_url != current_url
                 and _oauth_url_matches_state(page_oauth_url, oauth_start.state)
             ):
-                log("  OAuth 页面检测到更新的授权链接，跟随页面授权链接...")
+                _emit_log_key(log, log_key, "chatgpt.c32fc9dd")
+                # was: log("  OAuth 页面检测到更新的授权链接，跟随页面授权链接...")
                 page.goto(page_oauth_url, wait_until="domcontentloaded", timeout=30000)
                 continue
 
             if state["page_type"] == "login_email":
-                log("  OAuth 页面需要邮箱登录，提交邮箱...")
-                email_resp = _submit_login_email_via_page(page, email, log)
-                log(f"  OAuth 邮箱页提交状态: {email_resp.get('status', 0)}")
+                _emit_log_key(log, log_key, "chatgpt.379ff815")
+                # was: log("  OAuth 页面需要邮箱登录，提交邮箱...")
+                email_resp = _submit_login_email_via_page(page, email, log, log_key)
+                _emit_log_key(log, log_key, "chatgpt.c510799e", status=email_resp.get('status', 0))
+                # was: log(f"  OAuth 邮箱页提交状态: {email_resp.get('status', 0)}")
                 if not email_resp.get("ok"):
-                    raise RuntimeError(f"OAuth 邮箱页提交失败: {(email_resp.get('text') or '')[:300]}")
+                    _raise_keyed(RuntimeError, "chatgpt.6a8063fe", val=(email_resp.get('text') or '')[:300])
+                    # was: raise RuntimeError(f"OAuth 邮箱页提交失败: {(email_resp.get('text') or '')[:300]}")
                 continue
 
             if state["page_type"] in {"login_password", "create_account_password"}:
-                log("  OAuth 页面需要密码登录，提交密码...")
+                _emit_log_key(log, log_key, "chatgpt.2d98d2d9")
+                # was: log("  OAuth 页面需要密码登录，提交密码...")
                 # OAuth 流程中直接填密码登录，不尝试恢复到注册态
-                password_resp = _submit_oauth_password_direct(page, password, log)
-                log(f"  OAuth 密码页提交状态: {password_resp.get('status', 0)}")
+                password_resp = _submit_oauth_password_direct(page, password, log, log_key)
+                _emit_log_key(log, log_key, "chatgpt.9041ab4d", status=password_resp.get('status', 0))
+                # was: log(f"  OAuth 密码页提交状态: {password_resp.get('status', 0)}")
                 if not password_resp.get("ok"):
-                    raise RuntimeError(f"OAuth 密码页提交失败: {(password_resp.get('text') or '')[:300]}")
+                    _raise_keyed(RuntimeError, "chatgpt.25bc0ae6", val=(password_resp.get('text') or '')[:300])
+                    # was: raise RuntimeError(f"OAuth 密码页提交失败: {(password_resp.get('text') or '')[:300]}")
                 continue
 
             if state["page_type"] == "email_otp_verification":
                 if not otp_callback:
-                    log("  ⚠️ OAuth 需要邮箱 OTP 但没有 otp_callback")
+                    _emit_log_key(log, log_key, "chatgpt.6a2354c7")
+                    # was: log("  ⚠️ OAuth 需要邮箱 OTP 但没有 otp_callback")
                     return None
-                log("  OAuth 等待邮箱验证码...")
+                _emit_log_key(log, log_key, "chatgpt.bad3e092")
+                # was: log("  OAuth 等待邮箱验证码...")
                 code = otp_callback()
                 if not code:
-                    log("  ⚠️ OAuth OTP 获取失败")
+                    _emit_log_key(log, log_key, "chatgpt.83573a41")
+                    # was: log("  ⚠️ OAuth OTP 获取失败")
                     return None
-                otp_resp = _submit_otp_via_page(page, code, log)
-                log(f"  OAuth 验证码页提交状态: {otp_resp.get('status', 0)}")
+                otp_resp = _submit_otp_via_page(page, code, log, log_key)
+                _emit_log_key(log, log_key, "chatgpt.d4441004", status=otp_resp.get('status', 0))
+                # was: log(f"  OAuth 验证码页提交状态: {otp_resp.get('status', 0)}")
                 if not otp_resp.get("ok"):
-                    raise RuntimeError(f"OAuth 验证码校验失败: {(otp_resp.get('text') or '')[:300]}")
+                    _raise_keyed(RuntimeError, "chatgpt.d4d9dc48", val=(otp_resp.get('text') or '')[:300])
+                    # was: raise RuntimeError(f"OAuth 验证码校验失败: {(otp_resp.get('text') or '')[:300]}")
                 continue
 
             if state["page_type"] == "about_you":
-                log("  OAuth 页面出现 about_you，继续页面填写...")
-                about_resp = _submit_about_you_via_page(page, log)
-                log(f"  OAuth about_you 提交状态: {about_resp.get('status', 0)}")
+                _emit_log_key(log, log_key, "chatgpt.7ead5104")
+                # was: log("  OAuth 页面出现 about_you，继续页面填写...")
+                about_resp = _submit_about_you_via_page(page, log, log_key)
+                _emit_log_key(log, log_key, "chatgpt.5c616431", status=about_resp.get('status', 0))
+                # was: log(f"  OAuth about_you 提交状态: {about_resp.get('status', 0)}")
                 if not about_resp.get("ok"):
-                    raise RuntimeError(f"OAuth about_you 提交失败: {(about_resp.get('text') or '')[:300]}")
+                    _raise_keyed(RuntimeError, "chatgpt.804d9cfc", val=(about_resp.get('text') or '')[:300])
+                    # was: raise RuntimeError(f"OAuth about_you 提交失败: {(about_resp.get('text') or '')[:300]}")
                 continue
 
             if state["page_type"] in {"consent", "workspace_selection", "organization_selection", "external_url"}:
-                browser_result = _complete_oauth_in_browser(page, oauth_start, proxy, log)
+                browser_result = _complete_oauth_in_browser(page, oauth_start, proxy, log, log_key)
                 if browser_result:
                     return browser_result
                 cookies_dict = _get_cookies(page)
-                session_result = _complete_oauth_with_session(cookies_dict, oauth_start, proxy, log)
+                session_result = _complete_oauth_with_session(cookies_dict, oauth_start, proxy, log, log_key)
                 if session_result:
                     return session_result
-                log("  ⚠️ 页面已到 consent/workspace，但会话补全失败")
+                _emit_log_key(log, log_key, "chatgpt.ef15be9e")
+                # was: log("  ⚠️ 页面已到 consent/workspace，但会话补全失败")
                 return None
 
             if state["page_type"] == "add_phone":
                 if phone_callback:
-                    log("  OAuth 检测到 add_phone，优先执行短信验证...")
+                    _emit_log_key(log, log_key, "chatgpt.8b1c4c26")
+                    # was: log("  OAuth 检测到 add_phone，优先执行短信验证...")
                     try:
                         _handle_add_phone_challenge(
                             page, phone_callback,
                             device_id=device_id, user_agent=user_agent,
-                            log=log, resume_url=oauth_start.auth_url,
+                            log=log, log_key=log_key, resume_url=oauth_start.auth_url,
                         )
                         continue
                     except Exception as exc:
-                        log(f"  短信验证失败，停止 OAuth 流程: {exc}")
+                        _emit_log_key(log, log_key, "chatgpt.734c2128", exc=exc)
+                        # was: log(f"  短信验证失败，停止 OAuth 流程: {exc}")
                         return None
 
                 # 先尝试跳过 add_phone，直接重新访问 OAuth 授权 URL
                 # 用户已登录，重新访问 auth URL 应该能直接跳到 callback
-                log("  检测到 add_phone，尝试跳过...")
+                _emit_log_key(log, log_key, "chatgpt.bb02c306")
+                # was: log("  检测到 add_phone，尝试跳过...")
                 try:
                     page.goto(oauth_start.auth_url, wait_until="domcontentloaded", timeout=15000)
                     time.sleep(2)
@@ -1845,27 +1921,31 @@ def _do_codex_oauth(page, cookies_dict: dict, email: str, password: str, otp_cal
                                 break
 
                     if callback_url:
-                        log("  ✓ 成功跳过 add_phone，获取到 OAuth callback")
+                        _emit_log_key(log, log_key, "chatgpt.1f579d09")
+                        # was: log("  ✓ 成功跳过 add_phone，获取到 OAuth callback")
                         return _submit_callback_result(callback_url, oauth_start, proxy)
 
                     # 检查页面状态
                     skip_state = _derive_registration_state_from_page(page)
                     if skip_state.get("page_type") in {"consent", "workspace_selection", "organization_selection"}:
-                        log("  ✓ 跳过 add_phone 到达 consent 页面")
+                        _emit_log_key(log, log_key, "chatgpt.6d54bfbf")
+                        # was: log("  ✓ 跳过 add_phone 到达 consent 页面")
                         # 尝试在浏览器里完成 consent 流程
-                        browser_result = _complete_oauth_in_browser(page, oauth_start, proxy, log)
+                        browser_result = _complete_oauth_in_browser(page, oauth_start, proxy, log, log_key)
                         if browser_result:
                             return browser_result
                         # 回退到 curl session 方式
                         cookies_dict = _get_cookies(page)
-                        session_result = _complete_oauth_with_session(cookies_dict, oauth_start, proxy, log)
+                        session_result = _complete_oauth_with_session(cookies_dict, oauth_start, proxy, log, log_key)
                         if session_result:
                             return session_result
 
                     if skip_state.get("page_type") == "add_phone":
-                        log("  跳过失败，仍在 add_phone 页面")
+                        _emit_log_key(log, log_key, "chatgpt.ee496676")
+                        # was: log("  跳过失败，仍在 add_phone 页面")
                     else:
-                        log(f"  跳过后页面状态: {skip_state.get('page_type') or '-'}")
+                        _emit_log_key(log, log_key, "chatgpt.bd5c726c", page_type=skip_state.get('page_type') or '-')
+                        # was: log(f"  跳过后页面状态: {skip_state.get('page_type') or '-'}")
                         # 继续状态机循环
                         continue
 
@@ -1873,9 +1953,11 @@ def _do_codex_oauth(page, cookies_dict: dict, email: str, password: str, otp_cal
                     callback_url = _extract_callback_url_from_exception(exc)
                     if callback_url:
                         return _submit_callback_result(callback_url, oauth_start, proxy)
-                    log(f"  跳过 add_phone 异常: {exc}")
+                    _emit_log_key(log, log_key, "chatgpt.29ea0a37", exc=exc)
+                    # was: log(f"  跳过 add_phone 异常: {exc}")
 
-                log("  ⚠️ add_phone 无法跳过且无可用接码服务")
+                _emit_log_key(log, log_key, "chatgpt.5e235c24")
+                # was: log("  ⚠️ add_phone 无法跳过且无可用接码服务")
                 return None
 
             # chatgpt_home: 页面可能正在 JS 重定向（如跳转到 add-phone）
@@ -1884,8 +1966,10 @@ def _do_codex_oauth(page, cookies_dict: dict, email: str, password: str, otp_cal
                 # 检查是否是错误页面
                 if "error" in current_url:
                     error_msg = current_url.split("error=")[-1].split("&")[0] if "error=" in current_url else "unknown"
-                    log(f"  OAuth 错误页面: {error_msg} url={current_url[:150]}")
-                    raise RuntimeError(f"OpenAI OAuth 错误: {error_msg}")
+                    _emit_log_key(log, log_key, "chatgpt.aaad326c", error_msg=error_msg, url=current_url[:150])
+                    # was: log(f"  OAuth 错误页面: {error_msg} url={current_url[:150]}")
+                    _raise_keyed(RuntimeError, "chatgpt.5eac4930", error_msg=error_msg)
+                    # was: raise RuntimeError(f"OpenAI OAuth 错误: {error_msg}")
                 time.sleep(2)
                 new_url = str(page.url or "")
                 if new_url != current_url:
@@ -1894,8 +1978,9 @@ def _do_codex_oauth(page, cookies_dict: dict, email: str, password: str, otp_cal
                 cookies_dict = _get_cookies(page)
                 for ck, cv in cookies_dict.items():
                     if "session" in ck.lower() and cv:
-                        log(f"  chatgpt_home 检测到 session cookie: {ck}")
-                        session_result = _complete_oauth_with_session(cookies_dict, oauth_start, proxy, log)
+                        _emit_log_key(log, log_key, "chatgpt.3d898ed1", ck=ck)
+                        # was: log(f"  chatgpt_home 检测到 session cookie: {ck}")
+                        session_result = _complete_oauth_with_session(cookies_dict, oauth_start, proxy, log, log_key)
                         if session_result:
                             return session_result
                         break
@@ -1915,22 +2000,26 @@ def _do_codex_oauth(page, cookies_dict: dict, email: str, password: str, otp_cal
 
             error_text = _extract_auth_error_text(page)
             if error_text:
-                raise RuntimeError(f"OAuth 页面错误: {error_text[:300]}")
+                _raise_keyed(RuntimeError, "chatgpt.db6abcbc", error_text=error_text[:300])
+                # was: raise RuntimeError(f"OAuth 页面错误: {error_text[:300]}")
             time.sleep(0.5)
     except Exception as e:
-        log(f"  OAuth 异常: {e}")
+        _emit_log_key(log, log_key, "chatgpt.84eb8564", e=e)
+        # was: log(f"  OAuth 异常: {e}")
         return None
 
     cookies_dict = _get_cookies(page)
-    result = _complete_oauth_with_session(cookies_dict, oauth_start, proxy, log)
+    result = _complete_oauth_with_session(cookies_dict, oauth_start, proxy, log, log_key)
     if result:
         return result
 
     session_token = cookies_dict.get("__Secure-next-auth.session-token", "")
     if not session_token:
-        log("  ⚠️ 无 session_token，OAuth 失败")
+        _emit_log_key(log, log_key, "chatgpt.b4753f15")
+        # was: log("  ⚠️ 无 session_token，OAuth 失败")
         return None
-    log("  ⚠️ 完整 OAuth 失败，回退 session access_token")
+    _emit_log_key(log, log_key, "chatgpt.baaea19d")
+    # was: log("  ⚠️ 完整 OAuth 失败，回退 session access_token")
     return None
 
 
@@ -1961,7 +2050,7 @@ def _is_registration_complete(state: dict) -> bool:
     )
 
 
-def _handle_post_signup_onboarding(page, log) -> None:
+def _handle_post_signup_onboarding(page, log, log_key: Optional[Callable[[str, dict], None]] = None) -> None:
     current_url = str(page.url or "")
     if "chatgpt.com" not in current_url:
         return
@@ -1978,7 +2067,8 @@ def _handle_post_signup_onboarding(page, log) -> None:
             timeout=1,
         )
         if allow_selector:
-            log(f"已处理浏览器弹窗: {allow_selector}")
+            _emit_log_key(log, log_key, "chatgpt.50763b0f", allow_selector=allow_selector)
+            # was: log(f"已处理浏览器弹窗: {allow_selector}")
     except Exception:
         pass
 
@@ -1996,7 +2086,8 @@ def _handle_post_signup_onboarding(page, log) -> None:
                 timeout=5,
             )
             if skip_selector:
-                log(f"已处理 onboarding 页面: {skip_selector}")
+                _emit_log_key(log, log_key, "chatgpt.cc1c8c46", skip_selector=skip_selector)
+                # was: log(f"已处理 onboarding 页面: {skip_selector}")
                 _browser_pause(page)
     except Exception:
         pass
@@ -2052,6 +2143,7 @@ def _handle_add_phone_challenge(
     device_id: str,
     user_agent: str,
     log,
+    log_key: Optional[Callable[[str, dict], None]] = None,
     resume_url: str = "",
     max_phone_attempts: int = 3,
 ) -> dict:
@@ -2061,15 +2153,14 @@ def _handle_add_phone_challenge(
     如果验证码超时未收到，自动换号重试（最多 max_phone_attempts 次）。
     """
     if not phone_callback:
-        raise RuntimeError(
-            "ChatGPT 注册遇到手机号验证，但未配置 phone_callback。"
-            "请在 RegisterConfig.extra 中配置接码服务，或手动完成手机验证。"
-        )
+        _raise_keyed(RuntimeError, "chatgpt.52d3c834")
+        # was: raise RuntimeError("ChatGPT 注册遇到手机号验证，但未配置 phone_callback。" "请在 RegisterConfig.extra 中配置接码服务，或手动完成手机验证。")
 
     last_error = None
     for phone_attempt in range(max_phone_attempts):
         if phone_attempt > 0:
-            log(f"换号重试第 {phone_attempt + 1}/{max_phone_attempts} 次...")
+            _emit_log_key(log, log_key, "chatgpt.922bf0d7", attempt=phone_attempt + 1, max_phone_attempts=max_phone_attempts)
+            # was: log(f"换号重试第 {phone_attempt + 1}/{max_phone_attempts} 次...")
             # 回到 add-phone 页面
             try:
                 page.goto(f"{OPENAI_AUTH}/add-phone", wait_until="domcontentloaded", timeout=15000)
@@ -2081,7 +2172,7 @@ def _handle_add_phone_challenge(
             result = _do_add_phone_attempt(
                 page, phone_callback,
                 device_id=device_id, user_agent=user_agent,
-                log=log, resume_url=resume_url,
+                log=log, log_key=log_key, resume_url=resume_url,
             )
             return result
         except RuntimeError as exc:
@@ -2096,7 +2187,8 @@ def _handle_add_phone_challenge(
             )
             if not should_retry:
                 raise
-            log(f"⚠️ 验证码超时未收到，准备换号重试...")
+            _emit_log_key(log, log_key, "chatgpt.888f4570")
+            # was: log(f"⚠️ 验证码超时未收到，准备换号重试...")
             # 取消当前号码
             if hasattr(phone_callback, "cleanup"):
                 phone_callback.cleanup()
@@ -2106,7 +2198,8 @@ def _handle_add_phone_challenge(
                 phone_callback.activation = None
                 phone_callback.completed = False
 
-    raise last_error or RuntimeError("短信验证失败: 多次换号均未收到验证码")
+    raise last_error or _raise_keyed(RuntimeError, "chatgpt.fb4b66a0")
+    # was: raise last_error or RuntimeError("短信验证失败: 多次换号均未收到验证码")
 
 
 def _do_add_phone_attempt(
@@ -2116,6 +2209,7 @@ def _do_add_phone_attempt(
     device_id: str,
     user_agent: str,
     log,
+    log_key: Optional[Callable[[str, dict], None]] = None,
     resume_url: str = "",
 ) -> dict:
     """单次手机号验证尝试（内部函数）。"""
@@ -2147,23 +2241,29 @@ def _do_add_phone_attempt(
             'a:has-text("Resend code")',
         ], timeout=3)
         if resend_clicked:
-            log(f"  phone-otp/resend -> 已点击页面 Resend 按钮: {resend_clicked}")
+            _emit_log_key(log, log_key, "chatgpt.a825846a", resend_clicked=resend_clicked)
+            # was: log(f"  phone-otp/resend -> 已点击页面 Resend 按钮: {resend_clicked}")
         else:
-            log("  phone-otp/resend -> 页面未找到 Resend 按钮，跳过（浏览器模式不走 HTTP）")
+            _emit_log_key(log, log_key, "chatgpt.61a78d06")
+            # was: log("  phone-otp/resend -> 页面未找到 Resend 按钮，跳过（浏览器模式不走 HTTP）")
 
     if hasattr(phone_callback, "set_resend_callback"):
         phone_callback.set_resend_callback(_request_openai_resend)
 
     # ---- 第1步: 获取手机号 ----
-    log("注册流程已进入 add_phone，开始准备租号并接收短信验证码...")
+    _emit_log_key(log, log_key, "chatgpt.fb273255")
+    # was: log("注册流程已进入 add_phone，开始准备租号并接收短信验证码...")
     phone_number = str(phone_callback() or "").strip()
     if not phone_number:
-        raise RuntimeError("未获取到手机号")
-    log(f"检测到 add_phone，提交手机号(UI): {_mask_phone_number(phone_number)}")
+        _raise_keyed(RuntimeError, "chatgpt.0755ba30")
+        # was: raise RuntimeError("未获取到手机号")
+    _emit_log_key(log, log_key, "chatgpt.a4038235", val=_mask_phone_number(phone_number))
+    # was: log(f"检测到 add_phone，提交手机号(UI): {_mask_phone_number(phone_number)}")
 
     # 解析国家拨号码和本地号码
     dial_code, local_number, country_name = _parse_phone_country_and_local(phone_number)
-    log(f"  解析号码: 国家={country_name or '未知'} 拨号码=+{dial_code} 本地号={local_number[:4]}...")
+    _emit_log_key(log, log_key, "chatgpt.49a9af86", country=country_name or '未知', dial_code=dial_code, local=local_number[:4])
+    # was: log(f"  解析号码: 国家={country_name or '未知'} 拨号码=+{dial_code} 本地号={local_number[:4]}...")
 
     # 确保在 add-phone 页面
     current_url = str(page.url or "")
@@ -2172,7 +2272,7 @@ def _do_add_phone_attempt(
     time.sleep(1)
 
     # ---- 第2步: 选择国家 ----
-    country_selected = _select_phone_country_ui(page, dial_code, country_name, log)
+    country_selected = _select_phone_country_ui(page, dial_code, country_name, log, log_key)
     _browser_pause(page)
 
     # ---- 第3步: 填写手机号 ----
@@ -2192,12 +2292,14 @@ def _do_add_phone_attempt(
                 # 如果 input 值包含我们的号码（可能前面有 +56 之类的前缀），认为成功
                 if fill_value and fill_value in actual_val.replace(" ", "").replace("-", ""):
                     filled = True
-                    log(f"  手机号已填写(含前缀): {actual_val[:12]}...")
+                    _emit_log_key(log, log_key, "chatgpt.7a6aa18d", value=actual_val[:12])
+                    # was: log(f"  手机号已填写(含前缀): {actual_val[:12]}...")
             except Exception:
                 pass
         if not filled:
             # fallback: 尝试先清空再用 keyboard.type 输入
-            log(f"  _fill_input_like_user 失败，尝试 keyboard fallback...")
+            _emit_log_key(log, log_key, "chatgpt.51fa337c")
+            # was: log(f"  _fill_input_like_user 失败，尝试 keyboard fallback...")
             try:
                 page.click(phone_input_sel)
                 time.sleep(0.3)
@@ -2217,9 +2319,11 @@ def _do_add_phone_attempt(
                 actual_clean = str(actual or "").replace(" ", "").replace("-", "")
                 if fill_value in actual_clean:
                     filled = True
-                    log(f"  keyboard fallback 成功: {str(actual or '')[:12]}...")
+                    _emit_log_key(log, log_key, "chatgpt.88703380", value=str(actual or '')[:12])
+                    # was: log(f"  keyboard fallback 成功: {str(actual or '')[:12]}...")
             except Exception as e:
-                log(f"  keyboard fallback 失败: {e}")
+                _emit_log_key(log, log_key, "chatgpt.1cef2160", e=e)
+                # was: log(f"  keyboard fallback 失败: {e}")
         if not filled:
             # 最终 fallback: 直接用 JS 设置值
             try:
@@ -2245,24 +2349,32 @@ def _do_add_phone_attempt(
                 )
                 if js_ok:
                     filled = True
-                    log(f"  JS setValue fallback 成功")
+                    _emit_log_key(log, log_key, "chatgpt.8e55cc66")
+                    # was: log(f"  JS setValue fallback 成功")
             except Exception as e:
-                log(f"  JS setValue fallback 失败: {e}")
+                _emit_log_key(log, log_key, "chatgpt.89324a6f", e=e)
+                # was: log(f"  JS setValue fallback 失败: {e}")
         if not filled:
-            raise RuntimeError(f"手机号输入框填写失败: {phone_input_sel}")
-        log(f"  手机号输入框已填写: {phone_input_sel} value={fill_value[:4]}...")
+            _raise_keyed(RuntimeError, "chatgpt.0d08959b", phone_input_sel=phone_input_sel)
+            # was: raise RuntimeError(f"手机号输入框填写失败: {phone_input_sel}")
+        _emit_log_key(log, log_key, "chatgpt.a610607d", phone_input_sel=phone_input_sel, value=fill_value[:4])
+        # was: log(f"  手机号输入框已填写: {phone_input_sel} value={fill_value[:4]}...")
     else:
-        raise RuntimeError("未找到手机号输入框")
+        _raise_keyed(RuntimeError, "chatgpt.0383ea57")
+        # was: raise RuntimeError("未找到手机号输入框")
     _browser_pause(page)
 
     # ---- 第4步: 点击发送按钮 ----
     send_sel = _click_first(page, PHONE_SEND_SELECTORS, timeout=8)
     if send_sel:
-        log(f"  已点击发送按钮: {send_sel}")
+        _emit_log_key(log, log_key, "chatgpt.f6aae652", send_sel=send_sel)
+        # was: log(f"  已点击发送按钮: {send_sel}")
     elif _submit_form_with_fallback(page, phone_input_sel):
-        log("  未找到发送按钮，已使用表单 fallback 提交")
+        _emit_log_key(log, log_key, "chatgpt.a0ffd85e")
+        # was: log("  未找到发送按钮，已使用表单 fallback 提交")
     else:
-        raise RuntimeError("未找到发送验证码按钮")
+        _raise_keyed(RuntimeError, "chatgpt.40c0fbdc")
+        # was: raise RuntimeError("未找到发送验证码按钮")
 
     # 等待页面响应（可能显示 OTP 输入框或错误）
     time.sleep(2)
@@ -2272,17 +2384,20 @@ def _do_add_phone_attempt(
     if error_text:
         if hasattr(phone_callback, "mark_send_failed"):
             phone_callback.mark_send_failed(error_text)
-        raise RuntimeError(f"手机号提交失败: {error_text[:200]}")
+        _raise_keyed(RuntimeError, "chatgpt.0b04c013", val=error_text[:200])
+        # was: raise RuntimeError(f"手机号提交失败: {error_text[:200]}")
 
     if hasattr(phone_callback, "mark_send_succeeded"):
         phone_callback.mark_send_succeeded()
-    log("手机号提交成功(UI)，开始等待短信验证码...")
+    _emit_log_key(log, log_key, "chatgpt.093b8849")
+    # was: log("手机号提交成功(UI)，开始等待短信验证码...")
 
     # ---- 第5步: 等待 SMS 验证码并在页面 OTP 输入框中填写 ----
     for code_attempt in range(3):
         sms_code = str(phone_callback() or "").strip()
         if not sms_code:
-            raise RuntimeError("未获取到短信验证码")
+            _raise_keyed(RuntimeError, "chatgpt.ef43f923")
+            # was: raise RuntimeError("未获取到短信验证码")
 
         # 等待 OTP 输入框出现
         otp_sel = _wait_for_any_selector(page, OTP_INPUT_SELECTORS, timeout=10)
@@ -2290,12 +2405,14 @@ def _do_add_phone_attempt(
             # 尝试用 phone input selectors 作为 OTP（某些版本页面复用同一 input）
             otp_sel = _find_first_selector(page, PHONE_INPUT_SELECTORS)
         if not otp_sel:
-            raise RuntimeError("未找到短信验证码输入框")
+            _raise_keyed(RuntimeError, "chatgpt.8af216a9")
+            # was: raise RuntimeError("未找到短信验证码输入框")
 
         # 使用与邮箱 OTP 相同的填写逻辑
-        otp_resp = _submit_otp_via_page(page, sms_code, log)
+        otp_resp = _submit_otp_via_page(page, sms_code, log, log_key)
         otp_status = int(otp_resp.get("status") or 0)
-        log(f"  phone-otp 页面提交状态: {otp_status}")
+        _emit_log_key(log, log_key, "chatgpt.04c00651", otp_status=otp_status)
+        # was: log(f"  phone-otp 页面提交状态: {otp_status}")
 
         if otp_resp.get("ok") or otp_status in (200, 201, 204):
             if hasattr(phone_callback, "report_success"):
@@ -2317,16 +2434,19 @@ def _do_add_phone_attempt(
         # 检查是否是无效验证码
         page_error = _extract_auth_error_text(page)
         if page_error and any(kw in page_error.lower() for kw in ("invalid", "incorrect", "wrong", "expired")):
-            log(f"短信验证码被判定无效: {page_error[:100]}，继续等待下一条...")
+            _emit_log_key(log, log_key, "chatgpt.b0b9433c", error=page_error[:100])
+            # was: log(f"短信验证码被判定无效: {page_error[:100]}，继续等待下一条...")
             if hasattr(phone_callback, "mark_code_failed"):
                 phone_callback.mark_code_failed(page_error or "invalid otp code")
             continue
 
         if hasattr(phone_callback, "mark_code_failed"):
             phone_callback.mark_code_failed(page_error or f"status {otp_status}")
-        raise RuntimeError(f"短信验证码校验失败: {page_error[:200] if page_error else f'status {otp_status}'}")
+        _raise_keyed(RuntimeError, "chatgpt.b30e850f", detail=page_error[:200] if page_error else f'status {otp_status}')
+        # was: raise RuntimeError(f"短信验证码校验失败: {page_error[:200] if page_error else f'status {otp_status}'}")
 
-    raise RuntimeError("短信验证码校验失败: 多次验证码均无效或未通过")
+    _raise_keyed(RuntimeError, "chatgpt.4b2ba617")
+    # was: raise RuntimeError("短信验证码校验失败: 多次验证码均无效或未通过")
 
 
 def _requires_registration_navigation(state: dict) -> bool:
@@ -2414,7 +2534,7 @@ def _start_browser_signin(page, email: str, device_id: str, csrf_token: str) -> 
     return ""
 
 
-def _browser_authorize(page, auth_url: str, log) -> str:
+def _browser_authorize(page, auth_url: str, log, log_key: Optional[Callable[[str, dict], None]] = None) -> str:
     if not auth_url:
         return ""
     try:
@@ -2423,7 +2543,8 @@ def _browser_authorize(page, auth_url: str, log) -> str:
         log(f"Authorize -> {final_url[:120]}")
         return final_url
     except Exception as exc:
-        log(f"Authorize 失败: {exc}")
+        _emit_log_key(log, log_key, "chatgpt.61d5f6a7", exc=exc)
+        # was: log(f"Authorize 失败: {exc}")
         return ""
 
 
@@ -2484,7 +2605,7 @@ def _submit_browser_about_you(page, device_id: str, user_agent: str, referer: st
     )
 
 
-def _complete_oauth_in_browser(page, oauth_start, proxy, log) -> dict | None:
+def _complete_oauth_in_browser(page, oauth_start, proxy, log, log_key: Optional[Callable[[str, dict], None]] = None) -> dict | None:
     """在浏览器里完成 OAuth consent 流程，多策略重试点击 Continue。
 
     参考 Chrome 扩展项目的 step9 实现:
@@ -2575,7 +2696,8 @@ def _complete_oauth_in_browser(page, oauth_start, proxy, log) -> dict | None:
             if url and url not in checked_urls:
                 checked_urls.add(url)
                 if "code=" in url or "localhost" in url:
-                    log(f"  [callback_wait] 检测到 URL 变化: {url[:150]}")
+                    _emit_log_key(log, log_key, "chatgpt.aa8c25ba", url=url[:150])
+                    # was: log(f"  [callback_wait] 检测到 URL 变化: {url[:150]}")
             result = _check_current_url()
             if result:
                 return result
@@ -2589,7 +2711,8 @@ def _complete_oauth_in_browser(page, oauth_start, proxy, log) -> dict | None:
         try:
             final_url = str(page.url or "")
             if "code=" in final_url:
-                log(f"  [callback_wait] 超时后最终 URL: {final_url[:150]}")
+                _emit_log_key(log, log_key, "chatgpt.7c61dd82", url=final_url[:150])
+                # was: log(f"  [callback_wait] 超时后最终 URL: {final_url[:150]}")
                 result = _try_extract_callback(final_url)
                 if result:
                     return result
@@ -2660,10 +2783,12 @@ def _complete_oauth_in_browser(page, oauth_start, proxy, log) -> dict | None:
                 target.click();
                 return 'click-fallback';
             }""", CONSENT_FORM_SEL)
-            log(f"  consent 第{log_round}轮 requestSubmit: {result}")
+            _emit_log_key(log, log_key, "chatgpt.163ff0b9", log_round=log_round, result=result)
+            # was: log(f"  consent 第{log_round}轮 requestSubmit: {result}")
             return result not in ("no-form", "no-button")
         except Exception as e:
-            log(f"  consent requestSubmit 异常: {e}")
+            _emit_log_key(log, log_key, "chatgpt.b10852d7", e=e)
+            # was: log(f"  consent requestSubmit 异常: {e}")
             return False
 
     def _click_strategy_playwright(log_round: int) -> bool:
@@ -2680,7 +2805,8 @@ def _complete_oauth_in_browser(page, oauth_start, proxy, log) -> dict | None:
                 loc = page.locator(sel).first
                 if loc.is_visible(timeout=1500):
                     loc.click()
-                    log(f"  consent 第{log_round}轮 playwright click: {sel}")
+                    _emit_log_key(log, log_key, "chatgpt.028deb05", log_round=log_round, sel=sel)
+                    # was: log(f"  consent 第{log_round}轮 playwright click: {sel}")
                     return True
             except Exception:
                 continue
@@ -2705,7 +2831,8 @@ def _complete_oauth_in_browser(page, oauth_start, proxy, log) -> dict | None:
             }
             """)
             if result:
-                log(f"  consent 第{log_round}轮 JS dispatch: {result}")
+                _emit_log_key(log, log_key, "chatgpt.8093899f", log_round=log_round, result=result)
+                # was: log(f"  consent 第{log_round}轮 JS dispatch: {result}")
                 return True
             return False
         except Exception:
@@ -2720,12 +2847,14 @@ def _complete_oauth_in_browser(page, oauth_start, proxy, log) -> dict | None:
 
     try:
         current_url = str(page.url or "")
-        log(f"  浏览器 consent 处理: {current_url[:100]}")
+        _emit_log_key(log, log_key, "chatgpt.b870d449", url=current_url[:100])
+        # was: log(f"  浏览器 consent 处理: {current_url[:100]}")
 
         # 先检查当前 URL 是否已经有 code
         result = _check_current_url()
         if result:
-            log("  ✓ 页面已在 callback URL")
+            _emit_log_key(log, log_key, "chatgpt.a57282ac")
+            # was: log("  ✓ 页面已在 callback URL")
             return result
 
         # 等待页面加载
@@ -2739,7 +2868,8 @@ def _complete_oauth_in_browser(page, oauth_start, proxy, log) -> dict | None:
         try:
             try_again = page.query_selector('button:has-text("Try again")')
             if try_again and try_again.is_visible():
-                log("  consent 页面报错，点击 Try again...")
+                _emit_log_key(log, log_key, "chatgpt.aa65104a")
+                # was: log("  consent 页面报错，点击 Try again...")
                 try_again.click()
                 time.sleep(3)
         except Exception:
@@ -2749,7 +2879,8 @@ def _complete_oauth_in_browser(page, oauth_start, proxy, log) -> dict | None:
         for round_idx in range(MAX_ROUNDS):
             result = _check_current_url()
             if result:
-                log("  ✓ 浏览器 OAuth consent 完成")
+                _emit_log_key(log, log_key, "chatgpt.8c003840")
+                # was: log("  ✓ 浏览器 OAuth consent 完成")
                 return result
 
             strategy_fn = strategies[min(round_idx, len(strategies) - 1)]
@@ -2765,35 +2896,42 @@ def _complete_oauth_in_browser(page, oauth_start, proxy, log) -> dict | None:
                 time.sleep(1)
                 result = _wait_for_callback(CLICK_EFFECT_TIMEOUT)
                 if result:
-                    log("  ✓ 浏览器 OAuth consent 完成")
+                    _emit_log_key(log, log_key, "chatgpt.8c003840")
+                    # was: log("  ✓ 浏览器 OAuth consent 完成")
                     return result
-                log(f"  consent 第{round_idx + 1}轮点击后页面未跳转")
+                _emit_log_key(log, log_key, "chatgpt.b5db7dca", round=round_idx + 1)
+                # was: log(f"  consent 第{round_idx + 1}轮点击后页面未跳转")
             else:
-                log(f"  consent 第{round_idx + 1}轮未找到按钮")
+                _emit_log_key(log, log_key, "chatgpt.eecdb39f", round=round_idx + 1)
+                # was: log(f"  consent 第{round_idx + 1}轮未找到按钮")
 
             # 最后一轮前刷新页面重试
             if round_idx < MAX_ROUNDS - 1:
-                log(f"  consent 刷新页面准备第{round_idx + 2}轮...")
+                _emit_log_key(log, log_key, "chatgpt.66e01add", round=round_idx + 2)
+                # was: log(f"  consent 刷新页面准备第{round_idx + 2}轮...")
                 try:
                     page.reload(wait_until="domcontentloaded", timeout=15000)
                 except Exception:
                     pass
                 time.sleep(2)
 
-        log(f"  consent {MAX_ROUNDS}轮尝试后仍未完成，当前: {str(page.url or '')[:100]}")
+        _emit_log_key(log, log_key, "chatgpt.165a3014", MAX_ROUNDS=MAX_ROUNDS, url=str(page.url or '')[:100])
+        # was: log(f"  consent {MAX_ROUNDS}轮尝试后仍未完成，当前: {str(page.url or '')[:100]}")
         return None
     except Exception as exc:
         cb = _extract_callback_url_from_exception(exc)
         if cb:
             result = _try_extract_callback(cb)
             if result:
-                log("  ✓ 从异常中提取 callback 完成 OAuth")
+                _emit_log_key(log, log_key, "chatgpt.bfef325c")
+                # was: log("  ✓ 从异常中提取 callback 完成 OAuth")
                 return result
-        log(f"  浏览器 OAuth consent 异常: {exc}")
+        _emit_log_key(log, log_key, "chatgpt.49f69953", exc=exc)
+        # was: log(f"  浏览器 OAuth consent 异常: {exc}")
         return None
 
 
-def _submit_oauth_password_direct(page, password: str, log) -> dict:
+def _submit_oauth_password_direct(page, password: str, log, log_key: Optional[Callable[[str, dict], None]] = None) -> dict:
     """OAuth 流程专用：直接填密码登录，不尝试恢复到注册态。"""
     input_selector = _wait_for_any_selector(page, PASSWORD_INPUT_SELECTORS, timeout=15)
     if not input_selector:
@@ -2802,19 +2940,25 @@ def _submit_oauth_password_direct(page, password: str, log) -> dict:
         time.sleep(2)
         input_selector = _wait_for_any_selector(page, PASSWORD_INPUT_SELECTORS, timeout=10)
     if not input_selector:
-        raise RuntimeError("OAuth 密码页未找到输入框")
+        _raise_keyed(RuntimeError, "chatgpt.f28d73e2")
+        # was: raise RuntimeError("OAuth 密码页未找到输入框")
     if not _fill_input_like_user(page, input_selector, password):
-        raise RuntimeError("OAuth 密码页填写失败")
-    log(f"  OAuth 密码页输入框: {input_selector}")
+        _raise_keyed(RuntimeError, "chatgpt.eb4e1dfe")
+        # was: raise RuntimeError("OAuth 密码页填写失败")
+    _emit_log_key(log, log_key, "chatgpt.1a7a5b10", input_selector=input_selector)
+    # was: log(f"  OAuth 密码页输入框: {input_selector}")
     _browser_pause(page)
 
     submit_selector = _click_first(page, PASSWORD_SUBMIT_SELECTORS, timeout=8)
     if submit_selector:
-        log(f"  OAuth 密码页已点击继续按钮: {submit_selector}")
+        _emit_log_key(log, log_key, "chatgpt.cc6da93d", submit_selector=submit_selector)
+        # was: log(f"  OAuth 密码页已点击继续按钮: {submit_selector}")
     elif _submit_form_with_fallback(page, input_selector):
-        log("  OAuth 密码页使用表单 fallback 提交")
+        _emit_log_key(log, log_key, "chatgpt.a6073135")
+        # was: log("  OAuth 密码页使用表单 fallback 提交")
     else:
-        raise RuntimeError("OAuth 密码页未找到 Continue 按钮")
+        _raise_keyed(RuntimeError, "chatgpt.4cfd80e0")
+        # was: raise RuntimeError("OAuth 密码页未找到 Continue 按钮")
 
     deadline = time.time() + 20
     while time.time() < deadline:
@@ -2833,26 +2977,32 @@ def _submit_oauth_password_direct(page, password: str, log) -> dict:
     return {"ok": False, "status": 0, "url": str(page.url or ""), "data": None, "text": "OAuth 密码提交后未跳转"}
 
 
-def _submit_password_via_page(page, password: str, log) -> dict:
-    if _recover_signup_password_page(page, log):
+def _submit_password_via_page(page, password: str, log, log_key: Optional[Callable[[str, dict], None]] = None) -> dict:
+    if _recover_signup_password_page(page, log, log_key):
         time.sleep(1)
 
     input_selector = _wait_for_any_selector(page, PASSWORD_INPUT_SELECTORS, timeout=15)
     if not input_selector:
-        raise RuntimeError("密码页未找到输入框")
+        _raise_keyed(RuntimeError, "chatgpt.0543c072")
+        # was: raise RuntimeError("密码页未找到输入框")
     if not _fill_input_like_user(page, input_selector, password):
-        raise RuntimeError("密码页填写失败")
-    log(f"密码页输入框: {input_selector}")
+        _raise_keyed(RuntimeError, "chatgpt.708b2dd9")
+        # was: raise RuntimeError("密码页填写失败")
+    _emit_log_key(log, log_key, "chatgpt.d03c813e", input_selector=input_selector)
+    # was: log(f"密码页输入框: {input_selector}")
     _browser_pause(page)
 
     start_url = str(page.url or "")
     submit_selector = _click_first(page, PASSWORD_SUBMIT_SELECTORS, timeout=8)
     if submit_selector:
-        log(f"密码页已点击继续按钮: {submit_selector}")
+        _emit_log_key(log, log_key, "chatgpt.b66a2726", submit_selector=submit_selector)
+        # was: log(f"密码页已点击继续按钮: {submit_selector}")
     elif _submit_form_with_fallback(page, input_selector):
-        log("密码页未找到可点击 Continue，已使用表单 fallback 提交")
+        _emit_log_key(log, log_key, "chatgpt.9d760628")
+        # was: log("密码页未找到可点击 Continue，已使用表单 fallback 提交")
     else:
-        raise RuntimeError("密码页未找到 Continue 按钮")
+        _raise_keyed(RuntimeError, "chatgpt.ec32665c")
+        # was: raise RuntimeError("密码页未找到 Continue 按钮")
 
     deadline = time.time() + 20
     last_url = str(page.url or "")
@@ -2865,7 +3015,7 @@ def _submit_password_via_page(page, password: str, log) -> dict:
             return {"ok": True, "status": 200, "url": current_url, "data": None, "text": ""}
         if current_url != start_url and page_type and page_type not in {"create_account_password", "login_password"}:
             return {"ok": True, "status": 200, "url": current_url, "data": None, "text": ""}
-        if page_type == "login_password" and _recover_signup_password_page(page, log):
+        if page_type == "login_password" and _recover_signup_password_page(page, log, log_key):
             input_selector = _wait_for_any_selector(page, PASSWORD_INPUT_SELECTORS, timeout=5)
             if not input_selector:
                 return {"ok": False, "status": 400, "url": current_url, "data": None, "text": "登录密码页恢复后未找到注册密码输入框"}
@@ -2873,12 +3023,14 @@ def _submit_password_via_page(page, password: str, log) -> dict:
                 return {"ok": False, "status": 400, "url": current_url, "data": None, "text": "登录密码页恢复后密码重新填写失败"}
             submit_selector = _click_first(page, PASSWORD_SUBMIT_SELECTORS, timeout=5)
             if submit_selector:
-                log(f"恢复后重新点击密码提交按钮: {submit_selector}")
+                _emit_log_key(log, log_key, "chatgpt.ec4ed81b", submit_selector=submit_selector)
+                # was: log(f"恢复后重新点击密码提交按钮: {submit_selector}")
                 start_url = str(page.url or start_url)
                 time.sleep(0.4)
                 continue
             if _submit_form_with_fallback(page, input_selector):
-                log("恢复后未找到密码提交按钮，已使用表单 fallback 提交")
+                _emit_log_key(log, log_key, "chatgpt.4135c016")
+                # was: log("恢复后未找到密码提交按钮，已使用表单 fallback 提交")
                 start_url = str(page.url or start_url)
                 time.sleep(0.4)
                 continue
@@ -2892,7 +3044,7 @@ def _submit_password_via_page(page, password: str, log) -> dict:
     return {"ok": False, "status": 0, "url": last_url, "data": None, "text": "密码页提交后未跳转"}
 
 
-def _submit_otp_via_page(page, code: str, log) -> dict:
+def _submit_otp_via_page(page, code: str, log, log_key: Optional[Callable[[str, dict], None]] = None) -> dict:
     otp = str(code or "").strip()
     if not otp:
         return {"ok": False, "status": 400, "url": page.url, "data": None, "text": "验证码为空"}
@@ -2925,7 +3077,8 @@ def _submit_otp_via_page(page, code: str, log) -> dict:
                     break
             if done >= len(otp):
                 filled = True
-                log(f"验证码页已填写 {done} 位分格输入框")
+                _emit_log_key(log, log_key, "chatgpt.4aeb6668", done=done)
+                # was: log(f"验证码页已填写 {done} 位分格输入框")
     except Exception:
         pass
 
@@ -2950,7 +3103,8 @@ def _submit_otp_via_page(page, code: str, log) -> dict:
                 final_value = str(target.input_value() or "").strip()
                 if final_value:
                     filled = True
-                    log("验证码页已填写单输入框")
+                    _emit_log_key(log, log_key, "chatgpt.b497f65e")
+                    # was: log("验证码页已填写单输入框")
                     break
             except Exception:
                 continue
@@ -2973,7 +3127,8 @@ def _submit_otp_via_page(page, code: str, log) -> dict:
                     target.type(otp, delay=random.randint(18, 45))
                     if str(target.input_value() or "").strip():
                         filled = True
-                        log("验证码页已填写单输入框(重试)")
+                        _emit_log_key(log, log_key, "chatgpt.98936a73")
+                        # was: log("验证码页已填写单输入框(重试)")
                         break
             except Exception:
                 continue
@@ -2998,7 +3153,8 @@ def _submit_otp_via_page(page, code: str, log) -> dict:
     )
     if not submit_selector:
         return {"ok": False, "status": 0, "url": page.url, "data": None, "text": "验证码页未找到 Continue 按钮"}
-    log(f"验证码页已点击继续按钮: {submit_selector}")
+    _emit_log_key(log, log_key, "chatgpt.6c6526d1", submit_selector=submit_selector)
+    # was: log(f"验证码页已点击继续按钮: {submit_selector}")
 
     deadline = time.time() + 20
     last_url = page.url
@@ -3021,14 +3177,15 @@ def _submit_otp_via_page(page, code: str, log) -> dict:
     return {"ok": False, "status": 0, "url": last_url, "data": None, "text": "验证码页提交后未跳转"}
 
 
-def _submit_about_you_via_page(page, log) -> dict:
+def _submit_about_you_via_page(page, log, log_key: Optional[Callable[[str, dict], None]] = None) -> dict:
     from .constants import generate_random_user_info
 
     user_info = generate_random_user_info()
     name = str(user_info.get("name") or "").strip()
     birthdate = str(user_info.get("birthdate") or "").strip()
     if not name or not birthdate:
-        raise RuntimeError("about_you 数据生成失败")
+        _raise_keyed(RuntimeError, "chatgpt.e269fef6")
+        # was: raise RuntimeError("about_you 数据生成失败")
     date_parts = birthdate.split("-")
     if len(date_parts) == 3:
         yyyy, mm, dd = date_parts
@@ -3037,7 +3194,8 @@ def _submit_about_you_via_page(page, log) -> dict:
     else:
         us_birthdate = birthdate
         cn_birthdate = birthdate.replace("-", "/")
-    log(f"about_you 表单: name={name}, birthdate={birthdate}, ui_birthdate={us_birthdate}, cn_birthdate={cn_birthdate}")
+    _emit_log_key(log, log_key, "chatgpt.69ee44f0", name=name, birthdate=birthdate, us_birthdate=us_birthdate, cn_birthdate=cn_birthdate)
+    # was: log(f"about_you 表单: name={name}, birthdate={birthdate}, ui_birthdate={us_birthdate}, cn_birthdate={cn_birthdate}")
 
     def _fill_locator(locator, value: str) -> bool:
         try:
@@ -3254,13 +3412,11 @@ def _submit_about_you_via_page(page, log) -> dict:
 
     visible_inputs = _collect_visible_text_inputs(page)
     if visible_inputs:
-        log(
-            "about_you 可见输入框: "
-            + " | ".join(
+        _emit_log_key(log, log_key, "chatgpt.3efc3c40", items=" | ".join(
                 f"#{int(item.get('visibleIndex', 0))} {(_about_you_input_hints(item) or '-')[:80]}"
                 for item in visible_inputs[:4]
-            )
-        )
+            ))
+        # was: log("about_you 可见输入框: " + " | ".join(f"#{int(item.get('visibleIndex', 0))} {(_about_you_input_hints(item) or '-')[:80]}" for item in visible_inputs[:4]))
     ordered_visible_entries = sorted(
         [item for item in visible_inputs if str(item.get("visibleIndex", "")).isdigit()],
         key=lambda item: int(item.get("visibleIndex", 0)),
@@ -3381,7 +3537,8 @@ def _submit_about_you_via_page(page, log) -> dict:
         about_mode = "age"
     else:
         about_mode = "birthday"
-    log(f"about_you 页面模式: {about_mode} labels={mode_probe.get('labels', [])[:4]}")
+    _emit_log_key(log, log_key, "chatgpt.f2006b5c", about_mode=about_mode, labels=mode_probe.get('labels', [])[:4])
+    # was: log(f"about_you 页面模式: {about_mode} labels={mode_probe.get('labels', [])[:4]}")
     direct_name_selector = _resolve_visible_input_selector(
         [
             'input[name="name"]',
@@ -3404,15 +3561,11 @@ def _submit_about_you_via_page(page, log) -> dict:
     if about_mode == "age" and len(ordered_visible_entries) >= 2:
         name_entry = ordered_visible_entries[0]
         age_entry = ordered_visible_entries[1]
-        log(
-            f"about_you age 输入框映射: name=#{int(name_entry.get('visibleIndex', 0))}, "
-            f"age=#{int(age_entry.get('visibleIndex', 0))}"
-        )
+        _emit_log_key(log, log_key, "chatgpt.5fdfcdf9", name_idx=int(name_entry.get('visibleIndex', 0)), age_idx=int(age_entry.get('visibleIndex', 0)))
+        # was: log(f"about_you age 输入框映射: name=#{int(name_entry.get('visibleIndex', 0))}, " f"age=#{int(age_entry.get('visibleIndex', 0))}")
     if about_mode == "age":
-        log(
-            "about_you age 直接定位: "
-            f"name={direct_name_selector or '-'}, age={direct_age_selector or '-'}"
-        )
+        _emit_log_key(log, log_key, "chatgpt.60a70bfd", name=direct_name_selector or '-', age=direct_age_selector or '-')
+        # was: log("about_you age 直接定位: " f"name={direct_name_selector or '-'}, age={direct_age_selector or '-'}")
 
     def _fill_segmented_date(mm: str, dd: str, yyyy: str) -> bool:
         """处理 MM / DD / YYYY 分段日期输入框（React DateField 样式）。
@@ -3529,13 +3682,14 @@ def _submit_about_you_via_page(page, log) -> dict:
                 excluded_indices.add(int(name_entry.get("visibleIndex")))
             if _fill_second_visible_input([str(age_years)], excluded_visible_indices=excluded_indices):
                 fill_result["age"] = True
-        if len(date_parts) == 3 and _sync_hidden_birthday_input(page, f"{yyyy}-{mm}-{dd}", log):
+        if len(date_parts) == 3 and _sync_hidden_birthday_input(page, f"{yyyy}-{mm}-{dd}", log, log_key):
             fill_result["birthdate"] = True
     elif about_mode == "birthday" or about_mode == "birthday_text":
         # 先尝试分段日期输入（MM / DD / YYYY 格式的 DateField）
         if len(date_parts) == 3 and _fill_segmented_date(mm, dd, yyyy):
             fill_result["birthdate"] = True
-            log("about_you 使用分段日期输入成功")
+            _emit_log_key(log, log_key, "chatgpt.8a0ccc56")
+            # was: log("about_you 使用分段日期输入成功")
         # 再尝试普通文本输入
         if not fill_result.get("birthdate"):
             for candidate in birthday_candidates:
@@ -3559,15 +3713,18 @@ def _submit_about_you_via_page(page, log) -> dict:
             if _fill_second_visible_input(fallback_values):
                 fill_result["birthdate"] = True
 
-    log(f"about_you 填写结果: {fill_result}")
+    _emit_log_key(log, log_key, "chatgpt.5bad6f16", fill_result=fill_result)
+    # was: log(f"about_you 填写结果: {fill_result}")
     if not fill_result.get("name"):
-        raise RuntimeError("about_you 未成功填写 Full name")
+        _raise_keyed(RuntimeError, "chatgpt.eec1673e")
+        # was: raise RuntimeError("about_you 未成功填写 Full name")
     if not (
         fill_result.get("birthdate")
         or fill_result.get("age")
         or (fill_result.get("month") and fill_result.get("day") and fill_result.get("year"))
     ):
-        raise RuntimeError("about_you 未成功填写 Birthday/Age")
+        _raise_keyed(RuntimeError, "chatgpt.4939b14b")
+        # was: raise RuntimeError("about_you 未成功填写 Birthday/Age")
     _browser_pause(page)
 
     submit_selector = _click_first(
@@ -3585,8 +3742,10 @@ def _submit_about_you_via_page(page, log) -> dict:
         timeout=8,
     )
     if not submit_selector:
-        raise RuntimeError("about_you 未找到提交按钮")
-    log(f"about_you 已点击继续按钮: {submit_selector}")
+        _raise_keyed(RuntimeError, "chatgpt.09eb6ff9")
+        # was: raise RuntimeError("about_you 未找到提交按钮")
+    _emit_log_key(log, log_key, "chatgpt.156fb08c", submit_selector=submit_selector)
+    # was: log(f"about_you 已点击继续按钮: {submit_selector}")
 
     deadline = time.time() + 20
     retried_generic_validation = False
@@ -3630,7 +3789,8 @@ def _submit_about_you_via_page(page, log) -> dict:
                 and ("doesn't look right" in normalized_error or "try again" in normalized_error)
             ):
                 retried_generic_validation = True
-                log("about_you age 模式提交被拒，重新同步 Full name/Age/hidden birthday 后重试一次...")
+                _emit_log_key(log, log_key, "chatgpt.0b25bc0c")
+                # was: log("about_you age 模式提交被拒，重新同步 Full name/Age/hidden birthday 后重试一次...")
                 if direct_name_selector and _fill_input_like_user(page, direct_name_selector, name):
                     fill_result["name"] = True
                 elif _fill_visible_input_entry(name_entry, name):
@@ -3650,7 +3810,7 @@ def _submit_about_you_via_page(page, log) -> dict:
                             if _fill_locator(candidate, str(age_years)):
                                 fill_result["age"] = True
                                 break
-                if len(date_parts) == 3 and _sync_hidden_birthday_input(page, f"{yyyy}-{mm}-{dd}", log):
+                if len(date_parts) == 3 and _sync_hidden_birthday_input(page, f"{yyyy}-{mm}-{dd}", log, log_key):
                     fill_result["birthdate"] = True
                 _browser_pause(page)
                 retry_submit_selector = _click_first(
@@ -3668,7 +3828,8 @@ def _submit_about_you_via_page(page, log) -> dict:
                     timeout=5,
                 )
                 if retry_submit_selector:
-                    log(f"about_you 重试提交按钮: {retry_submit_selector}")
+                    _emit_log_key(log, log_key, "chatgpt.f7a9b1fe", retry_submit_selector=retry_submit_selector)
+                    # was: log(f"about_you 重试提交按钮: {retry_submit_selector}")
                     time.sleep(0.5)
                     continue
             return {"ok": False, "status": 400, "url": current_url, "data": None, "text": error_text}
@@ -3677,7 +3838,7 @@ def _submit_about_you_via_page(page, log) -> dict:
     return {"ok": False, "status": 0, "url": last_url, "data": None, "text": "about_you 提交后未跳转"}
 
 
-def _browser_registration_flow(page, email: str, password: str, otp_callback, phone_callback, log) -> dict:
+def _browser_registration_flow(page, email: str, password: str, otp_callback, phone_callback, log, log_key: Optional[Callable[[str, dict], None]] = None) -> dict:
     device_id = str(uuid.uuid4())
     try:
         user_agent = str(page.evaluate("() => navigator.userAgent") or "").strip() or _random_chrome_ua()
@@ -3686,17 +3847,16 @@ def _browser_registration_flow(page, email: str, password: str, otp_callback, ph
 
     _seed_browser_device_id(page, device_id)
     try:
-        state = _start_browser_signup_via_page(page, email, log)
+        state = _start_browser_signup_via_page(page, email, log, log_key)
     except Exception as exc:
-        log(f"页面驱动注册入口失败，回退 ChatGPT authorize 入口: {exc}")
-        state = _start_browser_signup_via_authorize(page, email, device_id, log)
+        _emit_log_key(log, log_key, "chatgpt.92d09e9b", exc=exc)
+        # was: log(f"页面驱动注册入口失败，回退 ChatGPT authorize 入口: {exc}")
+        state = _start_browser_signup_via_authorize(page, email, device_id, log, log_key)
     auth_cookies = _get_cookies(page)
-    log(
-        "授权态 cookies: "
-        f"login_session={'yes' if auth_cookies.get('login_session') else 'no'}, "
-        f"oai-did={'yes' if auth_cookies.get('oai-did') else 'no'}"
-    )
-    log(f"注册状态起点: page={state.get('page_type') or '-'} url={(state.get('current_url') or '')[:100]}")
+    _emit_log_key(log, log_key, "chatgpt.1ad05205", login_session='yes' if auth_cookies.get('login_session') else 'no', oai_did='yes' if auth_cookies.get('oai-did') else 'no')
+    # was: log("授权态 cookies: " f"login_session={'yes' if auth_cookies.get('login_session') else 'no'}, " f"oai-did={'yes' if auth_cookies.get('oai-did') else 'no'}")
+    _emit_log_key(log, log_key, "chatgpt.c2f61b93", page=state.get('page_type') or '-', url=(state.get('current_url') or '')[:100])
+    # was: log(f"注册状态起点: page={state.get('page_type') or '-'} url={(state.get('current_url') or '')[:100]}")
     register_submitted = False
     seen_states: dict[str, int] = {}
 
@@ -3710,31 +3870,31 @@ def _browser_registration_flow(page, email: str, password: str, otp_callback, ph
             ]
         )
         seen_states[signature] = seen_states.get(signature, 0) + 1
-        log(
-            f"注册状态推进: step={step+1} page={state.get('page_type') or '-'} "
-            f"next={str(state.get('continue_url') or '')[:60]} seen={seen_states[signature]}"
-        )
+        _emit_log_key(log, log_key, "chatgpt.7c9f06dc", step=step+1, page=state.get('page_type') or '-', next_url=str(state.get('continue_url') or '')[:60], seen=seen_states[signature])
+        # was: log(f"注册状态推进: step={step+1} page={state.get('page_type') or '-'} " f"next={str(state.get('continue_url') or '')[:60]} seen={seen_states[signature]}")
         if seen_states[signature] > 2:
-            raise RuntimeError(f"注册状态卡住: page={state.get('page_type') or '-'}")
+            _raise_keyed(RuntimeError, "chatgpt.407c1444", page=state.get('page_type') or '-')
+            # was: raise RuntimeError(f"注册状态卡住: page={state.get('page_type') or '-'}")
 
         if _is_registration_complete(state):
-            _handle_post_signup_onboarding(page, log)
+            _handle_post_signup_onboarding(page, log, log_key)
             return _extract_flow_state(None, page.url)
 
         if _is_password_registration(state):
             if register_submitted:
-                raise RuntimeError("重复进入密码注册阶段")
-            log("提交注册密码...")
+                _raise_keyed(RuntimeError, "chatgpt.583d3109")
+                # was: raise RuntimeError("重复进入密码注册阶段")
+            _emit_log_key(log, log_key, "chatgpt.cba3a93f")
+            # was: log("提交注册密码...")
             pre_cookies = _get_cookies(page)
-            log(
-                "密码阶段 cookies: "
-                f"login_session={'yes' if pre_cookies.get('login_session') else 'no'}, "
-                f"oai-client-auth-session={'yes' if pre_cookies.get('oai-client-auth-session') else 'no'}"
-            )
-            reg_resp = _submit_password_via_page(page, password, log)
-            log(f"密码页提交状态: {reg_resp.get('status', 0)}")
+            _emit_log_key(log, log_key, "chatgpt.eafa0a69", login_session='yes' if pre_cookies.get('login_session') else 'no', oai_client_auth_session='yes' if pre_cookies.get('oai-client-auth-session') else 'no')
+            # was: log("密码阶段 cookies: " f"login_session={'yes' if pre_cookies.get('login_session') else 'no'}, " f"oai-client-auth-session={'yes' if pre_cookies.get('oai-client-auth-session') else 'no'}")
+            reg_resp = _submit_password_via_page(page, password, log, log_key)
+            _emit_log_key(log, log_key, "chatgpt.c7315fc5", val=reg_resp.get('status', 0))
+            # was: log(f"密码页提交状态: {reg_resp.get('status', 0)}")
             if not reg_resp.get("ok"):
-                raise RuntimeError(f"密码页提交失败: {(reg_resp.get('text') or '')[:300]}")
+                _raise_keyed(RuntimeError, "chatgpt.8ea76eac", text=(reg_resp.get('text') or '')[:300])
+                # was: raise RuntimeError(f"密码页提交失败: {(reg_resp.get('text') or '')[:300]}")
             register_submitted = True
             state = _extract_flow_state(reg_resp.get("data"), reg_resp.get("url", page.url))
             if not state.get("page_type") or _is_password_registration(state):
@@ -3742,14 +3902,17 @@ def _browser_registration_flow(page, email: str, password: str, otp_callback, ph
             continue
 
         if str(state.get("page_type") or "") == "login_password":
-            if _recover_signup_password_page(page, log):
+            if _recover_signup_password_page(page, log, log_key):
                 state = _derive_registration_state_from_page(page)
                 continue
-            log("注册流程落到已有账号登录密码页，按登录流程继续认证...")
-            login_resp = _submit_oauth_password_direct(page, password, log)
-            log(f"登录密码页提交状态: {login_resp.get('status', 0)}")
+            _emit_log_key(log, log_key, "chatgpt.aec7b097")
+            # was: log("注册流程落到已有账号登录密码页，按登录流程继续认证...")
+            login_resp = _submit_oauth_password_direct(page, password, log, log_key)
+            _emit_log_key(log, log_key, "chatgpt.04c047a0", val=login_resp.get('status', 0))
+            # was: log(f"登录密码页提交状态: {login_resp.get('status', 0)}")
             if not login_resp.get("ok"):
-                raise RuntimeError(f"登录密码页提交失败: {(login_resp.get('text') or '')[:300]}")
+                _raise_keyed(RuntimeError, "chatgpt.83cdc327", text=(login_resp.get('text') or '')[:300])
+                # was: raise RuntimeError(f"登录密码页提交失败: {(login_resp.get('text') or '')[:300]}")
             state = _extract_flow_state(login_resp.get("data"), login_resp.get("url", page.url))
             if not state.get("page_type"):
                 state = _derive_registration_state_from_page(page)
@@ -3757,46 +3920,57 @@ def _browser_registration_flow(page, email: str, password: str, otp_callback, ph
 
         if _is_email_otp(state):
             if not otp_callback:
-                raise RuntimeError("ChatGPT 注册需要邮箱验证码但未提供 otp_callback")
-            log("等待 ChatGPT 验证码")
+                _raise_keyed(RuntimeError, "chatgpt.af30d923")
+                # was: raise RuntimeError("ChatGPT 注册需要邮箱验证码但未提供 otp_callback")
+            _emit_log_key(log, log_key, "chatgpt.abe606fe")
+            # was: log("等待 ChatGPT 验证码")
             code = otp_callback()
             if not code:
-                raise RuntimeError("未获取到验证码")
-            otp_resp = _submit_otp_via_page(page, code, log)
-            log(f"验证码页提交状态: {otp_resp.get('status', 0)}")
+                _raise_keyed(RuntimeError, "chatgpt.13939cce")
+                # was: raise RuntimeError("未获取到验证码")
+            otp_resp = _submit_otp_via_page(page, code, log, log_key)
+            _emit_log_key(log, log_key, "chatgpt.6c016e07", val=otp_resp.get('status', 0))
+            # was: log(f"验证码页提交状态: {otp_resp.get('status', 0)}")
             if not otp_resp.get("ok"):
-                raise RuntimeError(f"验证码校验失败: {(otp_resp.get('text') or '')[:300]}")
+                _raise_keyed(RuntimeError, "chatgpt.133769b7", text=(otp_resp.get('text') or '')[:300])
+                # was: raise RuntimeError(f"验证码校验失败: {(otp_resp.get('text') or '')[:300]}")
             state = _extract_flow_state(otp_resp.get("data"), otp_resp.get("url", page.url))
             if not state.get("page_type"):
                 state = _derive_registration_state_from_page(page)
             continue
 
         if _is_about_you(state):
-            log("提交 about_you 信息...")
+            _emit_log_key(log, log_key, "chatgpt.18cf15f8")
+            # was: log("提交 about_you 信息...")
             target_url = _normalize_url(
                 str(state.get("current_url") or state.get("continue_url") or f"{OPENAI_AUTH}/about-you"),
                 OPENAI_AUTH,
             )
             if "about-you" not in str(page.url):
-                log(f"跳转到 about_you 页面: {target_url[:120]}")
+                _emit_log_key(log, log_key, "chatgpt.843208b3", url=target_url[:120])
+                # was: log(f"跳转到 about_you 页面: {target_url[:120]}")
                 page.goto(target_url, wait_until="domcontentloaded", timeout=30000)
-            about_resp = _submit_about_you_via_page(page, log)
-            log(f"about_you 提交状态: {about_resp.get('status', 0)}")
+            about_resp = _submit_about_you_via_page(page, log, log_key)
+            _emit_log_key(log, log_key, "chatgpt.6f11c10d", status=about_resp.get('status', 0))
+            # was: log(f"about_you 提交状态: {about_resp.get('status', 0)}")
             if not about_resp.get("ok"):
-                raise RuntimeError(f"about_you 提交失败: {(about_resp.get('text') or '')[:300]}")
+                _raise_keyed(RuntimeError, "chatgpt.b23dc737", text=(about_resp.get('text') or '')[:300])
+                # was: raise RuntimeError(f"about_you 提交失败: {(about_resp.get('text') or '')[:300]}")
             state = _extract_flow_state(about_resp.get("data"), about_resp.get("url", page.url))
             if not state.get("page_type"):
                 state = _derive_registration_state_from_page(page)
             if _is_add_phone(state):
                 if not phone_callback:
                     return state
-                log("about_you 后进入 add_phone，尝试短信验证...")
+                _emit_log_key(log, log_key, "chatgpt.09a608d9")
+                # was: log("about_you 后进入 add_phone，尝试短信验证...")
                 state = _handle_add_phone_challenge(
                     page,
                     phone_callback,
                     device_id=device_id,
                     user_agent=user_agent,
                     log=log,
+                    log_key=log_key,
                     resume_url=f"{CHATGPT_APP}/",
                 )
             continue
@@ -3804,13 +3978,15 @@ def _browser_registration_flow(page, email: str, password: str, otp_callback, ph
         if _is_add_phone(state):
             if not phone_callback:
                 return state
-            log("注册流程进入 add_phone，尝试短信验证...")
+            _emit_log_key(log, log_key, "chatgpt.5149264c")
+            # was: log("注册流程进入 add_phone，尝试短信验证...")
             state = _handle_add_phone_challenge(
                 page,
                 phone_callback,
                 device_id=device_id,
                 user_agent=user_agent,
                 log=log,
+                log_key=log_key,
                 resume_url=f"{CHATGPT_APP}/",
             )
             continue
@@ -3818,14 +3994,17 @@ def _browser_registration_flow(page, email: str, password: str, otp_callback, ph
         if _requires_registration_navigation(state):
             target_url = _normalize_url(str(state.get("continue_url") or state.get("current_url") or ""), OPENAI_AUTH)
             if not target_url:
-                raise RuntimeError("缺少可跟随的 continue_url")
+                _raise_keyed(RuntimeError, "chatgpt.2fb11597")
+                # was: raise RuntimeError("缺少可跟随的 continue_url")
             page.goto(target_url, wait_until="domcontentloaded", timeout=30000)
             state = _extract_flow_state(None, page.url)
             continue
 
-        raise RuntimeError(f"未支持的注册状态: page={state.get('page_type') or '-'}")
+        _raise_keyed(RuntimeError, "chatgpt.456d8144", page=state.get('page_type') or '-')
+        # was: raise RuntimeError(f"未支持的注册状态: page={state.get('page_type') or '-'}")
 
-    raise RuntimeError("注册状态机超出最大步数")
+    _raise_keyed(RuntimeError, "chatgpt.73ff27e1")
+    # was: raise RuntimeError("注册状态机超出最大步数")
 
 
 class ChatGPTBrowserRegister:
@@ -3837,12 +4016,20 @@ class ChatGPTBrowserRegister:
         otp_callback: Optional[Callable[[], str]] = None,
         phone_callback: Optional[Callable[[], str]] = None,
         log_fn: Callable[[str], None] = print,
+        log_key_fn: Optional[Callable[[str, dict], None]] = None,
     ):
         self.headless = headless
         self.proxy = proxy
         self.otp_callback = otp_callback
         self.phone_callback = phone_callback
         self.log = log_fn
+        self._log_key_fn = log_key_fn
+
+    def log_key(self, key: str, **params) -> None:
+        if self._log_key_fn is not None:
+            self._log_key_fn(key, params)  # positional (key, dict) -- not **params
+        else:
+            self.log(t(key, "zh", **params))
 
     def run(self, email: str, password: str) -> dict:
         proxy = _build_proxy_config(self.proxy)
@@ -3853,7 +4040,8 @@ class ChatGPTBrowserRegister:
 
         with Camoufox(**launch_opts) as browser:
             page = browser.new_page()
-            self.log("启动浏览器上下文注册状态机")
+            self.log_key("chatgpt.1d89a161")
+            # was: self.log("启动浏览器上下文注册状态机")
             final_state = _browser_registration_flow(
                 page,
                 email,
@@ -3861,8 +4049,10 @@ class ChatGPTBrowserRegister:
                 self.otp_callback,
                 self.phone_callback,
                 self.log,
+                self.log_key,
             )
-            self.log(f"注册流程完成: page={final_state.get('page_type') or '-'}")
+            self.log_key("chatgpt.3052c843", page=final_state.get('page_type') or '-')
+            # was: self.log(f"注册流程完成: page={final_state.get('page_type') or '-'}")
 
             # 获取 session token 和 cookies
             cookies_dict = _get_cookies(page)
@@ -3870,12 +4060,14 @@ class ChatGPTBrowserRegister:
             # ═══ 通过 Codex CLI OAuth 获取正确的 token ═══
             # 注册完成后的浏览器上下文 session 状态不稳定（NS_BINDING_ABORTED），
             # 直接用全新浏览器做 OAuth 更可靠
-            self.log("执行 Codex CLI OAuth 流程获取 token...")
+            self.log_key("chatgpt.263d7f6a")
+            # was: self.log("执行 Codex CLI OAuth 流程获取 token...")
 
         # 直接用全新浏览器做 OAuth（注册后的浏览器上下文不可靠）
         codex_result = self._retry_oauth_fresh_browser(email, password)
         if codex_result:
-            self.log(f"全新浏览器 OAuth 成功: account_id={codex_result.get('account_id','')}")
+            self.log_key("chatgpt.4b768d99", account_id=codex_result.get('account_id',''))
+            # was: self.log(f"全新浏览器 OAuth 成功: account_id={codex_result.get('account_id','')}")
             return {
                 "email": email, "password": password,
                 "account_id": codex_result.get("account_id", ""),
@@ -3886,7 +4078,8 @@ class ChatGPTBrowserRegister:
                 "cookies": "", "profile": {},
             }
 
-        raise RuntimeError("ChatGPT 注册未完成完整 OAuth callback，已拒绝回退到 session/access_token 半成品结果")
+        _raise_keyed(RuntimeError, "chatgpt.c05cf589")
+        # was: raise RuntimeError("ChatGPT 注册未完成完整 OAuth callback，已拒绝回退到 session/access_token 半成品结果")
 
     def _retry_oauth_fresh_browser(self, email, password):
         """在全新浏览器 context 里做 Codex OAuth（绕过 add_phone session）。"""
@@ -3897,12 +4090,15 @@ class ChatGPTBrowserRegister:
         try:
             with Camoufox(**launch_opts) as browser:
                 page = browser.new_page()
-                self.log("  全新浏览器 OAuth 开始...")
+                self.log_key("chatgpt.14955e08")
+                # was: self.log("  全新浏览器 OAuth 开始...")
                 result = _do_codex_oauth(
                     page, {}, email, password,
                     self.otp_callback, self.phone_callback, self.proxy, self.log,
+                    self.log_key,
                 )
                 return result
         except Exception as e:
-            self.log(f"  全新浏览器 OAuth 异常: {e}")
+            self.log_key("chatgpt.3f70c63e", e=e)
+            # was: self.log(f"  全新浏览器 OAuth 异常: {e}")
             return None

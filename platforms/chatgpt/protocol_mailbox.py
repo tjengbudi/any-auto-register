@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Callable
 
+from platforms.chatgpt._i18n_helpers import _raise_keyed
 from platforms.chatgpt.register import RegistrationEngine
 
 
@@ -42,9 +43,11 @@ class ChatGPTProtocolMailboxWorker:
         provider: str,
         proxy_url: str | None = None,
         log_fn: Callable[[str], None] = print,
+        log_key_fn: Callable[[str, dict], None] | None = None,
     ):
         if not mailbox or not mailbox_account:
-            raise ValueError("ChatGPT 注册流程依赖 mailbox provider，当前未获取到邮箱账号")
+            _raise_keyed(ValueError, "chatgpt.03663c62")
+            # was: raise ValueError("ChatGPT 注册流程依赖 mailbox provider，当前未获取到邮箱账号")
         email_service = _MailboxEmailService(
             mailbox=mailbox,
             mailbox_account=mailbox_account,
@@ -54,6 +57,7 @@ class ChatGPTProtocolMailboxWorker:
             email_service=email_service,
             proxy_url=proxy_url,
             callback_logger=log_fn,
+            log_key_fn=log_key_fn,
         )
 
     def run(self, *, email: str, password: str):
@@ -61,5 +65,7 @@ class ChatGPTProtocolMailboxWorker:
         self.engine.password = password
         result = self.engine.run()
         if not result or not result.success:
-            raise RuntimeError(result.error_message if result else "注册失败")
+            if result and result.error_message:
+                raise RuntimeError(result.error_message)
+            _raise_keyed(RuntimeError, "chatgpt.6d57824e")  # "注册失败"
         return result

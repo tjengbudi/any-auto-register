@@ -11,6 +11,7 @@ from typing import Optional
 from curl_cffi import requests as cffi_requests
 
 from core.base_platform import Account
+from platforms.chatgpt._i18n_helpers import _raise_keyed
 
 logger = logging.getLogger(__name__)
 
@@ -117,7 +118,7 @@ def _subscription_status_from_usage(data: dict) -> str:
 
 def _fetch_usage_data(account, proxy: Optional[str] = None) -> dict:
     if not account.access_token:
-        raise ValueError("账号缺少 access_token")
+        _raise_keyed(ValueError, "chatgpt.9fbc4659")  # "账号缺少 access_token"
 
     headers = {
         "Authorization": f"Bearer {account.access_token}",
@@ -137,7 +138,7 @@ def _fetch_usage_data(account, proxy: Optional[str] = None) -> dict:
     resp.raise_for_status()
     data = resp.json()
     if not isinstance(data, dict):
-        raise ValueError("wham/usage 响应格式异常")
+        _raise_keyed(ValueError, "chatgpt.e6f3043d")  # "wham/usage 响应格式异常"
     return data
 
 
@@ -203,7 +204,7 @@ def generate_plus_link(
 ) -> str:
     """生成 Plus 支付链接（后端携带账号 cookie 发请求）"""
     if not account.access_token:
-        raise ValueError("账号缺少 access_token")
+        _raise_keyed(ValueError, "chatgpt.9fbc4659")  # "账号缺少 access_token"
 
     currency = _COUNTRY_CURRENCY_MAP.get(country, "USD")
     headers = {
@@ -239,7 +240,10 @@ def generate_plus_link(
     data = resp.json()
     if "checkout_session_id" in data:
         return TEAM_CHECKOUT_BASE_URL + data["checkout_session_id"]
-    raise ValueError(data.get("detail", "API 未返回 checkout_session_id"))
+    detail = data.get("detail")
+    if detail:
+        raise ValueError(detail)
+    _raise_keyed(ValueError, "chatgpt.d79e3362")  # "API 未返回 checkout_session_id"
 
 
 def generate_team_link(
@@ -252,7 +256,7 @@ def generate_team_link(
 ) -> str:
     """生成 Team 支付链接（后端携带账号 cookie 发请求）"""
     if not account.access_token:
-        raise ValueError("账号缺少 access_token")
+        _raise_keyed(ValueError, "chatgpt.9fbc4659")  # "账号缺少 access_token"
 
     currency = _COUNTRY_CURRENCY_MAP.get(country, "USD")
     headers = {
@@ -294,7 +298,10 @@ def generate_team_link(
     data = resp.json()
     if "checkout_session_id" in data:
         return TEAM_CHECKOUT_BASE_URL + data["checkout_session_id"]
-    raise ValueError(data.get("detail", "API 未返回 checkout_session_id"))
+    detail = data.get("detail")
+    if detail:
+        raise ValueError(detail)
+    _raise_keyed(ValueError, "chatgpt.d79e3362")  # "API 未返回 checkout_session_id"
 
 
 def open_url_incognito(url: str, cookies_str: Optional[str] = None) -> bool:
@@ -337,7 +344,7 @@ def check_subscription_status(account: Account, proxy: Optional[str] = None) -> 
 def fetch_subscription_status_details(account: Account, proxy: Optional[str] = None) -> dict:
     """Return normalized subscription status plus raw usage data when available."""
     if not account.access_token:
-        raise ValueError("账号缺少 access_token")
+        _raise_keyed(ValueError, "chatgpt.9fbc4659")  # "账号缺少 access_token"
 
     headers = {
         "Authorization": f"Bearer {account.access_token}",

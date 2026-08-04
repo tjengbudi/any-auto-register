@@ -9,6 +9,7 @@ from core.oauth_browser import (
     finalize_oauth_email,
     oauth_provider_label,
 )
+from platforms.chatgpt._i18n_helpers import _emit_log_key, _raise_keyed
 from platforms.chatgpt.oauth import OAuthManager
 
 
@@ -48,6 +49,7 @@ def register_with_browser_oauth(
     email_hint: str = "",
     timeout: int = 300,
     log_fn=print,
+    log_key=None,
     headless: bool = False,
     chrome_user_data_dir: str = "",
     chrome_cdp_url: str = "",
@@ -71,16 +73,19 @@ def register_with_browser_oauth(
         if chrome_user_data_dir or chrome_cdp_url:
             browser.auto_select_google_account()
         else:
-            log_fn(f"请在浏览器中完成登录/授权，可使用 {method_text}，最长等待 {timeout} 秒")
+            _emit_log_key(log_fn, log_key, "chatgpt.2f5ee887", method_text=method_text, timeout=timeout)
+            # was: log_fn(f"请在浏览器中完成登录/授权，可使用 {method_text}，最长等待 {timeout} 秒")
             if email_hint:
-                log_fn(f"请确认最终登录账号邮箱为: {email_hint}")
+                _emit_log_key(log_fn, log_key, "chatgpt.18555deb", email_hint=email_hint)
+                # was: log_fn(f"请确认最终登录账号邮箱为: {email_hint}")
 
         callback_url = browser.wait_for_url(
             lambda url: url.startswith(oauth_start.redirect_uri) and "code=" in url,
             timeout=timeout,
         )
         if not callback_url:
-            raise RuntimeError(f"ChatGPT 浏览器登录未在 {timeout} 秒内完成")
+            _raise_keyed(RuntimeError, "chatgpt.7ea58cfc", timeout=timeout)
+            # was: raise RuntimeError(f"ChatGPT 浏览器登录未在 {timeout} 秒内完成")
 
         token_info = manager.handle_callback(
             callback_url=callback_url,

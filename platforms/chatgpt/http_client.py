@@ -3,6 +3,7 @@ from typing import Any, Dict, Optional, Tuple
 
 from core.http_client import HTTPClient, HTTPClientError, RequestConfig
 from .constants import ERROR_MESSAGES
+from platforms.chatgpt._i18n_helpers import _raise_keyed
 import logging
 logger = logging.getLogger(__name__)
 
@@ -126,7 +127,8 @@ class OpenAIHTTPClient(HTTPClient):
                 return {"raw_response": response.text}
 
         except cffi_requests.RequestsError as e:
-            raise HTTPClientError(f"OpenAI 请求失败: {endpoint} - {e}")
+            _raise_keyed(HTTPClientError, "chatgpt.ef22ade2", endpoint=endpoint, error=str(e))
+            # was: raise HTTPClientError(f"OpenAI 请求失败: {endpoint} - {e}")
 
     def check_sentinel(self, did: str, proxies: Optional[Dict] = None) -> Optional[str]:
         """

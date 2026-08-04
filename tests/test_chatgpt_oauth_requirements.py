@@ -33,11 +33,14 @@ def test_assert_complete_oauth_callback_accepts_nextauth_payload():
 
 
 def test_assert_complete_oauth_callback_rejects_missing_required_field():
-    with pytest.raises(RuntimeError, match="完整 OAuth callback"):
+    with pytest.raises(RuntimeError) as exc_info:
         _assert_complete_oauth_callback({
             "account_id": "acct_123",
             "access_token": "",
         })
+
+    assert exc_info.value.i18n_key == "chatgpt.eb25e25d"
+    assert exc_info.value.i18n_params == {"missing": "access_token"}
 
 
 def test_generate_chatgpt_registration_password_meets_openai_strength_requirements():
@@ -72,8 +75,11 @@ def test_protocol_mailbox_mapper_rejects_partial_oauth_result():
         workspace_id="",
     )
 
-    with pytest.raises(RuntimeError, match="完整 OAuth callback"):
+    with pytest.raises(RuntimeError) as exc_info:
         adapter.result_mapper(ctx, result)
+
+    assert exc_info.value.i18n_key == "chatgpt.eb25e25d"
+    assert exc_info.value.i18n_params == {"missing": "access_token"}
 
 
 def test_browser_register_run_rejects_session_fallback(monkeypatch):
@@ -110,5 +116,7 @@ def test_browser_register_run_rejects_session_fallback(monkeypatch):
         log_fn=lambda message: None,
     )
 
-    with pytest.raises(RuntimeError, match="已拒绝回退"):
+    with pytest.raises(RuntimeError) as exc_info:
         worker.run(email="user@example.com", password="Secret123!")
+
+    assert exc_info.value.i18n_key == "chatgpt.c05cf589"

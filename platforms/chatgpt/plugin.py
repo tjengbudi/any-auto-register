@@ -6,6 +6,7 @@ from core.base_mailbox import BaseMailbox
 from core.registration import BrowserRegistrationAdapter, OtpSpec, ProtocolMailboxAdapter, ProtocolOAuthAdapter, RegistrationCapability, RegistrationResult
 from core.registration.helpers import resolve_timeout
 from core.registry import register
+from platforms.chatgpt._i18n_helpers import _raise_keyed
 
 
 def _result_text(result, key: str) -> str:
@@ -20,9 +21,8 @@ def _assert_complete_oauth_callback(result) -> None:
     required = ("account_id", "access_token")
     missing = [key for key in required if not _result_text(result, key)]
     if missing:
-        raise RuntimeError(
-            "ChatGPT 注册未完成完整 OAuth callback，缺少: " + ", ".join(missing)
-        )
+        _raise_keyed(RuntimeError, "chatgpt.eb25e25d", missing=", ".join(missing))
+        # was: raise RuntimeError("ChatGPT 注册未完成完整 OAuth callback，缺少: " + ", ".join(missing))
 
 
 def _generate_chatgpt_registration_password(length: int = 16) -> str:
@@ -153,6 +153,7 @@ class ChatGPTPlatform(BasePlatform):
             email_hint=ctx.identity.email,
             timeout=resolve_timeout(ctx.extra, ("browser_oauth_timeout", "manual_oauth_timeout"), 300),
             log_fn=ctx.log,
+            log_key=ctx.log_key_fn,
             headless=(ctx.executor_type == "headless"),
             chrome_user_data_dir=ctx.identity.chrome_user_data_dir,
             chrome_cdp_url=ctx.identity.chrome_cdp_url,
@@ -167,6 +168,7 @@ class ChatGPTPlatform(BasePlatform):
                 otp_callback=artifacts.otp_callback,
                 phone_callback=artifacts.phone_callback,
                 log_fn=ctx.log,
+                log_key_fn=ctx.log_key_fn,
             ),
             browser_register_runner=lambda worker, ctx, artifacts: worker.run(
                 email=ctx.identity.email or "",
@@ -193,6 +195,7 @@ class ChatGPTPlatform(BasePlatform):
                 provider=(self.config.extra or {}).get("mail_provider", ""),
                 proxy_url=ctx.proxy,
                 log_fn=ctx.log,
+                log_key_fn=ctx.log_key_fn,
             )
 
         def _map_result(ctx, result):
