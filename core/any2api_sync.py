@@ -12,6 +12,8 @@ from typing import Any, Optional
 
 import requests
 
+from i18n import t
+
 logger = logging.getLogger(__name__)
 
 
@@ -39,10 +41,10 @@ class Any2ApiClient:
                         "newplatform2api_admin_session", ""
                     ) or data.get("token", "")
                     return True
-            logger.warning(f"[Any2API] 登录失败: HTTP {resp.status_code}")
+            logger.warning(t("core.8dce358b", "zh", status=resp.status_code))
             return False
         except Exception as exc:
-            logger.warning(f"[Any2API] 登录异常: {exc}")
+            logger.warning(t("core.30023aa4", "zh", exc=str(exc)))
             return False
 
     def _headers(self) -> dict:
@@ -83,7 +85,7 @@ class Any2ApiClient:
                 )
             return resp.json() if resp.status_code == 200 else None
         except Exception as exc:
-            logger.warning(f"[Any2API] POST {path} 失败: {exc}")
+            logger.warning(t("core.2f4d20dc", "zh", path=path, exc=str(exc)))
             return None
 
     def _put(self, path: str, body: dict) -> Optional[dict]:
@@ -110,7 +112,7 @@ class Any2ApiClient:
                 )
             return resp.json() if resp.status_code == 200 else None
         except Exception as exc:
-            logger.warning(f"[Any2API] PUT {path} 失败: {exc}")
+            logger.warning(t("core.e0054937", "zh", path=path, exc=str(exc)))
             return None
 
     def push_kiro(self, access_token: str, *, name: str = "", machine_id: str = "") -> bool:
@@ -178,17 +180,26 @@ def _get_any2api_config() -> tuple[str, str]:
         return "", ""
 
 
-def push_account_to_any2api(account: Any, *, log_fn=None) -> bool:
+def push_account_to_any2api(account: Any, *, log_fn=None, log_key_fn=None) -> bool:
     """注册完成后自动推送账号到 Any2API。
 
     Args:
         account: BasePlatform.Account 对象
         log_fn: 日志函数
+        log_key_fn: 键控日志函数，优先于 log_fn 渲染，见 AD-6 —
+            Keyed log function; takes precedence over log_fn's rendering (AD-6).
 
     Returns:
         True if pushed successfully, False otherwise (including when not configured)
     """
     log = log_fn or logger.info
+
+    def log_key(key: str, **params) -> None:
+        if log_key_fn is not None:
+            log_key_fn(key, params)
+        else:
+            log(t(key, "zh", **params))
+
     base_url, password = _get_any2api_config()
     if not base_url:
         return False  # Not configured, silently skip
@@ -205,7 +216,7 @@ def push_account_to_any2api(account: Any, *, log_fn=None) -> bool:
             if access_token:
                 ok = client.push_kiro(access_token, name=email)
                 if ok:
-                    log(f"  [Any2API] ✓ Kiro 账号已推送")
+                    log_key("core.699fb6e7")
                 return ok
 
         elif platform == "grok":
@@ -213,7 +224,7 @@ def push_account_to_any2api(account: Any, *, log_fn=None) -> bool:
             if sso:
                 ok = client.push_grok(sso, name=email)
                 if ok:
-                    log(f"  [Any2API] ✓ Grok 账号已推送")
+                    log_key("core.940cbae5")
                 return ok
 
         elif platform == "cursor":
@@ -221,7 +232,7 @@ def push_account_to_any2api(account: Any, *, log_fn=None) -> bool:
             if token:
                 ok = client.push_cursor(token)
                 if ok:
-                    log(f"  [Any2API] ✓ Cursor 账号已推送")
+                    log_key("core.3c407798")
                 return ok
 
         elif platform == "chatgpt":
@@ -229,7 +240,7 @@ def push_account_to_any2api(account: Any, *, log_fn=None) -> bool:
             if token:
                 ok = client.push_chatgpt(token)
                 if ok:
-                    log(f"  [Any2API] ✓ ChatGPT 账号已推送")
+                    log_key("core.a2f28af1")
                 return ok
 
         elif platform == "blink":
@@ -242,7 +253,7 @@ def push_account_to_any2api(account: Any, *, log_fn=None) -> bool:
                     workspace_slug=extra.get("workspace_slug", ""),
                 )
                 if ok:
-                    log(f"  [Any2API] ✓ Blink 账号已推送")
+                    log_key("core.03f21274")
                 return ok
 
         elif platform == "windsurf":
@@ -279,15 +290,15 @@ def push_account_to_any2api(account: Any, *, log_fn=None) -> bool:
                     proxy_url=extra.get("proxy_url", "") or extra.get("proxyUrl", ""),
                 )
                 if ok:
-                    log(f"  [Any2API] ✓ Windsurf 账号已推送")
+                    log_key("core.af1e21cb")
                 return ok
 
         else:
-            log(f"  [Any2API] 平台 {platform} 暂不支持自动推送")
+            log_key("core.35376b8e", platform=platform)
             return False
 
     except Exception as exc:
-        log(f"  [Any2API] 推送失败: {exc}")
+        log_key("core.f4e6bf6b", exc=str(exc))
         return False
 
     return False

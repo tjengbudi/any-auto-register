@@ -11,16 +11,20 @@ class OtpSpec:
     keyword: str = ""
     timeout: int | None = None
     code_pattern: str | None = None
-    wait_message: str = "等待验证码..."
-    success_label: str = "验证码"
+    # None = 平台未覆盖，helpers.build_otp_callback 走 core 默认 keyed 文案；
+    # 一旦平台传入非 None 值，走 ctx.log 明文，见 spec-4-4 Design Notes —
+    # None = platform did not override; build_otp_callback falls back to
+    # core's default keyed text. Any non-None override stays plain ctx.log.
+    wait_message: str | None = None
+    success_label: str | None = None
 
 
 @dataclass(slots=True)
 class LinkSpec:
     keyword: str = ""
     timeout: int | None = None
-    wait_message: str = "等待验证链接邮件..."
-    success_label: str = "验证链接"
+    wait_message: str | None = None
+    success_label: str | None = None
     preview_chars: int = 80
 
 

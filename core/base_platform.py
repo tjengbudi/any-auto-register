@@ -11,6 +11,15 @@ from core.registration import BrowserRegistrationFlow, ProtocolMailboxFlow, Prot
 from i18n import t
 
 
+def _raise_keyed(exc_cls, key: str, **params):
+    # AD-17: 异常携带 i18n_key/i18n_params，供 application/tasks.py 的 _exc_key 转发 —
+    # AD-17: carries i18n_key/i18n_params for application/tasks.py's _exc_key.
+    exc = exc_cls(t(key, "zh", **params))
+    exc.i18n_key = key
+    exc.i18n_params = params
+    raise exc
+
+
 class AccountStatus(str, Enum):
     REGISTERED   = "registered"
     TRIAL        = "trial"
@@ -71,9 +80,12 @@ class BasePlatform(ABC):
         if db_caps:
             self.capabilities = db_caps
         if self.config.executor_type not in self.supported_executors:
-            raise NotImplementedError(
-                f"{self.display_name} 暂不支持 '{self.config.executor_type}' 执行器，"
-                f"当前支持: {self.supported_executors}"
+            _raise_keyed(
+                NotImplementedError,
+                "core.a8fadb96",  # "{display_name} 暂不支持 '{executor_type}' 执行器，当前支持: {supported}"
+                display_name=self.display_name,
+                executor_type=self.config.executor_type,
+                supported=", ".join(self.supported_executors),
             )
 
     def set_logger(self, logger):
@@ -145,26 +157,24 @@ class BasePlatform(ABC):
         )
 
         if (self.config.executor_type or "") in ("headless", "headed"):
-            self.log(f"使用浏览器模式注册: {self._browser_registration_label(identity)}")
+            self.log_key("core.916e124f", label=self._browser_registration_label(identity))
             adapter = self.build_browser_registration_adapter()
             if adapter is None:
-                raise NotImplementedError(f"{self.display_name} 未实现浏览器注册适配器")
+                _raise_keyed(NotImplementedError, "core.a0e7325d", platform=self.display_name)  # "{platform} 未实现浏览器注册适配器"
             result = BrowserRegistrationFlow(adapter).run(ctx)
             return self._attach_identity_metadata(self._account_from_registration_result(result), identity)
 
         if getattr(identity, "identity_provider", "") == "oauth_browser":
             adapter = self.build_protocol_oauth_adapter()
             if adapter is None:
-                raise RuntimeError(
-                    f"{self.display_name} 当前仅浏览器模式支持 oauth_browser，请使用受支持的浏览器执行器"
-                )
+                _raise_keyed(RuntimeError, "core.6f7ff3af", display_name=self.display_name)
             result = ProtocolOAuthFlow(adapter).run(ctx)
             return self._attach_identity_metadata(self._account_from_registration_result(result), identity)
 
-        self.log(f"邮箱: {identity.email}")
+        self.log_key("core.1a4231de", email=identity.email)  # "邮箱: {email}"
         adapter = self.build_protocol_mailbox_adapter()
         if adapter is None:
-            raise NotImplementedError(f"{self.display_name} 未实现协议邮箱注册适配器")
+            _raise_keyed(NotImplementedError, "core.dd49d654", display_name=self.display_name)
         result = ProtocolMailboxFlow(adapter).run(ctx)
         return self._attach_identity_metadata(self._account_from_registration_result(result), identity)
 
@@ -334,7 +344,7 @@ class BasePlatform(ABC):
         elif t == "headed":
             from .executors.playwright import PlaywrightExecutor
             return PlaywrightExecutor(proxy=self.config.proxy, headless=False)
-        raise ValueError(f"未知执行器类型: {t}")
+        _raise_keyed(ValueError, "core.c13ab550", executor_type=t)
 
     def _make_captcha(self, **kwargs):
         """根据 config 创建验证码解决器"""
@@ -357,14 +367,14 @@ class BasePlatform(ABC):
             return candidates[0]
 
         if self.config.executor_type in {"headless", "headed"}:
-            raise RuntimeError("浏览器模式未配置默认验证码 provider，请先在设置页启用并设为默认")
-        raise RuntimeError("协议模式未配置可用的验证码 provider，请先启用并配置至少一个验证码 provider")
+            _raise_keyed(RuntimeError, "core.ebaf7a1f")
+        _raise_keyed(RuntimeError, "core.005ab3a9")
 
     def _get_captcha_solver_candidates(self) -> list[str]:
         requested = str(self.config.captcha_solver or "").strip().lower()
         if requested and requested not in {"", "auto"}:
             if not self._has_configured_captcha(requested):
-                raise RuntimeError(f"{requested} 未配置，无法创建验证码解决器")
+                _raise_keyed(RuntimeError, "core.c3f3fac6", requested=requested)
             return [requested]
 
         if self.config.executor_type in {"headless", "headed"}:
@@ -422,21 +432,21 @@ class BasePlatform(ABC):
         errors: list[str] = []
         candidates = self._get_captcha_solver_candidates()
         if not candidates:
-            raise RuntimeError("未找到可用的 Turnstile 验证码 provider")
+            _raise_keyed(RuntimeError, "core.8ab6ad0f")
 
         for provider_key in candidates:
             try:
-                self.log(f"尝试 Turnstile provider: {provider_key}")
+                self.log_key("core.9108f7f3", provider=provider_key)  # "尝试 Turnstile provider: {provider}"
                 solver = self._make_captcha(provider_key=provider_key)
                 token = str(solver.solve_turnstile(page_url, site_key) or "").strip()
                 if token:
                     return token
-                raise RuntimeError("未返回有效 token")
+                _raise_keyed(RuntimeError, "core.fe40c46f")
             except Exception as exc:
                 errors.append(f"{provider_key}: {exc}")
-                self.log(f"Turnstile provider 失败: {provider_key} -> {exc}")
+                self.log_key("core.4621c0a9", provider=provider_key, error=str(exc))
 
-        raise RuntimeError("；".join(errors))
+        _raise_keyed(RuntimeError, "core.cd601594", errors="；".join(errors))
 
     def _get_identity_provider_name(self) -> str:
         from .base_identity import normalize_identity_provider
@@ -447,24 +457,32 @@ class BasePlatform(ABC):
 
         mode = self._get_identity_provider_name()
         if mode not in self.supported_identity_modes:
-            raise NotImplementedError(
-                f"{self.display_name} 暂不支持 identity_provider='{mode}'，"
-                f"当前支持: {self.supported_identity_modes}"
+            _raise_keyed(
+                NotImplementedError,
+                "core.d7a7c4ef",  # "{display_name} 暂不支持 identity_provider='{mode}'，当前支持: {supported}"
+                display_name=self.display_name,
+                mode=mode,
+                supported=", ".join(self.supported_identity_modes),
             )
         return create_identity_provider(
             mode,
             mailbox=getattr(self, "mailbox", None),
             extra=self.config.extra,
+            # self._log_key_fn (raw (key, params) callable), not self.log_key
+            # (the (key, **params) method) -- the mailbox layer's
+            # log_key_fn: Callable[[str, dict], None] contract calls it
+            # positionally as fn(key, params_dict); self.log_key's **params
+            # signature has no second positional slot to receive that dict
+            # and would raise TypeError. Mirrors register()'s own
+            # log_key_fn=self._log_key_fn wiring into RegistrationContext.
+            log_key_fn=self._log_key_fn,
         )
 
     def _resolve_identity(self, email: str = None, *, require_email: bool = True):
         identity = self._get_identity_provider().resolve(email)
         self._last_identity = identity
         if require_email and not identity.email:
-            raise ValueError(
-                f"{self.display_name} 注册流程未获取到可用邮箱，"
-                f"请提供 email 或配置支持的 identity_provider"
-            )
+            _raise_keyed(ValueError, "core.7dd6a943", display_name=self.display_name)
         return identity
 
     def _build_identity_snapshot(self, identity) -> dict:

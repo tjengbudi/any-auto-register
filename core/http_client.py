@@ -13,8 +13,16 @@ import logging
 from curl_cffi import requests as cffi_requests
 from curl_cffi.requests import Session, Response
 
+from i18n import t
 
 
+def _raise_keyed(exc_cls, key: str, **params):
+    # AD-17: 异常携带 i18n_key/i18n_params，供 application/tasks.py 的 _exc_key 转发 —
+    # AD-17: carries i18n_key/i18n_params for application/tasks.py's _exc_key.
+    exc = exc_cls(t(key, "zh", **params))
+    exc.i18n_key = key
+    exc.i18n_params = params
+    raise exc
 
 
 logger = logging.getLogger(__name__)
@@ -131,18 +139,17 @@ class HTTPClient:
 
             except (cffi_requests.RequestsError, ConnectionError, TimeoutError) as e:
                 last_exception = e
-                logger.warning(
-                    f"请求失败: {method} {url} (attempt {attempt + 1}/{self.config.max_retries}): {e}"
-                )
+                logger.warning(t(
+                    "core.b6fab03e", "zh",
+                    method=method, url=url, attempt=attempt + 1, max_retries=self.config.max_retries, error=str(e),
+                ))
 
                 if attempt < self.config.max_retries - 1:
                     time.sleep(self.config.retry_delay * (attempt + 1))
                 else:
                     break
 
-        raise HTTPClientError(
-            f"请求失败，最大重试次数已达: {method} {url} - {last_exception}"
-        )
+        _raise_keyed(HTTPClientError, "core.5aedd20d", method=method, url=url, error=str(last_exception))
 
     def get(self, url: str, **kwargs) -> Response:
         """发送 GET 请求"""
@@ -194,7 +201,7 @@ class HTTPClient:
                         f.write(chunk)
 
         except Exception as e:
-            raise HTTPClientError(f"下载文件失败: {url} - {e}")
+            _raise_keyed(HTTPClientError, "core.06cecef1", url=url, error=str(e))
 
     def check_proxy(self, test_url: str = "https://httpbin.org/ip") -> bool:
         """

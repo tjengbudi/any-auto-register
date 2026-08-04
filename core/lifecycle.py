@@ -14,6 +14,7 @@ from core.base_platform import AccountStatus, RegisterConfig
 from core.db import AccountModel, AccountOverviewModel, engine
 from core.platform_accounts import build_platform_account
 from core.registry import get
+from i18n import t
 
 logger = logging.getLogger(__name__)
 
@@ -39,9 +40,16 @@ def check_accounts_validity(
     platform: str = "",
     limit: int = 100,
     log_fn=None,
+    log_key_fn=None,
 ) -> dict[str, int]:
     """Check validity of active accounts. Returns {valid, invalid, error, skipped}."""
     log = log_fn or logger.info
+
+    def log_key(key: str, **params) -> None:
+        if log_key_fn is not None:
+            log_key_fn(key, params)
+        else:
+            log(t(key, "zh", **params))
 
     with Session(engine) as session:
         q = select(AccountModel)
@@ -87,13 +95,15 @@ def check_accounts_validity(
                 results["valid"] += 1
             else:
                 results["invalid"] += 1
-                log(f"  {acc.email} ({acc.platform}): 失效")
+                log_key("core.d40a181d", email=acc.email, platform=acc.platform)
         except Exception as exc:
             results["error"] += 1
-            log(f"  {acc.email} ({acc.platform}): 检测异常 {exc}")
+            log_key("core.2622b796", email=acc.email, platform=acc.platform, exc=str(exc))
 
-    log(f"检测完成: 有效 {results['valid']}, 失效 {results['invalid']}, "
-        f"异常 {results['error']}, 跳过 {results['skipped']}")
+    log_key(
+        "core.15dca4ac",
+        valid=results["valid"], invalid=results["invalid"], error=results["error"], skipped=results["skipped"],
+    )
     return results
 
 
@@ -107,9 +117,17 @@ def refresh_expiring_tokens(
     hours_before_expiry: int = 24,
     limit: int = 50,
     log_fn=None,
+    log_key_fn=None,
 ) -> dict[str, int]:
     """Refresh tokens that are about to expire within `hours_before_expiry` hours."""
     log = log_fn or logger.info
+
+    def log_key(key: str, **params) -> None:
+        if log_key_fn is not None:
+            log_key_fn(key, params)
+        else:
+            log(t(key, "zh", **params))
+
     results = {"refreshed": 0, "failed": 0, "skipped": 0}
 
     with Session(engine) as session:
@@ -180,16 +198,15 @@ def refresh_expiring_tokens(
                         session.add(model)
                         session.commit()
                 results["refreshed"] += 1
-                log(f"  ✓ {acc.email}: token 刷新成功")
+                log_key("core.545aa26e", email=acc.email)
             else:
                 results["failed"] += 1
                 log(f"  ✗ {acc.email}: {result.error_message}")
         except Exception as exc:
             results["failed"] += 1
-            log(f"  ✗ {acc.email}: 刷新异常 {exc}")
+            log_key("core.4053eb3c", email=acc.email, exc=str(exc))
 
-    log(f"刷新完成: 成功 {results['refreshed']}, 失败 {results['failed']}, "
-        f"跳过 {results['skipped']}")
+    log_key("core.8adba3b0", refreshed=results["refreshed"], failed=results["failed"], skipped=results["skipped"])
     return results
 
 
@@ -201,9 +218,17 @@ def flag_expiring_trials(
     *,
     hours_warning: int = 48,
     log_fn=None,
+    log_key_fn=None,
 ) -> dict[str, int]:
     """Flag trial accounts that will expire within `hours_warning` hours."""
     log = log_fn or logger.info
+
+    def log_key(key: str, **params) -> None:
+        if log_key_fn is not None:
+            log_key_fn(key, params)
+        else:
+            log(t(key, "zh", **params))
+
     now_ts = _utcnow_ts()
     warning_ts = now_ts + hours_warning * 3600
     results = {"warned": 0, "expired": 0, "skipped": 0}
@@ -255,8 +280,7 @@ def flag_expiring_trials(
         else:
             results["skipped"] += 1
 
-    log(f"过期预警: 已过期 {results['expired']}, 即将过期 {results['warned']}, "
-        f"跳过 {results['skipped']}")
+    log_key("core.aa40e7f3", expired=results["expired"], warned=results["warned"], skipped=results["skipped"])
     return results
 
 
@@ -269,6 +293,7 @@ def refresh_and_sync_cpa(
     platform: str = "chatgpt",
     limit: int = 200,
     log_fn=None,
+    log_key_fn=None,
 ) -> dict[str, int]:
     """
     刷新 ChatGPT 账号 token，检查存活状态，重新上传到 CPA。
@@ -278,6 +303,13 @@ def refresh_and_sync_cpa(
     - 封禁账号标记为 disabled
     """
     log = log_fn or logger.info
+
+    def log_key(key: str, **params) -> None:
+        if log_key_fn is not None:
+            log_key_fn(key, params)
+        else:
+            log(t(key, "zh", **params))
+
     results = {"refreshed": 0, "uploaded": 0, "dead": 0, "skipped": 0, "error": 0}
 
     from curl_cffi import requests as cffi_requests
@@ -340,14 +372,14 @@ def refresh_and_sync_cpa(
                          headers={"accept": "application/json"}, timeout=30)
 
             if resp.status_code != 200:
-                log(f"  ✗ {acc.email}: session 刷新失败 HTTP {resp.status_code}")
+                log_key("core.2e56d84c", email=acc.email, status=resp.status_code)
                 results["error"] += 1
                 continue
 
             data = resp.json()
             access_token = data.get("accessToken", "")
             if not access_token:
-                log(f"  ✗ {acc.email}: 无 accessToken")
+                log_key("core.5d02b088", email=acc.email)
                 results["error"] += 1
                 continue
 
@@ -386,7 +418,7 @@ def refresh_and_sync_cpa(
                     err_detail = str(check_resp.json().get("detail", ""))[:80]
                 except Exception:
                     err_detail = check_resp.text[:80]
-                log(f"  ✗ {acc.email}: 已封禁 ({check_resp.status_code}: {err_detail})")
+                log_key("core.4e30ffd2", email=acc.email, status=check_resp.status_code, detail=err_detail)
                 results["dead"] += 1
                 with Session(engine) as sess:
                     model = sess.get(AccountModel, acc.id)
@@ -434,20 +466,23 @@ def refresh_and_sync_cpa(
                 )
                 if upload_resp.status_code in (200, 201, 207):
                     results["uploaded"] += 1
-                    log(f"  ✓ {acc.email}: 刷新+上传成功")
+                    log_key("core.22b40254", email=acc.email)
                 else:
-                    log(f"  ✗ {acc.email}: 上传失败 HTTP {upload_resp.status_code}")
+                    log_key("core.10add896", email=acc.email, status=upload_resp.status_code)
             else:
-                log(f"  ✓ {acc.email}: 刷新成功 (CPA 未配置)")
+                log_key("core.5b41bdfd", email=acc.email)
 
             time.sleep(0.5)
 
         except Exception as exc:
             results["error"] += 1
-            log(f"  ✗ {acc.email}: 异常 {exc}")
+            log_key("core.52660986", email=acc.email, exc=str(exc))
 
-    log(f"[CPA Sync] 刷新 {results['refreshed']}, 上传 {results['uploaded']}, "
-        f"封禁 {results['dead']}, 跳过 {results['skipped']}, 错误 {results['error']}")
+    log_key(
+        "core.1fbd458f",
+        refreshed=results["refreshed"], uploaded=results["uploaded"],
+        dead=results["dead"], skipped=results["skipped"], error=results["error"],
+    )
     return results
 
 

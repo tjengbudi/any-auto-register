@@ -21,10 +21,11 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from email.header import decode_header
 from pathlib import Path
+from typing import Callable
 
 import requests
 
-from core.base_mailbox import BaseMailbox, MailboxAccount, _extract_verification_link
+from core.base_mailbox import BaseMailbox, MailboxAccount, _extract_verification_link, _raise_keyed
 
 
 GRAPH_TOKEN_URL = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
@@ -198,17 +199,17 @@ class LocalMicrosoftMailboxPool(BaseMailbox):
         if self.pool_file:
             path = Path(self.pool_file).expanduser()
             if not path.exists():
-                raise RuntimeError(f"本地微软邮箱池文件不存在: {path}")
+                _raise_keyed(RuntimeError, "core.d1b099cb", path=str(path))
             chunks.append(path.read_text(encoding="utf-8-sig"))
         combined = "\n".join(chunks)
         if not combined.strip():
-            raise RuntimeError("本地微软邮箱池为空，请粘贴心蓝通用格式或配置文件路径")
+            _raise_keyed(RuntimeError, "core.68eb322e")
         return combined
 
     def _entries(self) -> list[LocalMicrosoftMailboxEntry]:
         entries = parse_xinlan_common_rows(self._load_pool_text())
         if not entries:
-            raise RuntimeError("本地微软邮箱池未解析到有效邮箱")
+            _raise_keyed(RuntimeError, "core.e3fb4b34")
         return entries
 
     def _state(self) -> dict:
@@ -245,12 +246,12 @@ class LocalMicrosoftMailboxPool(BaseMailbox):
         for entry in entries:
             if self.allow_reuse or entry.key not in used:
                 return entry
-        raise RuntimeError(f"本地微软邮箱池已用尽: total={len(entries)}")
+        _raise_keyed(RuntimeError, "core.95dfe8d4", total=len(entries))
 
     def peek_email(self) -> str:
         return self._available_entry().email
 
-    def get_email(self) -> MailboxAccount:
+    def get_email(self, *, log_key_fn: Callable[[str, dict], None] | None = None) -> MailboxAccount:
         with self._lock:
             entry = self._available_entry()
             self._reserve(entry)
@@ -313,7 +314,7 @@ class LocalMicrosoftMailboxPool(BaseMailbox):
         for entry in self._entries():
             if entry.key == account_email:
                 return entry
-        raise RuntimeError(f"本地微软邮箱池未找到账号: {getattr(account, 'email', '')}")
+        _raise_keyed(RuntimeError, "core.bb972d5e", email=getattr(account, "email", ""))
 
     @staticmethod
     def _decode_mime(value: str) -> str:
@@ -343,7 +344,7 @@ class LocalMicrosoftMailboxPool(BaseMailbox):
 
     def _graph_access_token(self, entry: LocalMicrosoftMailboxEntry) -> str:
         if not entry.graph_ready:
-            raise RuntimeError(f"微软邮箱缺少 Client Id 或刷新令牌: {entry.email}")
+            _raise_keyed(RuntimeError, "core.61391984", email=entry.email)
         response = requests.post(
             GRAPH_TOKEN_URL,
             data={
@@ -356,10 +357,10 @@ class LocalMicrosoftMailboxPool(BaseMailbox):
             timeout=25,
         )
         if response.status_code != 200:
-            raise RuntimeError(f"Microsoft refresh_token 换 access_token 失败: HTTP {response.status_code} {response.text[:200]}")
+            _raise_keyed(RuntimeError, "core.0bc3d4db", status=response.status_code, text=response.text[:200])
         token = str((response.json() or {}).get("access_token") or "").strip()
         if not token:
-            raise RuntimeError("Microsoft refresh_token 响应缺少 access_token")
+            _raise_keyed(RuntimeError, "core.f90b9fb6")
         return token
 
     def _graph_messages(self, entry: LocalMicrosoftMailboxEntry) -> list[dict]:
@@ -376,7 +377,7 @@ class LocalMicrosoftMailboxPool(BaseMailbox):
             timeout=25,
         )
         if response.status_code != 200:
-            raise RuntimeError(f"Microsoft Graph 读取邮件失败: HTTP {response.status_code} {response.text[:200]}")
+            _raise_keyed(RuntimeError, "core.906e46a3", status=response.status_code, text=response.text[:200])
         payload = response.json() or {}
         return list(payload.get("value") or [])
 
@@ -393,7 +394,7 @@ class LocalMicrosoftMailboxPool(BaseMailbox):
 
     def _imap_messages(self, entry: LocalMicrosoftMailboxEntry) -> list[dict]:
         if not entry.imap_ready:
-            raise RuntimeError(f"微软邮箱没有可用的 Graph token，也没有 IMAP 收件配置: {entry.email}")
+            _raise_keyed(RuntimeError, "core.e5107bbe", email=entry.email)
         conn = self._imap_connect(entry)
         messages: list[dict] = []
         try:
@@ -458,6 +459,8 @@ class LocalMicrosoftMailboxPool(BaseMailbox):
         timeout: int = 120,
         before_ids: set = None,
         code_pattern: str = None,
+        *,
+        log_key_fn: Callable[[str, dict], None] | None = None,
     ) -> str:
         seen = set(before_ids or [])
         pattern = re.compile(code_pattern or r"(?<!#)(?<!\d)(\d{6})(?!\d)")
@@ -476,7 +479,7 @@ class LocalMicrosoftMailboxPool(BaseMailbox):
                 if match:
                     return match.group(1) if match.groups() else match.group(0)
             time.sleep(5)
-        raise TimeoutError(f"等待验证码超时 ({timeout}s)")
+        _raise_keyed(TimeoutError, "core.a3067a25", timeout=timeout)
 
     def wait_for_link(
         self,
@@ -484,6 +487,8 @@ class LocalMicrosoftMailboxPool(BaseMailbox):
         keyword: str = "",
         timeout: int = 120,
         before_ids: set = None,
+        *,
+        log_key_fn: Callable[[str, dict], None] | None = None,
     ) -> str:
         seen = set(before_ids or [])
         start = time.time()
@@ -498,4 +503,4 @@ class LocalMicrosoftMailboxPool(BaseMailbox):
                 if link:
                     return link
             time.sleep(5)
-        raise TimeoutError(f"等待验证链接超时 ({timeout}s)")
+        _raise_keyed(TimeoutError, "core.93e3faab", timeout=timeout)

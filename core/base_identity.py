@@ -3,6 +3,17 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
+from i18n import t
+
+
+def _raise_keyed(exc_cls, key: str, **params):
+    # AD-17: 异常携带 i18n_key/i18n_params，供 application/tasks.py 的 _exc_key 转发 —
+    # AD-17: carries i18n_key/i18n_params for application/tasks.py's _exc_key.
+    exc = exc_cls(t(key, "zh", **params))
+    exc.i18n_key = key
+    exc.i18n_params = params
+    raise exc
+
 
 IDENTITY_PROVIDER_ALIASES = {
     "": "mailbox",
@@ -64,9 +75,10 @@ class IdentityMaterial:
 class BaseIdentityProvider(ABC):
     identity_provider: str = "mailbox"
 
-    def __init__(self, *, mailbox=None, extra: dict = None):
+    def __init__(self, *, mailbox=None, extra: dict = None, log_key_fn=None):
         self.mailbox = mailbox
         self.extra = extra or {}
+        self.log_key_fn = log_key_fn
 
     @abstractmethod
     def resolve(self, requested_email: Optional[str] = None) -> IdentityMaterial:
@@ -81,13 +93,13 @@ class MailboxIdentityProvider(BaseIdentityProvider):
         if not self.mailbox:
             return IdentityMaterial(identity_provider=self.identity_provider, email=requested_email)
 
-        mail_acct = self.mailbox.get_email()
+        mail_acct = self.mailbox.get_email(log_key_fn=self.log_key_fn)
         email = getattr(mail_acct, "email", "") or ""
         if not requested_email and not email:
             provider_name = getattr(self.mailbox, "__class__", type(self.mailbox)).__name__
-            raise ValueError(f"{provider_name} 未返回可用邮箱，请检查 mailbox provider 配置或服务状态")
+            _raise_keyed(ValueError, "core.60580597", provider_name=provider_name)
         if requested_email and email and requested_email != email:
-            raise ValueError(f"传入邮箱 {requested_email} 与当前邮箱 provider 返回的 {email} 不一致")
+            _raise_keyed(ValueError, "core.5858947d", requested_email=requested_email, email=email)
         before_ids = self.mailbox.get_current_ids(mail_acct) if mail_acct else set()
         return IdentityMaterial(
             identity_provider=self.identity_provider,
@@ -121,10 +133,10 @@ class BrowserOAuthIdentityProvider(BaseIdentityProvider):
 ManualOAuthIdentityProvider = BrowserOAuthIdentityProvider
 
 
-def create_identity_provider(mode: Optional[str], *, mailbox=None, extra: dict = None) -> BaseIdentityProvider:
+def create_identity_provider(mode: Optional[str], *, mailbox=None, extra: dict = None, log_key_fn=None) -> BaseIdentityProvider:
     normalized = normalize_identity_provider(mode)
     if normalized == "mailbox":
-        return MailboxIdentityProvider(mailbox=mailbox, extra=extra)
+        return MailboxIdentityProvider(mailbox=mailbox, extra=extra, log_key_fn=log_key_fn)
     if normalized == "oauth_browser":
-        return BrowserOAuthIdentityProvider(mailbox=mailbox, extra=extra)
-    raise ValueError(f"未知 identity_provider: {mode}")
+        return BrowserOAuthIdentityProvider(mailbox=mailbox, extra=extra, log_key_fn=log_key_fn)
+    _raise_keyed(ValueError, "core.3da1b7af", mode=str(mode or ""))

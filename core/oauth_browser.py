@@ -5,7 +5,18 @@ from urllib.parse import urlparse
 
 from playwright.sync_api import sync_playwright
 
+from i18n import t
+
 from .base_identity import normalize_oauth_provider
+
+
+def _raise_keyed(exc_cls, key: str, **params):
+    # AD-17: 异常携带 i18n_key/i18n_params，供 application/tasks.py 的 _exc_key 转发 —
+    # AD-17: carries i18n_key/i18n_params for application/tasks.py's _exc_key.
+    exc = exc_cls(t(key, "zh", **params))
+    exc.i18n_key = key
+    exc.i18n_params = params
+    raise exc
 
 
 OAUTH_PROVIDER_LABELS = {
@@ -49,14 +60,10 @@ def finalize_oauth_email(actual_email: str, email_hint: str, platform_name: str)
     actual = (actual_email or "").strip()
     hint = (email_hint or "").strip()
     if actual and hint and actual.lower() != hint.lower():
-        raise RuntimeError(
-            f"{platform_name} OAuth 登录邮箱与预期不一致: 实际 {actual}，预期 {hint}"
-        )
+        _raise_keyed(RuntimeError, "core.812b23b7", platform=platform_name, actual=actual, hint=hint)
     resolved = actual or hint
     if not resolved:
-        raise RuntimeError(
-            f"{platform_name} OAuth 流程未识别到邮箱，请在任务里传入 email 或 oauth_email_hint"
-        )
+        _raise_keyed(RuntimeError, "core.58c09114", platform=platform_name)
     return resolved
 
 
@@ -147,17 +154,25 @@ class OAuthBrowser:
         chrome_user_data_dir: str = "",
         chrome_cdp_url: str = "",
         log_fn: Callable[[str], None] = print,
+        log_key_fn: Callable[[str, dict], None] | None = None,
     ):
         self.proxy = proxy
         self.headless = headless
         self.chrome_user_data_dir = chrome_user_data_dir
         self.chrome_cdp_url = chrome_cdp_url
         self.log = log_fn
+        self.log_key_fn = log_key_fn
         self._pw = None
         self.browser = None
         self.context = None
         self.page = None
         self._persistent = False  # launch_persistent_context path
+
+    def log_key(self, key: str, **params) -> None:
+        if self.log_key_fn is not None:
+            self.log_key_fn(key, params)
+        else:
+            self.log(t(key, "zh", **params))
 
     def __enter__(self):
         self._pw = sync_playwright().start()
@@ -192,18 +207,18 @@ class OAuthBrowser:
                 # Try to relaunch Chrome with debug port
                 user_data_dir = _detect_chrome_user_data_dir()
                 if user_data_dir:
-                    self.log("[OAuthBrowser] 正在重启 Chrome 并开启远程调试端口...")
+                    self.log_key("core.a97e4df7")  # "[OAuthBrowser] 正在重启 Chrome 并开启远程调试端口..."
                     if _relaunch_chrome_with_debug_port(9222):
                         cdp_url = "http://127.0.0.1:9222"
             if cdp_url:
-                self.log(f"[OAuthBrowser] 连接已运行的 Chrome (CDP): {cdp_url}")
+                self.log_key("core.5d07d54f", cdp_url=cdp_url)  # "[OAuthBrowser] 连接已运行的 Chrome (CDP): {cdp_url}"
                 self.browser = self._pw.chromium.connect_over_cdp(cdp_url)
                 self.context = self.browser.contexts[0] if self.browser.contexts else self.browser.new_context()
                 pages = self.context.pages
                 self.page = pages[0] if pages else self.context.new_page()
             else:
                 # Fallback: plain Playwright Chromium
-                self.log("[OAuthBrowser] 未找到系统 Chrome，使用 Playwright Chromium")
+                self.log_key("core.b72894c4")  # "[OAuthBrowser] 未找到系统 Chrome，使用 Playwright Chromium"
                 launch_kwargs = {"headless": self.headless}
                 if proxy_cfg:
                     launch_kwargs["proxy"] = proxy_cfg
@@ -317,7 +332,7 @@ class OAuthBrowser:
                     el = page.query_selector(selectors)
                     if el:
                         el.click()
-                        self.log("[OAuthBrowser] Google 账号选择器：已自动点击第一个账号")
+                        self.log_key("core.b589299d")  # "[OAuthBrowser] Google 账号选择器：已自动点击第一个账号"
                         return True
                 except Exception:
                     pass

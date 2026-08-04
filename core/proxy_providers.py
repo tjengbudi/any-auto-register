@@ -14,7 +14,18 @@ from typing import Optional
 
 import requests
 
+from i18n import t
+
 logger = logging.getLogger(__name__)
+
+
+def _raise_keyed(exc_cls, key: str, **params):
+    # AD-17: 异常携带 i18n_key/i18n_params，供 application/tasks.py 的 _exc_key 转发 —
+    # AD-17: carries i18n_key/i18n_params for application/tasks.py's _exc_key.
+    exc = exc_cls(t(key, "zh", **params))
+    exc.i18n_key = key
+    exc.i18n_params = params
+    raise exc
 
 
 class BaseProxyProvider(ABC):
@@ -55,7 +66,7 @@ def create_proxy_provider(provider_key: str, config: dict) -> BaseProxyProvider:
     if provider_key == "api_extract":
         api_url = config.get("proxy_api_url", "")
         if not api_url:
-            raise RuntimeError("动态代理未配置 API URL")
+            _raise_keyed(RuntimeError, "core.14a57e71")
         provider_cls = __getattr__("ApiExtractProvider")
         return provider_cls(
             api_url=api_url,
@@ -67,11 +78,11 @@ def create_proxy_provider(provider_key: str, config: dict) -> BaseProxyProvider:
     if provider_key == "rotating_gateway":
         gateway = config.get("proxy_gateway_url", "")
         if not gateway:
-            raise RuntimeError("旋转代理未配置网关地址")
+            _raise_keyed(RuntimeError, "core.76b19954")
         provider_cls = __getattr__("RotatingProxyProvider")
         return provider_cls(gateway_url=gateway)
 
-    raise RuntimeError(f"未知的代理 provider: {provider_key}")
+    _raise_keyed(RuntimeError, "core.65c065fd", provider=provider_key)
 
 
 def get_dynamic_proxy(extra: dict | None = None) -> Optional[str]:
@@ -95,7 +106,7 @@ def get_dynamic_proxy(extra: dict | None = None) -> Optional[str]:
                 if proxy:
                     return proxy
             except Exception as exc:
-                logger.debug(f"[ProxyProvider] {setting.provider_key} 获取失败: {exc}")
+                logger.debug(t("core.399528d8", "zh", provider=setting.provider_key, exc=str(exc)))
                 continue
     except Exception:
         pass

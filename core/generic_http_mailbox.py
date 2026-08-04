@@ -12,11 +12,12 @@ from __future__ import annotations
 import re
 import time
 from copy import deepcopy
+from typing import Callable
 from urllib.parse import urlencode
 
 import requests
 
-from core.base_mailbox import BaseMailbox, MailboxAccount, _extract_verification_link
+from core.base_mailbox import BaseMailbox, MailboxAccount, _extract_verification_link, _raise_keyed
 from core.tls import mark_session_insecure, suppress_insecure_request_warning
 
 
@@ -267,7 +268,7 @@ class GenericHttpMailbox(BaseMailbox):
 
     # ── BaseMailbox 接口 ──────────────────────────────────────────────
 
-    def get_email(self) -> MailboxAccount:
+    def get_email(self, *, log_key_fn: Callable[[str, dict], None] | None = None) -> MailboxAccount:
         self._run_auth()
 
         email_mode = self._pipeline.get("email_mode", "fixed")
@@ -275,7 +276,7 @@ class GenericHttpMailbox(BaseMailbox):
         if email_mode == "fixed":
             email = self._vars.get("email", "")
             if not email:
-                raise RuntimeError("通用邮箱驱动: email_mode=fixed 但未配置 email")
+                _raise_keyed(RuntimeError, "core.adee2edc")
             self._email = email
             return MailboxAccount(
                 email=email,
@@ -298,7 +299,7 @@ class GenericHttpMailbox(BaseMailbox):
         # email_mode == "generate"
         create_step = self._pipeline.get("create_email")
         if not create_step:
-            raise RuntimeError("通用邮箱驱动: email_mode=generate 但未配置 create_email 步骤")
+            _raise_keyed(RuntimeError, "core.f6c8edeb")
 
         # 多步创建（list of steps）
         steps = create_step if isinstance(create_step, list) else [create_step]
@@ -307,7 +308,7 @@ class GenericHttpMailbox(BaseMailbox):
 
         email = self._vars.get("email", "")
         if not email:
-            raise RuntimeError("通用邮箱驱动: create_email 执行完成但未提取到 email")
+            _raise_keyed(RuntimeError, "core.dcda0ab6")
         self._email = email
         return MailboxAccount(
             email=email,
@@ -342,6 +343,8 @@ class GenericHttpMailbox(BaseMailbox):
         timeout: int = 120,
         before_ids: set = None,
         code_pattern: str = None,
+        *,
+        log_key_fn: Callable[[str, dict], None] | None = None,
     ) -> str:
         self._run_auth()
         self._vars["email"] = account.email
@@ -350,7 +353,7 @@ class GenericHttpMailbox(BaseMailbox):
 
         list_step = self._pipeline.get("list_emails")
         if not list_step:
-            raise RuntimeError("通用邮箱驱动: 未配置 list_emails 步骤")
+            _raise_keyed(RuntimeError, "core.34356c48")
 
         list_path = self._pipeline.get("response_list_path", "")
         id_field = self._pipeline.get("response_id_field", "id")
@@ -408,7 +411,7 @@ class GenericHttpMailbox(BaseMailbox):
                 pass
             time.sleep(3)
 
-        raise TimeoutError(f"等待验证码超时 ({timeout}s)")
+        _raise_keyed(TimeoutError, "core.a3067a25", timeout=timeout)
 
     def wait_for_link(
         self,
@@ -416,6 +419,8 @@ class GenericHttpMailbox(BaseMailbox):
         keyword: str = "",
         timeout: int = 120,
         before_ids: set = None,
+        *,
+        log_key_fn: Callable[[str, dict], None] | None = None,
     ) -> str:
         self._run_auth()
         self._vars["email"] = account.email
@@ -424,7 +429,7 @@ class GenericHttpMailbox(BaseMailbox):
 
         list_step = self._pipeline.get("list_emails")
         if not list_step:
-            raise RuntimeError("通用邮箱驱动: 未配置 list_emails 步骤")
+            _raise_keyed(RuntimeError, "core.34356c48")
 
         list_path = self._pipeline.get("response_list_path", "")
         id_field = self._pipeline.get("response_id_field", "id")
@@ -470,4 +475,4 @@ class GenericHttpMailbox(BaseMailbox):
                 pass
             time.sleep(3)
 
-        raise TimeoutError(f"等待验证链接超时 ({timeout}s)")
+        _raise_keyed(TimeoutError, "core.93e3faab", timeout=timeout)

@@ -4,6 +4,7 @@ import pkgutil
 from datetime import datetime, timezone
 from typing import Dict, Type
 from sqlmodel import Session, select
+from i18n import t
 from .base_platform import BasePlatform
 from .db import PlatformCapabilityOverrideModel, engine
 
@@ -34,7 +35,12 @@ def load_all():
 
 def get(name: str) -> Type[BasePlatform]:
     if name not in _registry:
-        raise KeyError(f"平台 '{name}' 未注册，已注册: {list(_registry.keys())}")
+        key = "core.d761dd77"
+        params = {"name": name, "registered": ", ".join(_registry.keys())}
+        exc = KeyError(t(key, "zh", **params))
+        exc.i18n_key = key
+        exc.i18n_params = params
+        raise exc
     return _registry[name]
 
 

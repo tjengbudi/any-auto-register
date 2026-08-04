@@ -1,6 +1,7 @@
 """邮箱池基类 - 抽象临时邮箱/收件服务"""
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from typing import Callable
 import html
 import logging
 import re
@@ -9,6 +10,28 @@ from urllib.parse import urlencode, urlparse
 logger = logging.getLogger(__name__)
 
 from core.tls import insecure_request, mark_session_insecure, suppress_insecure_request_warning
+from i18n import t
+
+
+def _raise_keyed(exc_cls, key: str, **params):
+    # AD-17: 异常携带 i18n_key/i18n_params，供 application/tasks.py 的 _exc_key 转发 —
+    # AD-17: carries i18n_key/i18n_params for application/tasks.py's _exc_key.
+    exc = exc_cls(t(key, "zh", **params))
+    exc.i18n_key = key
+    exc.i18n_params = params
+    raise exc
+
+
+def _log_key_or_print(log_key_fn: Callable[[str, dict], None] | None, key: str, **params) -> None:
+    """`log_key_fn` 存在时走它，否则退化为和从前完全一致的 print(zh 文本) ——
+    Route through `log_key_fn` when set, else degrade to the exact previous
+    print(zh text) output for an unwired caller (the "[Prefix] " tag lives
+    inside the minted zh template itself, so the fallback is byte-identical).
+    """
+    if log_key_fn is not None:
+        log_key_fn(key, params)
+    else:
+        print(t(key, "zh", **params))
 
 # ── 邮箱服务默认 API 地址（统一维护，需要时在此修改） ──
 DEFAULT_LAOUDO_API_URL = "https://laoudo.com/api/email"
@@ -26,14 +49,15 @@ class MailboxAccount:
 
 class BaseMailbox(ABC):
     @abstractmethod
-    def get_email(self) -> MailboxAccount:
+    def get_email(self, *, log_key_fn: Callable[[str, dict], None] | None = None) -> MailboxAccount:
         """获取一个可用邮箱"""
         ...
 
     @abstractmethod
     def wait_for_code(self, account: MailboxAccount, keyword: str = "",
                       timeout: int = 120, before_ids: set = None,
-                      code_pattern: str = None) -> str:
+                      code_pattern: str = None, *,
+                      log_key_fn: Callable[[str, dict], None] | None = None) -> str:
         """等待并返回验证码，code_pattern 为自定义正则（默认匹配6位数字）"""
         ...
 
@@ -43,9 +67,10 @@ class BaseMailbox(ABC):
         ...
 
     def wait_for_link(self, account: MailboxAccount, keyword: str = "",
-                      timeout: int = 120, before_ids: set = None) -> str:
+                      timeout: int = 120, before_ids: set = None, *,
+                      log_key_fn: Callable[[str, dict], None] | None = None) -> str:
         """等待并返回验证链接。默认由具体 provider 自行实现。"""
-        raise NotImplementedError(f"{self.__class__.__name__} 暂不支持 wait_for_link()")
+        _raise_keyed(NotImplementedError, "core.9358e518", cls=self.__class__.__name__)
 
 
 class FallbackMailbox(BaseMailbox):
@@ -74,46 +99,50 @@ class FallbackMailbox(BaseMailbox):
         mailbox = self._accounts.get(str(account.email or "").strip())
         if mailbox is not None:
             return mailbox
-        raise RuntimeError(f"未找到邮箱 provider 上下文: {account.email}")
+        _raise_keyed(RuntimeError, "core.b16e5e4d", email=account.email)
 
-    def get_email(self) -> MailboxAccount:
+    def get_email(self, *, log_key_fn: Callable[[str, dict], None] | None = None) -> MailboxAccount:
         errors: list[str] = []
         for provider_key, mailbox in self.providers:
             try:
-                print(f"[Mailbox] 尝试 provider: {provider_key}")
-                account = mailbox.get_email()
+                _log_key_or_print(log_key_fn, "core.42add9d8", provider=provider_key)
+                account = mailbox.get_email(log_key_fn=log_key_fn)
                 self._accounts[str(account.email or "").strip()] = mailbox
                 self._inject_provider_metadata(account, provider_key)
-                print(f"[Mailbox] 使用 provider 成功: {provider_key} -> {account.email}")
+                _log_key_or_print(log_key_fn, "core.2e383f53", provider=provider_key, email=account.email)
                 return account
             except Exception as exc:
                 message = str(exc).strip() or exc.__class__.__name__
                 errors.append(f"{provider_key}: {message}")
-                print(f"[Mailbox] provider 失败: {provider_key} -> {message}")
+                _log_key_or_print(log_key_fn, "core.0e91f5bb", provider=provider_key, message=message)
                 continue
-        raise RuntimeError("所有邮箱 provider 均创建失败: " + " | ".join(errors))
+        _raise_keyed(RuntimeError, "core.3ea3c220", errors=" | ".join(errors))
 
     def get_current_ids(self, account: MailboxAccount) -> set:
         return self._resolve_mailbox(account).get_current_ids(account)
 
     def wait_for_code(self, account: MailboxAccount, keyword: str = "",
                       timeout: int = 120, before_ids: set = None,
-                      code_pattern: str = None) -> str:
+                      code_pattern: str = None, *,
+                      log_key_fn: Callable[[str, dict], None] | None = None) -> str:
         return self._resolve_mailbox(account).wait_for_code(
             account,
             keyword=keyword,
             timeout=timeout,
             before_ids=before_ids,
             code_pattern=code_pattern,
+            log_key_fn=log_key_fn,
         )
 
     def wait_for_link(self, account: MailboxAccount, keyword: str = "",
-                      timeout: int = 120, before_ids: set = None) -> str:
+                      timeout: int = 120, before_ids: set = None, *,
+                      log_key_fn: Callable[[str, dict], None] | None = None) -> str:
         return self._resolve_mailbox(account).wait_for_link(
             account,
             keyword=keyword,
             timeout=timeout,
             before_ids=before_ids,
+            log_key_fn=log_key_fn,
         )
 
 
@@ -155,7 +184,7 @@ def _normalize_api_base_url(value: str | None, *, default: str, label: str) -> s
         raw = f"https://{raw.lstrip('/')}"
     parsed = urlparse(raw)
     if not parsed.scheme or not parsed.netloc:
-        raise ValueError(f"{label} 无效: {value!r}")
+        _raise_keyed(ValueError, "core.69d5a7f3", label=label, value=repr(value))
     return raw.rstrip("/")
 
 
@@ -295,10 +324,10 @@ def create_mailbox(provider: str, extra: dict = None, proxy: str = None) -> 'Bas
     settings_repo = ProviderSettingsRepository()
     provider_key = str(provider or "").strip()
     if not provider_key:
-        raise RuntimeError("未选择邮箱 provider，请先在设置页配置并启用默认邮箱 provider")
+        _raise_keyed(RuntimeError, "core.eb8c6f6f")
     definition = definitions_repo.get_by_key("mailbox", provider_key)
     if not definition or not definition.enabled:
-        raise RuntimeError(f"邮箱 provider 不存在或未启用: {provider_key}")
+        _raise_keyed(RuntimeError, "core.2d7459e5", key=provider_key)
     base_extra = dict(extra or {})
 
     raw_fallbacks = base_extra.get("mail_provider_fallbacks")
@@ -337,11 +366,14 @@ def create_mailbox(provider: str, extra: dict = None, proxy: str = None) -> 'Bas
                 providers.append((key, factory(resolved_extra, proxy)))
         except Exception as exc:
             if key == provider_key:
-                raise RuntimeError(f"邮箱 provider {key} 初始化失败: {exc}") from exc
-            logger.warning("邮箱 provider %s 初始化失败，已跳过: %s", key, exc)
+                keyed_exc = RuntimeError(t("core.153598a2", "zh", key=key, exc=str(exc)))
+                keyed_exc.i18n_key = "core.153598a2"
+                keyed_exc.i18n_params = {"key": key, "exc": str(exc)}
+                raise keyed_exc from exc
+            logger.warning(t("core.07296478", "zh", key=key, error=str(exc)))
 
     if not providers:
-        raise RuntimeError("没有可用的邮箱 provider 实例")
+        _raise_keyed(RuntimeError, "core.612d220d")
     if len(providers) == 1:
         return providers[0][1]
     return FallbackMailbox(providers)
@@ -356,7 +388,7 @@ class LaoudoMailbox(BaseMailbox):
         self.api = (api_url or DEFAULT_LAOUDO_API_URL).rstrip("/")
         self._ua = "Mozilla/5.0"
 
-    def get_email(self) -> MailboxAccount:
+    def get_email(self, *, log_key_fn: Callable[[str, dict], None] | None = None) -> MailboxAccount:
         return MailboxAccount(
             email=self._email,
             account_id=self._account_id,
@@ -407,7 +439,8 @@ class LaoudoMailbox(BaseMailbox):
         return set()
 
     def wait_for_code(self, account: MailboxAccount, keyword: str = "trae",
-                      timeout: int = 120, before_ids: set = None, code_pattern: str = None) -> str:
+                      timeout: int = 120, before_ids: set = None, code_pattern: str = None,
+                      *, log_key_fn: Callable[[str, dict], None] | None = None) -> str:
         import re, time
         from curl_cffi import requests as curl_requests
         seen = set(before_ids) if before_ids else set()
@@ -438,10 +471,11 @@ class LaoudoMailbox(BaseMailbox):
             except Exception:
                 pass
             time.sleep(4)
-        raise TimeoutError(f"等待验证码超时 ({timeout}s)")
+        _raise_keyed(TimeoutError, "core.a3067a25", timeout=timeout)
 
     def wait_for_link(self, account: MailboxAccount, keyword: str = "",
-                      timeout: int = 120, before_ids: set = None) -> str:
+                      timeout: int = 120, before_ids: set = None,
+                      *, log_key_fn: Callable[[str, dict], None] | None = None) -> str:
         import time
         from curl_cffi import requests as curl_requests
         seen = set(before_ids or [])
@@ -470,7 +504,7 @@ class LaoudoMailbox(BaseMailbox):
             except Exception:
                 pass
             time.sleep(4)
-        raise TimeoutError(f"等待验证链接超时 ({timeout}s)")
+        _raise_keyed(TimeoutError, "core.93e3faab", timeout=timeout)
 
 
 class AitreMailbox(BaseMailbox):
@@ -479,7 +513,7 @@ class AitreMailbox(BaseMailbox):
         self._email = email
         self.api = (api_url or DEFAULT_AITRE_API_URL).rstrip("/")
 
-    def get_email(self) -> MailboxAccount:
+    def get_email(self, *, log_key_fn: Callable[[str, dict], None] | None = None) -> MailboxAccount:
         return MailboxAccount(email=self._email)
 
     def get_current_ids(self, account: MailboxAccount) -> set:
@@ -492,7 +526,8 @@ class AitreMailbox(BaseMailbox):
             return set()
 
     def wait_for_code(self, account: MailboxAccount, keyword: str = "trae",
-                      timeout: int = 120, before_ids: set = None, code_pattern: str = None) -> str:
+                      timeout: int = 120, before_ids: set = None, code_pattern: str = None,
+                      *, log_key_fn: Callable[[str, dict], None] | None = None) -> str:
         import re, time, requests
         seen = set(before_ids) if before_ids else set()
         last_check = None
@@ -521,10 +556,11 @@ class AitreMailbox(BaseMailbox):
             except Exception:
                 pass
             time.sleep(3)
-        raise TimeoutError(f"等待验证码超时 ({timeout}s)")
+        _raise_keyed(TimeoutError, "core.a3067a25", timeout=timeout)
 
     def wait_for_link(self, account: MailboxAccount, keyword: str = "",
-                      timeout: int = 120, before_ids: set = None) -> str:
+                      timeout: int = 120, before_ids: set = None,
+                      *, log_key_fn: Callable[[str, dict], None] | None = None) -> str:
         import time, requests
         seen = set(before_ids or [])
         last_check = None
@@ -551,7 +587,7 @@ class AitreMailbox(BaseMailbox):
             except Exception:
                 pass
             time.sleep(3)
-        raise TimeoutError(f"等待验证链接超时 ({timeout}s)")
+        _raise_keyed(TimeoutError, "core.93e3faab", timeout=timeout)
 
 
 class TempMailLolMailbox(BaseMailbox):
@@ -563,7 +599,7 @@ class TempMailLolMailbox(BaseMailbox):
         self._token = None
         self._email = None
 
-    def get_email(self) -> MailboxAccount:
+    def get_email(self, *, log_key_fn: Callable[[str, dict], None] | None = None) -> MailboxAccount:
         import requests
         r = requests.post(f"{self.api}/inbox/create",
             json={},
@@ -601,7 +637,8 @@ class TempMailLolMailbox(BaseMailbox):
             return set()
 
     def wait_for_code(self, account: MailboxAccount, keyword: str = "",
-                      timeout: int = 120, before_ids: set = None, code_pattern: str = None) -> str:
+                      timeout: int = 120, before_ids: set = None, code_pattern: str = None,
+                      *, log_key_fn: Callable[[str, dict], None] | None = None) -> str:
         import re, time, requests
         seen = set(before_ids or [])
         start = time.time()
@@ -624,10 +661,11 @@ class TempMailLolMailbox(BaseMailbox):
             except Exception:
                 pass
             time.sleep(3)
-        raise TimeoutError(f"等待验证码超时 ({timeout}s)")
+        _raise_keyed(TimeoutError, "core.a3067a25", timeout=timeout)
 
     def wait_for_link(self, account: MailboxAccount, keyword: str = "",
-                      timeout: int = 120, before_ids: set = None) -> str:
+                      timeout: int = 120, before_ids: set = None,
+                      *, log_key_fn: Callable[[str, dict], None] | None = None) -> str:
         import time, requests
         seen = set(before_ids or [])
         start = time.time()
@@ -648,7 +686,7 @@ class TempMailLolMailbox(BaseMailbox):
             except Exception:
                 pass
             time.sleep(3)
-        raise TimeoutError(f"等待验证链接超时 ({timeout}s)")
+        _raise_keyed(TimeoutError, "core.93e3faab", timeout=timeout)
 
 
 class TempMailWebMailbox(BaseMailbox):
@@ -705,17 +743,17 @@ class TempMailWebMailbox(BaseMailbox):
         status = int((response or {}).get("status", 0) or 0)
         text = str((response or {}).get("body", "") or "")
         if status != 200:
-            raise RuntimeError(
-                f"Temp-Mail Web {action} 失败: HTTP {status} {text[:300]}"
-            )
+            _raise_keyed(RuntimeError, "core.22eee1df", action=action, status=status, text=text[:300])
         try:
             return json.loads(text)
         except Exception as exc:
-            raise RuntimeError(
-                f"Temp-Mail Web {action} 返回非 JSON: {exc}; body={text[:300]}"
-            ) from exc
+            key, params = "core.7f5f91fe", {"action": action, "exc": str(exc), "text": text[:300]}
+            keyed_exc = RuntimeError(t(key, "zh", **params))
+            keyed_exc.i18n_key = key
+            keyed_exc.i18n_params = params
+            raise keyed_exc from exc
 
-    def _request_json(self, method: str, path: str, *, auth_header: str = "") -> dict | list:
+    def _request_json(self, method: str, path: str, *, auth_header: str = "", log_key_fn: Callable[[str, dict], None] | None = None) -> dict | list:
         import random
         import time
 
@@ -766,21 +804,24 @@ class TempMailWebMailbox(BaseMailbox):
             if status != 429 or attempt >= max_attempts:
                 return self._decode_json_response(result, action)
             wait_seconds = min(20, 3 * attempt + random.uniform(0.5, 2.5))
-            print(f"[TempMailWeb] {action} 遇到 429，等待 {wait_seconds:.1f}s 后重试 ({attempt}/{max_attempts})")
+            _log_key_or_print(
+                log_key_fn, "core.6ee58202",
+                action=action, wait=f"{wait_seconds:.1f}", attempt=attempt, max_attempts=max_attempts,
+            )
             time.sleep(wait_seconds)
 
         return self._decode_json_response(result, action)
 
-    def get_email(self) -> MailboxAccount:
+    def get_email(self, *, log_key_fn: Callable[[str, dict], None] | None = None) -> MailboxAccount:
         import json
 
-        data = self._request_json("POST", "/mailbox")
+        data = self._request_json("POST", "/mailbox", log_key_fn=log_key_fn)
         address = str(data.get("address") or data.get("mailbox") or data.get("email") or "").strip()
         token = str(data.get("token") or "").strip()
         if not address or not token:
-            raise RuntimeError(f"Temp-Mail Web 创建邮箱失败: {json.dumps(data, ensure_ascii=False)[:300]}")
+            _raise_keyed(RuntimeError, "core.2c010958", data=json.dumps(data, ensure_ascii=False)[:300])
         self._accounts[address] = token
-        print(f"[TempMailWeb] 生成邮箱: {address}")
+        _log_key_or_print(log_key_fn, "core.adc11118", address=address)
         return MailboxAccount(
             email=address,
             account_id=token,
@@ -801,11 +842,11 @@ class TempMailWebMailbox(BaseMailbox):
             },
         )
 
-    def _fetch_messages(self, account: MailboxAccount) -> list[dict]:
+    def _fetch_messages(self, account: MailboxAccount, *, log_key_fn: Callable[[str, dict], None] | None = None) -> list[dict]:
         token = str(account.account_id or self._accounts.get(account.email) or "").strip()
         if not token:
-            raise RuntimeError(f"Temp-Mail Web 缺少 token: {account.email}")
-        data = self._request_json("GET", "/messages", auth_header=f"Bearer {token}")
+            _raise_keyed(RuntimeError, "core.e72e9c2b", email=account.email)
+        data = self._request_json("GET", "/messages", auth_header=f"Bearer {token}", log_key_fn=log_key_fn)
         if isinstance(data, dict) and isinstance(data.get("messages"), list):
             return list(data.get("messages") or [])
         if isinstance(data, list):
@@ -847,14 +888,15 @@ class TempMailWebMailbox(BaseMailbox):
             return set()
 
     def wait_for_code(self, account: MailboxAccount, keyword: str = "",
-                      timeout: int = 120, before_ids: set = None, code_pattern: str = None) -> str:
+                      timeout: int = 120, before_ids: set = None, code_pattern: str = None,
+                      *, log_key_fn: Callable[[str, dict], None] | None = None) -> str:
         import time
 
         seen = set(before_ids or [])
         start = time.time()
         while time.time() - start < timeout:
             try:
-                messages = self._fetch_messages(account)
+                messages = self._fetch_messages(account, log_key_fn=log_key_fn)
                 for item in messages:
                     mid = self._message_id(item)
                     if not mid or mid in seen:
@@ -868,22 +910,23 @@ class TempMailWebMailbox(BaseMailbox):
                         continue
                     code = self._extract_code(item, code_pattern=code_pattern)
                     if code:
-                        print(f"[TempMailWeb] 收到验证码: {code}")
+                        _log_key_or_print(log_key_fn, "core.e9750390", code=code)
                         return code
             except Exception:
                 pass
             time.sleep(5)
-        raise TimeoutError(f"等待验证码超时 ({timeout}s)")
+        _raise_keyed(TimeoutError, "core.a3067a25", timeout=timeout)
 
     def wait_for_link(self, account: MailboxAccount, keyword: str = "",
-                      timeout: int = 120, before_ids: set = None) -> str:
+                      timeout: int = 120, before_ids: set = None,
+                      *, log_key_fn: Callable[[str, dict], None] | None = None) -> str:
         import time
 
         seen = set(before_ids or [])
         start = time.time()
         while time.time() - start < timeout:
             try:
-                messages = self._fetch_messages(account)
+                messages = self._fetch_messages(account, log_key_fn=log_key_fn)
                 for item in messages:
                     mid = self._message_id(item)
                     if not mid or mid in seen:
@@ -899,7 +942,7 @@ class TempMailWebMailbox(BaseMailbox):
             except Exception:
                 pass
             time.sleep(5)
-        raise TimeoutError(f"等待验证链接超时 ({timeout}s)")
+        _raise_keyed(TimeoutError, "core.93e3faab", timeout=timeout)
 
     def __del__(self):
         executor = getattr(self, "_executor", None)
@@ -937,7 +980,7 @@ class DuckMailMailbox(BaseMailbox):
             "x-api-provider-base-url": self.provider_url,
         }
 
-    def get_email(self) -> MailboxAccount:
+    def get_email(self, *, log_key_fn: Callable[[str, dict], None] | None = None) -> MailboxAccount:
         import requests, random, string
         username = "".join(random.choices(string.ascii_lowercase + string.digits, k=10))
         password = "Test" + "".join(random.choices(string.digits, k=8)) + "!"
@@ -1000,7 +1043,8 @@ class DuckMailMailbox(BaseMailbox):
             return set()
 
     def wait_for_code(self, account: MailboxAccount, keyword: str = "",
-                      timeout: int = 120, before_ids: set = None, code_pattern: str = None) -> str:
+                      timeout: int = 120, before_ids: set = None, code_pattern: str = None,
+                      *, log_key_fn: Callable[[str, dict], None] | None = None) -> str:
         import re, time, requests
         seen = set(before_ids or [])
         start = time.time()
@@ -1031,10 +1075,11 @@ class DuckMailMailbox(BaseMailbox):
             except Exception:
                 pass
             time.sleep(3)
-        raise TimeoutError(f"等待验证码超时 ({timeout}s)")
+        _raise_keyed(TimeoutError, "core.a3067a25", timeout=timeout)
 
     def wait_for_link(self, account: MailboxAccount, keyword: str = "",
-                      timeout: int = 120, before_ids: set = None) -> str:
+                      timeout: int = 120, before_ids: set = None,
+                      *, log_key_fn: Callable[[str, dict], None] | None = None) -> str:
         import time, requests
         seen = set(before_ids or [])
         start = time.time()
@@ -1065,7 +1110,7 @@ class DuckMailMailbox(BaseMailbox):
             except Exception:
                 pass
             time.sleep(3)
-        raise TimeoutError(f"等待验证链接超时 ({timeout}s)")
+        _raise_keyed(TimeoutError, "core.93e3faab", timeout=timeout)
 
 
 class CFWorkerMailbox(BaseMailbox):
@@ -1090,7 +1135,7 @@ class CFWorkerMailbox(BaseMailbox):
             h["x-fingerprint"] = self.fingerprint
         return h
 
-    def get_email(self) -> MailboxAccount:
+    def get_email(self, *, log_key_fn: Callable[[str, dict], None] | None = None) -> MailboxAccount:
         import requests, random, string
         name = "".join(random.choices(string.ascii_lowercase + string.digits, k=10))
         payload = {"enablePrefix": True, "name": name}
@@ -1104,7 +1149,7 @@ class CFWorkerMailbox(BaseMailbox):
         email = data.get("email", data.get("address", ""))
         token = data.get("token", data.get("jwt", ""))
         self._token = token
-        print(f"[CFWorker] 生成邮箱: {email} token={token[:40] if token else 'NONE'}...")
+        _log_key_or_print(log_key_fn, "core.b34cfcc0", email=email, token_preview=token[:40] if token else "NONE")
         return MailboxAccount(
             email=email,
             account_id=token,
@@ -1142,7 +1187,8 @@ class CFWorkerMailbox(BaseMailbox):
             return set()
 
     def wait_for_code(self, account: MailboxAccount, keyword: str = "",
-                      timeout: int = 120, before_ids: set = None, code_pattern: str = None) -> str:
+                      timeout: int = 120, before_ids: set = None, code_pattern: str = None,
+                      *, log_key_fn: Callable[[str, dict], None] | None = None) -> str:
         import re, time
         seen = set(before_ids or [])
         start = time.time()
@@ -1172,10 +1218,11 @@ class CFWorkerMailbox(BaseMailbox):
             except Exception:
                 pass
             time.sleep(3)
-        raise TimeoutError(f"等待验证码超时 ({timeout}s)")
+        _raise_keyed(TimeoutError, "core.a3067a25", timeout=timeout)
 
     def wait_for_link(self, account: MailboxAccount, keyword: str = "",
-                      timeout: int = 120, before_ids: set = None) -> str:
+                      timeout: int = 120, before_ids: set = None,
+                      *, log_key_fn: Callable[[str, dict], None] | None = None) -> str:
         import time
         seen = set(before_ids or [])
         start = time.time()
@@ -1194,7 +1241,7 @@ class CFWorkerMailbox(BaseMailbox):
             except Exception:
                 pass
             time.sleep(3)
-        raise TimeoutError(f"等待验证链接超时 ({timeout}s)")
+        _raise_keyed(TimeoutError, "core.93e3faab", timeout=timeout)
 
 
 class MoeMailMailbox(BaseMailbox):
@@ -1247,18 +1294,18 @@ class MoeMailMailbox(BaseMailbox):
             session.cookies.set(name, token, domain=domain, path="/")
             session.cookies.set(name, token, path="/")
 
-    def _login_with_existing_account(self) -> str:
+    def _login_with_existing_account(self, *, log_key_fn: Callable[[str, dict], None] | None = None) -> str:
         s = self._new_session()
 
         if self._configured_session_token:
             self._apply_session_token(s, self._configured_session_token)
             self._session = s
             self._session_token = self._configured_session_token
-            print("[MoeMail] 使用已提供的 session-token")
+            _log_key_or_print(log_key_fn, "core.ea7356a0")  # "[MoeMail] 使用已提供的 session-token"
             return self._configured_session_token
 
         if not (self._configured_username and self._configured_password):
-            raise RuntimeError("MoeMail 未配置可复用账号，请提供用户名密码或 session-token")
+            _raise_keyed(RuntimeError, "core.27d9c0f5")
 
         with suppress_insecure_request_warning():
             csrf_r = s.get(f"{self.api}/api/auth/csrf", timeout=10)
@@ -1283,20 +1330,18 @@ class MoeMailMailbox(BaseMailbox):
         token = self._extract_session_token(s)
         if token:
             self._session_token = token
-            print("[MoeMail] 使用手动注册账号登录成功")
+            _log_key_or_print(log_key_fn, "core.f44f6c24")  # "[MoeMail] 使用手动注册账号登录成功"
             return token
-        raise RuntimeError(
-            f"MoeMail 登录失败: 已提供用户名密码，但未获取到 session-token (HTTP {login_resp.status_code})"
-        )
+        _raise_keyed(RuntimeError, "core.9fe2af7f", status=login_resp.status_code)
 
-    def _ensure_session(self) -> str:
+    def _ensure_session(self, *, log_key_fn: Callable[[str, dict], None] | None = None) -> str:
         if self._session_token and self._session is not None:
             return self._session_token
         if self._configured_session_token or self._configured_username:
-            return self._login_with_existing_account()
-        return self._register_and_login()
+            return self._login_with_existing_account(log_key_fn=log_key_fn)
+        return self._register_and_login(log_key_fn=log_key_fn)
 
-    def _register_and_login(self) -> str:
+    def _register_and_login(self, *, log_key_fn: Callable[[str, dict], None] | None = None) -> str:
         import random, string
 
         s = self._new_session()
@@ -1305,18 +1350,18 @@ class MoeMailMailbox(BaseMailbox):
         password = "Test" + "".join(random.choices(string.digits, k=8)) + "!"
         self._username = username
         self._password = password
-        print(f"[MoeMail] 注册账号: {username} / {password}")
+        _log_key_or_print(log_key_fn, "core.f28c5b21", username=username, password=password)
         with suppress_insecure_request_warning():
             r_reg = s.post(f"{self.api}/api/auth/register",
                 json={"username": username, "password": password, "turnstileToken": ""},
                 timeout=15)
-        print(f"[MoeMail] 注册结果: {r_reg.status_code} {r_reg.text[:80]}")
+        _log_key_or_print(log_key_fn, "core.ca60fb5e", status=r_reg.status_code, text=r_reg.text[:80])
         if r_reg.status_code >= 400:
             try:
                 register_error = r_reg.json().get("error") or r_reg.text
             except Exception:
                 register_error = r_reg.text
-            raise RuntimeError(f"MoeMail 注册失败: {str(register_error).strip() or f'HTTP {r_reg.status_code}'}")
+            _raise_keyed(RuntimeError, "core.a00259ed", error=str(register_error).strip() or f"HTTP {r_reg.status_code}")
         # 获取 CSRF
         with suppress_insecure_request_warning():
             csrf_r = s.get(f"{self.api}/api/auth/csrf", timeout=10)
@@ -1337,20 +1382,18 @@ class MoeMailMailbox(BaseMailbox):
         token = self._extract_session_token(s)
         if token:
             self._session_token = token
-            print(f"[MoeMail] 登录成功")
+            _log_key_or_print(log_key_fn, "core.ff40994e")  # "[MoeMail] 登录成功"
             return token
-        print(f"[MoeMail] 登录失败，cookies: {[c.name for c in s.cookies]}")
-        raise RuntimeError(
-            f"MoeMail 登录失败: 未获取到 session-token (HTTP {login_resp.status_code})"
-        )
+        _log_key_or_print(log_key_fn, "core.de22ed55", cookies=str([c.name for c in s.cookies]))
+        _raise_keyed(RuntimeError, "core.2d823603", status=login_resp.status_code)
 
     # 优先用这些域名（信誉较好，不易被 AWS/Google 等拒绝）
     _PREFERRED_DOMAINS = ("sall.cc", "cnmlgb.de", "zhooo.org", "coolkid.icu")
 
-    def get_email(self) -> MailboxAccount:
+    def get_email(self, *, log_key_fn: Callable[[str, dict], None] | None = None) -> MailboxAccount:
         self._session_token = self._configured_session_token or None
         self._session = None
-        self._ensure_session()
+        self._ensure_session(log_key_fn=log_key_fn)
         import random, string
         name = "".join(random.choices(string.ascii_letters + string.digits, k=8))
         # 获取可用域名列表，优先选信誉好的域名，避免被 AWS 等平台拒绝
@@ -1376,13 +1419,13 @@ class MoeMailMailbox(BaseMailbox):
         data = r.json()
         self._email = data.get("email", data.get("address", ""))
         email_id = data.get("id", "")
-        print(f"[MoeMail] 生成邮箱: {self._email} id={email_id} domain={domain} status={r.status_code}")
+        _log_key_or_print(log_key_fn, "core.687b8c3b", email=self._email, id=email_id, domain=domain, status=r.status_code)
         if not email_id:
-            print(f"[MoeMail] 生成失败: {data}")
+            _log_key_or_print(log_key_fn, "core.71494406", data=str(data))
             generate_error = data.get("error") or data.get("message") or r.text
-            raise RuntimeError(f"MoeMail 生成邮箱失败: {str(generate_error).strip() or f'HTTP {r.status_code}'}")
+            _raise_keyed(RuntimeError, "core.7e4d3a46", error=str(generate_error).strip() or f"HTTP {r.status_code}")
         if not self._email:
-            raise RuntimeError("MoeMail 生成邮箱失败: 返回结果缺少 email")
+            _raise_keyed(RuntimeError, "core.3e23cbb6")
         self._email_count = getattr(self, '_email_count', 0) + 1
         return MailboxAccount(
             email=self._email,
@@ -1428,7 +1471,8 @@ class MoeMailMailbox(BaseMailbox):
 
     def wait_for_code(self, account: MailboxAccount, keyword: str = "",
                       timeout: int = 120, before_ids: set = None,
-                      code_pattern: str = None) -> str:
+                      code_pattern: str = None,
+                      *, log_key_fn: Callable[[str, dict], None] | None = None) -> str:
         import re, time
         seen = set(before_ids or [])
         start = time.time()
@@ -1453,10 +1497,11 @@ class MoeMailMailbox(BaseMailbox):
             except Exception:
                 pass
             time.sleep(3)
-        raise TimeoutError(f"等待验证码超时 ({timeout}s)")
+        _raise_keyed(TimeoutError, "core.a3067a25", timeout=timeout)
 
     def wait_for_link(self, account: MailboxAccount, keyword: str = "",
-                      timeout: int = 120, before_ids: set = None) -> str:
+                      timeout: int = 120, before_ids: set = None,
+                      *, log_key_fn: Callable[[str, dict], None] | None = None) -> str:
         import time
         seen = set(before_ids or [])
         start = time.time()
@@ -1484,7 +1529,7 @@ class MoeMailMailbox(BaseMailbox):
             except Exception:
                 pass
             time.sleep(3)
-        raise TimeoutError(f"等待验证链接超时 ({timeout}s)")
+        _raise_keyed(TimeoutError, "core.93e3faab", timeout=timeout)
 
 
 class FreemailMailbox(BaseMailbox):
@@ -1518,7 +1563,7 @@ class FreemailMailbox(BaseMailbox):
         self._session = s
         return s
 
-    def get_email(self) -> MailboxAccount:
+    def get_email(self, *, log_key_fn: Callable[[str, dict], None] | None = None) -> MailboxAccount:
         if not self._session:
             self._get_session()
         import requests
@@ -1526,7 +1571,7 @@ class FreemailMailbox(BaseMailbox):
         data = r.json()
         email = data.get("email", "")
         self._email = email
-        print(f"[Freemail] 生成邮箱: {email}")
+        _log_key_or_print(log_key_fn, "core.b4792cb2", email=email)
         provider_account = {
             "provider_type": "mailbox",
             "provider_name": "freemail",
@@ -1573,7 +1618,8 @@ class FreemailMailbox(BaseMailbox):
             return set()
 
     def wait_for_code(self, account: MailboxAccount, keyword: str = "",
-                      timeout: int = 120, before_ids: set = None, code_pattern: str = None) -> str:
+                      timeout: int = 120, before_ids: set = None, code_pattern: str = None,
+                      *, log_key_fn: Callable[[str, dict], None] | None = None) -> str:
         import re, time
         seen = set(before_ids or [])
         start = time.time()
@@ -1596,10 +1642,11 @@ class FreemailMailbox(BaseMailbox):
             except Exception:
                 pass
             time.sleep(3)
-        raise TimeoutError(f"等待验证码超时 ({timeout}s)")
+        _raise_keyed(TimeoutError, "core.a3067a25", timeout=timeout)
 
     def wait_for_link(self, account: MailboxAccount, keyword: str = "",
-                      timeout: int = 120, before_ids: set = None) -> str:
+                      timeout: int = 120, before_ids: set = None,
+                      *, log_key_fn: Callable[[str, dict], None] | None = None) -> str:
         import time
         seen = set(before_ids or [])
         start = time.time()
@@ -1622,7 +1669,7 @@ class FreemailMailbox(BaseMailbox):
             except Exception:
                 pass
             time.sleep(3)
-        raise TimeoutError(f"等待验证链接超时 ({timeout}s)")
+        _raise_keyed(TimeoutError, "core.93e3faab", timeout=timeout)
 
 
 class TestmailMailbox(BaseMailbox):
@@ -1644,9 +1691,9 @@ class TestmailMailbox(BaseMailbox):
 
     def _assert_ready(self) -> None:
         if not self.api_key:
-            raise RuntimeError("Testmail 未配置 API Key")
+            _raise_keyed(RuntimeError, "core.7b5f958b")
         if not self.namespace:
-            raise RuntimeError("Testmail 未配置 namespace")
+            _raise_keyed(RuntimeError, "core.517b4abc")
 
     def _build_tag(self) -> str:
         import random
@@ -1678,7 +1725,7 @@ class TestmailMailbox(BaseMailbox):
         response = requests.get(self.api, params=params, proxies=self.proxy, timeout=15)
         payload = response.json()
         if payload.get("result") == "fail":
-            raise RuntimeError(f"Testmail 查询失败: {payload.get('message') or response.text}")
+            _raise_keyed(RuntimeError, "core.a8477441", message=payload.get("message") or response.text)
         return payload.get("emails", []) or []
 
     @staticmethod
@@ -1696,7 +1743,7 @@ class TestmailMailbox(BaseMailbox):
             for key in ("subject", "text", "html")
         )
 
-    def get_email(self) -> MailboxAccount:
+    def get_email(self, *, log_key_fn: Callable[[str, dict], None] | None = None) -> MailboxAccount:
         import time
 
         self._assert_ready()
@@ -1751,13 +1798,14 @@ class TestmailMailbox(BaseMailbox):
             return set()
 
     def wait_for_code(self, account: MailboxAccount, keyword: str = "",
-                      timeout: int = 120, before_ids: set = None, code_pattern: str = None) -> str:
+                      timeout: int = 120, before_ids: set = None, code_pattern: str = None,
+                      *, log_key_fn: Callable[[str, dict], None] | None = None) -> str:
         import re
         import time
 
         tag = str(account.account_id or "")
         if not tag:
-            raise RuntimeError("Testmail mailbox 缺少 tag")
+            _raise_keyed(RuntimeError, "core.0a1001d2")
         seen = set(before_ids or [])
         started = ((account.extra or {}).get("provider_resource") or {}).get("metadata", {}).get("created_at_ms")
         pattern = re.compile(code_pattern) if code_pattern else None
@@ -1780,15 +1828,16 @@ class TestmailMailbox(BaseMailbox):
             except Exception:
                 pass
             time.sleep(3)
-        raise TimeoutError(f"等待验证码超时 ({timeout}s)")
+        _raise_keyed(TimeoutError, "core.a3067a25", timeout=timeout)
 
     def wait_for_link(self, account: MailboxAccount, keyword: str = "",
-                      timeout: int = 120, before_ids: set = None) -> str:
+                      timeout: int = 120, before_ids: set = None,
+                      *, log_key_fn: Callable[[str, dict], None] | None = None) -> str:
         import time
 
         tag = str(account.account_id or "")
         if not tag:
-            raise RuntimeError("Testmail mailbox 缺少 tag")
+            _raise_keyed(RuntimeError, "core.0a1001d2")
         seen = set(before_ids or [])
         started = ((account.extra or {}).get("provider_resource") or {}).get("metadata", {}).get("created_at_ms")
         start = time.time()
@@ -1806,7 +1855,7 @@ class TestmailMailbox(BaseMailbox):
             except Exception:
                 pass
             time.sleep(3)
-        raise TimeoutError(f"等待验证链接超时 ({timeout}s)")
+        _raise_keyed(TimeoutError, "core.93e3faab", timeout=timeout)
 
 
 class DDGEmailMailbox(BaseMailbox):
@@ -1845,7 +1894,7 @@ class DDGEmailMailbox(BaseMailbox):
             "referer": "https://duckduckgo.com/",
         }
 
-    def get_email(self) -> MailboxAccount:
+    def get_email(self, *, log_key_fn: Callable[[str, dict], None] | None = None) -> MailboxAccount:
         import requests
         r = insecure_request(
             requests.post, self.DDG_API,
@@ -1857,9 +1906,9 @@ class DDGEmailMailbox(BaseMailbox):
         data = r.json()
         address = data.get("address", "")
         if not address:
-            raise RuntimeError(f"DDG Email 创建别名失败: {r.text[:200]}")
+            _raise_keyed(RuntimeError, "core.8f368458", text=r.text[:200])
         email = f"{address}@duck.com"
-        print(f"[DDG Email] 创建别名: {email}")
+        _log_key_or_print(log_key_fn, "core.26af35e6", email=email)
         return MailboxAccount(
             email=email,
             account_id=address,
@@ -1878,13 +1927,14 @@ class DDGEmailMailbox(BaseMailbox):
     def get_current_ids(self, account: MailboxAccount) -> set:
         return set()
 
-    def _imap_search_code(self, alias_email: str, timeout: int, code_pattern: str = None) -> str:
+    def _imap_search_code(self, alias_email: str, timeout: int, code_pattern: str = None,
+                          *, log_key_fn: Callable[[str, dict], None] | None = None) -> str:
         import imaplib
         import email as email_lib
         import time
 
         if not self.imap_user or not self.imap_pass:
-            raise RuntimeError("DDG Email 未配置 IMAP（ddg_imap_user / ddg_imap_pass），无法读取验证码")
+            _raise_keyed(RuntimeError, "core.afcce046")
 
         pattern = code_pattern or r'(?<!\d)(\d{6})(?!\d)'
         start = time.time()
@@ -1959,12 +2009,12 @@ class DDGEmailMailbox(BaseMailbox):
                     m = re.search(pattern, combined)
                     if m:
                         code = m.group(1) if m.groups() else m.group(0)
-                        print(f"[DDG Email] IMAP 获取验证码: {code}")
+                        _log_key_or_print(log_key_fn, "core.6981ef45", code=code)
                         return code
 
                 conn.logout()
             except (imaplib.IMAP4.error, OSError) as e:
-                print(f"[DDG Email] IMAP 连接异常: {e}")
+                _log_key_or_print(log_key_fn, "core.a7ebc55d", error=str(e))
             finally:
                 if conn:
                     try:
@@ -1973,9 +2023,10 @@ class DDGEmailMailbox(BaseMailbox):
                         pass
             time.sleep(5)
 
-        raise TimeoutError(f"DDG Email IMAP 等待验证码超时 ({timeout}s)")
+        _raise_keyed(TimeoutError, "core.3fb31ba1", timeout=timeout)
 
     def wait_for_code(self, account: MailboxAccount, keyword: str = "",
                       timeout: int = 120, before_ids: set = None,
-                      code_pattern: str = None) -> str:
-        return self._imap_search_code(account.email, timeout, code_pattern)
+                      code_pattern: str = None,
+                      *, log_key_fn: Callable[[str, dict], None] | None = None) -> str:
+        return self._imap_search_code(account.email, timeout, code_pattern, log_key_fn=log_key_fn)
