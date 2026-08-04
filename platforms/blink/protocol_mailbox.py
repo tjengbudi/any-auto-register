@@ -4,14 +4,26 @@ from __future__ import annotations
 import re
 from typing import Callable, Optional
 
+from platforms.blink._i18n_helpers import _emit_log_key, _raise_keyed
 from platforms.blink.core import BLINK_BASE, BLINK_PRICE_IDS, BlinkRegister, summarize_blink_account_state
 
 
 class BlinkProtocolMailboxWorker:
-    def __init__(self, *, proxy: str | None = None, log_fn: Callable[[str], None] = print):
+    def __init__(
+        self,
+        *,
+        proxy: str | None = None,
+        log_fn: Callable[[str], None] = print,
+        log_key_fn: Optional[Callable[[str, dict], None]] = None,
+    ):
         self.client = BlinkRegister(proxy=proxy)
         self.client._log = log_fn
+        self.client._log_key_fn = log_key_fn
         self.log = log_fn
+        self._log_key_fn = log_key_fn
+
+    def log_key(self, key: str, **params) -> None:
+        _emit_log_key(self.log, self._log_key_fn, key, **params)
 
     def run(
         self,
@@ -23,15 +35,18 @@ class BlinkProtocolMailboxWorker:
         # Step 1: 触发魔法链接邮件
         ok = self.client.step1_send_magic_link(email)
         if not ok:
-            raise RuntimeError("发送魔法链接失败")
+            _raise_keyed(RuntimeError, "blink.3e4d828d")
+            # was: raise RuntimeError("发送魔法链接失败")
 
         # Step 2: 等待邮件并提取 token
         if not link_callback:
             raise RuntimeError("link_callback is required")
-        self.log("等待魔法链接...")
+        self.log_key("blink.2cdad0a9")
+        # was: self.log("等待魔法链接...")
         raw = link_callback()
         if not raw:
-            raise RuntimeError("获取魔法链接超时")
+            _raise_keyed(RuntimeError, "blink.a36a12f6")
+            # was: raise RuntimeError("获取魔法链接超时")
 
         # otp_callback 可能返回完整 URL 或纯 token
         token = self._extract_token(raw)
@@ -111,13 +126,17 @@ class BlinkProtocolMailboxWorker:
             "checkout_session_id": checkout_session_id,
             "account_overview": overview,
         }
-        self.log(
-            f"注册成功: {email} workspace={workspace_slug} "
-            f"plan={overview.get('plan_name', 'unknown')} "
-            f"billing_limit={overview.get('billing_period_credits_limit', 0)}"
+        self.log_key(
+            "blink.a6d714dc",
+            email=email,
+            workspace=workspace_slug,
+            plan=overview.get("plan_name", "unknown"),
+            billing_limit=overview.get("billing_period_credits_limit", 0),
         )
+        # was: self.log( f"注册成功: {email} workspace={workspace_slug} " f"plan={overview.get('plan_name', 'unknown')} " f"billing_limit={overview.get('billing_period_credits_limit', 0)}" )
         if cashier_url:
-            self.log(f"自动生成支付链接: {cashier_url}")
+            self.log_key("blink.50241905", cashier_url=cashier_url)
+            # was: self.log(f"自动生成支付链接: {cashier_url}")
         return result
 
     def _maybe_create_checkout_link(
@@ -130,10 +149,12 @@ class BlinkProtocolMailboxWorker:
     ) -> tuple[str, str]:
         price_id = str(BLINK_PRICE_IDS.get("pro") or "").strip()
         if not workspace_id:
-            self.log("跳过自动生成支付链接: 缺少 workspace_id")
+            self.log_key("blink.972c89f1")
+            # was: self.log("跳过自动生成支付链接: 缺少 workspace_id")
             return "", ""
         if not price_id:
-            self.log("跳过自动生成支付链接: 未配置 Blink Pro price_id")
+            self.log_key("blink.c7277b79")
+            # was: self.log("跳过自动生成支付链接: 未配置 Blink Pro price_id")
             return "", ""
 
         cancel_url = (
@@ -152,7 +173,8 @@ class BlinkProtocolMailboxWorker:
                 workspace_slug=workspace_slug,
             )
         except Exception as exc:
-            self.log(f"自动生成支付链接失败，忽略并继续: {exc}")
+            self.log_key("blink.5e8b4b62", exc=str(exc))
+            # was: self.log(f"自动生成支付链接失败，忽略并继续: {exc}")
             return "", ""
 
         cashier_url = str(checkout.get("url") or "").strip()
@@ -169,4 +191,5 @@ class BlinkProtocolMailboxWorker:
         raw = raw.strip()
         if re.fullmatch(r'[a-f0-9]{64}', raw):
             return raw
-        raise RuntimeError(f"无法从邮件内容中提取 magic_token: {raw[:200]}")
+        _raise_keyed(RuntimeError, "blink.e6b4e29a", raw=raw[:200])
+        # was: raise RuntimeError(f"无法从邮件内容中提取 magic_token: {raw[:200]}")

@@ -43,6 +43,7 @@ class OpenBlockLabsPlatform(BasePlatform):
             email_hint=ctx.identity.email,
             timeout=resolve_timeout(ctx.extra, ("browser_oauth_timeout", "manual_oauth_timeout"), 300),
             log_fn=ctx.log,
+            log_key=ctx.log_key_fn,
             headless=(ctx.executor_type == "headless"),
             chrome_user_data_dir=ctx.identity.chrome_user_data_dir,
             chrome_cdp_url=ctx.identity.chrome_cdp_url,
@@ -56,6 +57,7 @@ class OpenBlockLabsPlatform(BasePlatform):
                 proxy=ctx.proxy,
                 otp_callback=artifacts.otp_callback,
                 log_fn=ctx.log,
+                log_key_fn=ctx.log_key_fn,
             ),
             browser_register_runner=lambda worker, ctx, artifacts: worker.run(
                 email=ctx.identity.email or "",
@@ -76,7 +78,7 @@ class OpenBlockLabsPlatform(BasePlatform):
         def _build_worker(ctx, artifacts):
             from platforms.openblocklabs.protocol_mailbox import OpenBlockLabsProtocolMailboxWorker
 
-            return OpenBlockLabsProtocolMailboxWorker(proxy=ctx.proxy, log_fn=ctx.log)
+            return OpenBlockLabsProtocolMailboxWorker(proxy=ctx.proxy, log_fn=ctx.log, log_key_fn=ctx.log_key_fn)
 
         def _run_worker(worker, ctx, artifacts):
             return worker.run(

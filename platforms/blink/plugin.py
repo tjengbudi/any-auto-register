@@ -5,6 +5,7 @@ from core.base_mailbox import BaseMailbox
 from core.base_platform import Account, AccountStatus, BasePlatform, RegisterConfig
 from core.registration import LinkSpec, ProtocolMailboxAdapter, RegistrationResult
 from core.registry import register
+from platforms.blink._i18n_helpers import _raise_keyed
 from platforms.blink.core import BLINK_BASE, BLINK_PRICE_IDS, BlinkRegister, load_blink_account_state
 
 
@@ -64,7 +65,7 @@ class BlinkPlatform(BasePlatform):
         def _build_worker(ctx, artifacts):
             from platforms.blink.protocol_mailbox import BlinkProtocolMailboxWorker
 
-            return BlinkProtocolMailboxWorker(proxy=ctx.proxy, log_fn=ctx.log)
+            return BlinkProtocolMailboxWorker(proxy=ctx.proxy, log_fn=ctx.log, log_key_fn=ctx.log_key_fn)
 
         def _run_worker(worker, ctx, artifacts):
             return worker.run(
@@ -88,6 +89,7 @@ class BlinkPlatform(BasePlatform):
             account,
             proxy=self.config.proxy if self.config else None,
             log_fn=self.log,
+            log_key=self._log_key_fn,
             force_refresh=force_refresh,
         )
 
@@ -148,6 +150,7 @@ class BlinkPlatform(BasePlatform):
 
             client = BlinkRegister(proxy=self.config.proxy if self.config else None)
             client._log = self.log
+            client._log_key_fn = self._log_key_fn
             checkout = client.create_checkout(
                 state.get("id_token", ""),
                 price_id=price_id,
@@ -189,6 +192,7 @@ class BlinkPlatform(BasePlatform):
 
             client = BlinkRegister(proxy=self.config.proxy if self.config else None)
             client._log = self.log
+            client._log_key_fn = self._log_key_fn
             payload = client.create_api_key(
                 state.get("id_token", ""),
                 workspace_id=workspace_id,
@@ -213,4 +217,5 @@ class BlinkPlatform(BasePlatform):
                 },
             }
 
-        raise NotImplementedError(f"未知操作: {action_id}")
+        _raise_keyed(NotImplementedError, "blink.701d383a", action_id=action_id)
+        # was: raise NotImplementedError(f"未知操作: {action_id}")

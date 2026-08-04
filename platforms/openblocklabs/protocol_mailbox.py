@@ -5,14 +5,25 @@ import random
 import string
 from typing import Callable, Optional
 
+from platforms.openblocklabs._i18n_helpers import _emit_log_key
 from platforms.openblocklabs.core import OpenBlockLabsRegister, _rand_password
 
 
 class OpenBlockLabsProtocolMailboxWorker:
-    def __init__(self, *, proxy: str | None = None, log_fn: Callable[[str], None] = print):
-        self.client = OpenBlockLabsRegister(proxy=proxy)
+    def __init__(
+        self,
+        *,
+        proxy: str | None = None,
+        log_fn: Callable[[str], None] = print,
+        log_key_fn: Optional[Callable[[str, dict], None]] = None,
+    ):
+        self.client = OpenBlockLabsRegister(proxy=proxy, log_key_fn=log_key_fn)
         self.client.log = lambda msg: log_fn(msg)
         self.log = log_fn
+        self._log_key_fn = log_key_fn
+
+    def log_key(self, key: str, **params) -> None:
+        _emit_log_key(self.log, self._log_key_fn, key, **params)
 
     def run(
         self,
@@ -65,5 +76,6 @@ class OpenBlockLabsProtocolMailboxWorker:
             "password": use_password,
             "wos_session": session_token,
         }
-        self.log(f"注册成功: {email}")
+        self.log_key("openblocklabs.d9dbdf1a", email=email)
+        # was: self.log(f"注册成功: {email}")
         return result

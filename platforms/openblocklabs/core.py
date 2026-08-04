@@ -15,9 +15,12 @@ OpenBlockLabs 自动注册 (WorkOS AuthKit)
 pip install curl_cffi requests
 """
 import re, json, time, base64, random, string, os
+from typing import Callable, Optional
 from urllib.parse import urlencode, urlparse, parse_qs
 from curl_cffi import requests as curl_requests
 import requests as std_requests
+
+from platforms.openblocklabs._i18n_helpers import _emit_log_key
 
 # ─── 配置 ───────────────────────────────────────────────────────────────────
 
@@ -89,7 +92,7 @@ def _make_signals() -> str:
 
 # ─── Register ────────────────────────────────────────────────────────────────
 class OpenBlockLabsRegister:
-    def __init__(self, proxy: str = None):
+    def __init__(self, proxy: str = None, log_key_fn: Optional[Callable[[str, dict], None]] = None):
         self.s = curl_requests.Session()
         self.s.impersonate = "chrome131"
         if proxy:
@@ -100,9 +103,13 @@ class OpenBlockLabsRegister:
         })
         self.authorization_session_id = None
         self._action_id = None
+        self._log_key_fn = log_key_fn
 
     def log(self, msg):
         print(f"[REG] {msg}")
+
+    def log_key(self, key: str, **params) -> None:
+        _emit_log_key(self.log, self._log_key_fn, key, **params)
 
     def _get_headers(self, referer: str = None, accept: str = None) -> dict:
         h = {
@@ -146,7 +153,8 @@ class OpenBlockLabsRegister:
             )
             if r.status_code == 200:
                 break
-            self.log(f"  CF拦截 (status={r.status_code}), 重试 {attempt+1}/5...")
+            self.log_key("openblocklabs.a26ce2a1", status_code=r.status_code, attempt=attempt + 1)
+            # was: self.log(f"  CF拦截 (status={r.status_code}), 重试 {attempt+1}/5...")
             time.sleep(2)
         final_url = str(r.url)
         parsed = urlparse(final_url)
