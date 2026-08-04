@@ -11,7 +11,7 @@ export function TaskLogPanel({
   taskId: string
   onDone: (status: string) => void
 }) {
-  const { catalog } = useLanguage()
+  const { catalog, lang } = useLanguage()
   const [lines, setLines] = useState<{ line: string; level: string }[]>([])
   const [task, setTask] = useState<any | null>(null)
   const [doneStatus, setDoneStatus] = useState<string | null>(null)
@@ -19,6 +19,12 @@ export function TaskLogPanel({
   const seenEventIdsRef = useRef<Set<number>>(new Set())
   const cursorRef = useRef(0)
   const doneRef = useRef(false)
+  // 按 taskId 记录 onDone 是否已经通知过消费方，且不受 effect 重跑影响
+  // （effect 重跑发生在语言切换时）——同一个 taskId 的生命周期内最多通知一次 —
+  // Tracks, per taskId, whether onDone was already fired -- and survives
+  // every effect re-run (a re-run happens on a language switch) -- so a
+  // given taskId's onDone fires at most once for the component's lifetime.
+  const doneNotifiedTaskIdRef = useRef<string | null>(null)
   const onDoneRef = useRef(onDone)
   const sseHealthyRef = useRef(false)
   const eventSourceRef = useRef<EventSource | null>(null)
@@ -54,7 +60,10 @@ export function TaskLogPanel({
         eventSourceRef.current = null
         const nextStatus = payload.status || 'succeeded'
         setDoneStatus(nextStatus)
-        onDoneRef.current(nextStatus)
+        if (doneNotifiedTaskIdRef.current !== taskId) {
+          doneNotifiedTaskIdRef.current = taskId
+          onDoneRef.current(nextStatus)
+        }
       }
     }
 
@@ -107,7 +116,7 @@ export function TaskLogPanel({
       eventSourceRef.current = null
       window.clearInterval(poll)
     }
-  }, [taskId])
+  }, [taskId, lang])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })

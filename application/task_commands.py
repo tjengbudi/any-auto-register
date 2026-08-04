@@ -42,7 +42,7 @@ class TaskCommandsService:
 
         while True:
             emitted = False
-            items = list_task_events(task_id, since=cursor, limit=200)
+            items = list_task_events(task_id, since=cursor, limit=200, ui_language=lang)
             for item in items:
                 cursor = max(cursor, int(item["id"] or 0))
                 # 这是文档记录的日志/轮询兜底路径之一（project-context.md），

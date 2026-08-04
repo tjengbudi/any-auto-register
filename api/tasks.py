@@ -35,7 +35,7 @@ def list_task_events(task_id: str, since: int = 0, limit: int = 200, lang: str =
     task = service.get_task(task_id)
     if not task:
         raise HTTPException(404, t("api.d1817495", lang))
-    events = service.list_events(task_id, since=since, limit=limit)
+    events = service.list_events(task_id, since=since, limit=limit, ui_language=lang)
     events["items"] = [render_result(item, lang) for item in events.get("items", [])]
     return events
 

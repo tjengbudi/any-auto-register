@@ -52,5 +52,5 @@ class TasksReadRepository:
         data = list_tasks(platform=platform, status=status, page=page, page_size=page_size)
         return int(data.get("total", 0) or 0), [_to_task_summary(item) for item in data.get("items", [])]
 
-    def list_events(self, task_id: str, *, since: int = 0, limit: int = 200) -> list[TaskEvent]:
-        return [_to_event(item) for item in list_task_events(task_id, since=since, limit=limit)]
+    def list_events(self, task_id: str, *, since: int = 0, limit: int = 200, ui_language: str) -> list[TaskEvent]:
+        return [_to_event(item) for item in list_task_events(task_id, since=since, limit=limit, ui_language=ui_language)]

@@ -159,15 +159,37 @@ def serialize_task(task: TaskModel) -> dict[str, Any]:
     }
 
 
-def serialize_event(event: TaskEventModel) -> dict[str, Any]:
+def serialize_event(event: TaskEventModel, ui_language: str = "zh") -> dict[str, Any]:
+    detail = event.get_detail()
+    message = event.message
+    # 只有 detail 本身是 dict 且携带非空字符串 i18n_key 时才尝试重渲染；
+    # 一个畸形/旧版 detail_json（None/[]/标量）必须原样回退到已存的 message，
+    # 这条读边界永不因为脏数据而抛出（AD-10）——
+    # Only attempt a re-render when `detail` is itself a dict carrying a
+    # non-empty string `i18n_key`; a malformed/legacy detail_json (None, a
+    # list, a bare scalar) must fall back to the stored message untouched --
+    # this read boundary never raises on bad data (AD-10).
+    if isinstance(detail, dict):
+        i18n_key = detail.get("i18n_key")
+        if isinstance(i18n_key, str) and i18n_key:
+            params = detail.get("i18n_params")
+            params = params if isinstance(params, dict) else {}
+            try:
+                message = t(i18n_key, ui_language, **params)
+            except TypeError:
+                # 例如 i18n_params 里有个名叫 "key"/"lang" 的参数，跟 t() 自身的
+                # 位置/关键字参数冲突（DW-45）——保留已存的 zh 回退文本 —
+                # e.g. an i18n_params name collides with t()'s own "key"/"lang"
+                # params (DW-45) -- keep the stored zh fallback text.
+                message = event.message
     return {
         "id": event.id,
         "task_id": event.task_id,
         "type": event.type,
         "level": event.level,
-        "message": event.message,
-        "line": f"[{format_local_clock(event.created_at)}] {event.message}",
-        "detail": event.get_detail(),
+        "message": message,
+        "line": f"[{format_local_clock(event.created_at)}] {message}",
+        "detail": detail,
         "created_at": _serialize_datetime(event.created_at),
     }
 
@@ -265,7 +287,7 @@ def list_tasks(*, platform: str = "", status: str = "", page: int = 1, page_size
     return {"total": total, "page": page, "items": [serialize_task(item) for item in items]}
 
 
-def list_task_events(task_id: str, *, since: int = 0, limit: int = 200) -> list[dict[str, Any]]:
+def list_task_events(task_id: str, *, since: int = 0, limit: int = 200, ui_language: str) -> list[dict[str, Any]]:
     limit = min(max(limit, 1), 500)
     with Session(engine) as session:
         q = (
@@ -276,7 +298,12 @@ def list_task_events(task_id: str, *, since: int = 0, limit: int = 200) -> list[
             .limit(limit)
         )
         items = session.exec(q).all()
-    return [serialize_event(item) for item in items]
+    # 一个批次只解析一次 ui_language，原样传给每一条 serialize_event —
+    # 不在这里逐条/逐 key 重新解析语言（AD-4）——
+    # One `ui_language` resolution reused for every row in this batch, passed
+    # through to each serialize_event call unchanged -- never a per-row or
+    # per-key re-resolution (AD-4).
+    return [serialize_event(item, ui_language) for item in items]
 
 
 def append_task_event(task_id: str, message: str, *, event_type: str = "log", level: str = "info", detail: dict | None = None) -> dict[str, Any]:

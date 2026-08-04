@@ -22,8 +22,8 @@ class TasksQueryService:
             "items": [self._serialize(item) for item in items],
         }
 
-    def list_events(self, task_id: str, *, since: int = 0, limit: int = 200) -> dict:
-        items = self.repository.list_events(task_id, since=since, limit=limit)
+    def list_events(self, task_id: str, *, since: int = 0, limit: int = 200, ui_language: str) -> dict:
+        items = self.repository.list_events(task_id, since=since, limit=limit, ui_language=ui_language)
         return {
             "items": [
                 {
