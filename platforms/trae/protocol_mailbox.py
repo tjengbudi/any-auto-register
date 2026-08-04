@@ -3,13 +3,24 @@ from __future__ import annotations
 
 from typing import Callable, Optional
 
+from platforms.trae._i18n_helpers import _emit_log_key, _raise_keyed
 from platforms.trae.core import TraeRegister, _rand_password
 
 
 class TraeProtocolMailboxWorker:
-    def __init__(self, *, executor, log_fn: Callable[[str], None] = print):
-        self.client = TraeRegister(executor=executor, log_fn=log_fn)
+    def __init__(
+        self,
+        *,
+        executor,
+        log_fn: Callable[[str], None] = print,
+        log_key_fn: Optional[Callable[[str, dict], None]] = None,
+    ):
+        self.client = TraeRegister(executor=executor, log_fn=log_fn, log_key_fn=log_key_fn)
         self.log = log_fn
+        self._log_key_fn = log_key_fn
+
+    def log_key(self, key: str, **params) -> None:
+        _emit_log_key(self.log, self._log_key_fn, key, **params)
 
     def run(
         self,
@@ -23,8 +34,10 @@ class TraeProtocolMailboxWorker:
         self.client.step2_send_code(email)
         otp = otp_callback() if otp_callback else input("OTP: ")
         if not otp:
-            raise RuntimeError("未获取到验证码")
-        self.log(f"验证码: {otp}")
+            _raise_keyed(RuntimeError, "trae.13939cce")
+            # was: raise RuntimeError("未获取到验证码")
+        self.log_key("trae.8f3b2133", otp=otp)
+        # was: self.log(f"验证码: {otp}")
         user_id = self.client.step3_register(email, use_password, otp)
         self.client.step4_trae_login()
         token = self.client.step5_get_token()

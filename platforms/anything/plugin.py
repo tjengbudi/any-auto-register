@@ -7,6 +7,7 @@ from core.base_mailbox import BaseMailbox
 from core.base_platform import Account, AccountStatus, BasePlatform, RegisterConfig
 from core.registration import LinkSpec, ProtocolMailboxAdapter, RegistrationResult
 from core.registry import register
+from platforms.anything._i18n_helpers import _raise_keyed
 from platforms.anything.core import (
     ANYTHING_BASE,
     ANYTHING_CHECKOUT_LOOKUPS,
@@ -66,7 +67,7 @@ class AnythingPlatform(BasePlatform):
         def _build_worker(ctx, artifacts):
             from platforms.anything.protocol_mailbox import AnythingProtocolMailboxWorker
 
-            return AnythingProtocolMailboxWorker(proxy=ctx.proxy, log_fn=ctx.log)
+            return AnythingProtocolMailboxWorker(proxy=ctx.proxy, log_fn=ctx.log, log_key_fn=ctx.log_key_fn)
 
         def _run_worker(worker, ctx, artifacts):
             extra = dict(ctx.extra or {})
@@ -94,6 +95,7 @@ class AnythingPlatform(BasePlatform):
             account,
             proxy=self.config.proxy if self.config else None,
             log_fn=self.log,
+            log_key_fn=self._log_key_fn,
             force_refresh=force_refresh,
         )
 
@@ -129,7 +131,7 @@ class AnythingPlatform(BasePlatform):
             if not lookup:
                 return {"ok": False, "error": json.dumps({"i18n_key": "anything.21311389", "i18n_params": {}}, ensure_ascii=False)}
 
-            client = AnythingClient(proxy=self.config.proxy if self.config else None, log_fn=self.log)
+            client = AnythingClient(proxy=self.config.proxy if self.config else None, log_fn=self.log, log_key_fn=self._log_key_fn)
             checkout = client.create_checkout_session_with_lookup(
                 access_token=str(state.get("access_token") or ""),
                 organization_id=organization_id,
@@ -149,4 +151,5 @@ class AnythingPlatform(BasePlatform):
                 },
             }
 
-        raise NotImplementedError(f"未知操作: {action_id}")
+        _raise_keyed(NotImplementedError, "anything.701d383a", action_id=action_id)
+        # was: raise NotImplementedError(f"未知操作: {action_id}")

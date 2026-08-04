@@ -2,6 +2,8 @@
 import random, string
 from typing import Optional, Callable
 
+from platforms.trae._i18n_helpers import _emit_log_key, _raise_keyed
+
 BASE_URL = "https://ug-normal.trae.ai"
 API_SG   = "https://api-sg-central.trae.ai"
 AID      = "677332"
@@ -25,33 +27,42 @@ def _base_params():
 
 
 class TraeRegister:
-    def __init__(self, executor, log_fn: Callable = print):
+    def __init__(self, executor, log_fn: Callable = print, log_key_fn: Optional[Callable[[str, dict], None]] = None):
         self.ex = executor
         self.log = log_fn
+        self._log_key_fn = log_key_fn
+
+    def log_key(self, key: str, **params) -> None:
+        _emit_log_key(self.log, self._log_key_fn, key, **params)
 
     def step1_region(self):
         self.ex.post(f"{BASE_URL}/passport/web/region/",
                      params=_base_params(), data={"type": "2"})
 
     def step2_send_code(self, email: str):
-        self.log("发送验证码...")
+        self.log_key("trae.8a956af4")
+        # was: self.log("发送验证码...")
         r = self.ex.post(f"{BASE_URL}/passport/web/email/send_code/",
                          params=_base_params(),
                          data={"type": "1", "email": email,
                                "password": "", "email_logic_type": "2"})
         if r.json().get("message") != "success":
-            raise RuntimeError(f"send_code 失败: {r.text}")
-        self.log("验证码已发送，等待邮件...")
+            _raise_keyed(RuntimeError, "trae.b368b478", resp_text=r.text)
+            # was: raise RuntimeError(f"send_code 失败: {r.text}")
+        self.log_key("trae.4fa2624b")
+        # was: self.log("验证码已发送，等待邮件...")
 
     def step3_register(self, email: str, password: str, otp: str):
-        self.log(f"提交注册... otp={otp}")
+        self.log_key("trae.ba3806bf", otp=otp)
+        # was: self.log(f"提交注册... otp={otp}")
         r = self.ex.post(f"{BASE_URL}/passport/web/email/register_verify_login/",
                          params=_base_params(),
                          data={"type": "1", "email": email, "password": password,
                                "code": otp, "email_logic_type": "2"})
         j = r.json()
         if j.get("message") != "success" and not j.get("data", {}).get("user_id_str"):
-            raise RuntimeError(f"register 失败: {r.text}")
+            _raise_keyed(RuntimeError, "trae.7f43c16d", resp_text=r.text)
+            # was: raise RuntimeError(f"register 失败: {r.text}")
         return j["data"]["user_id_str"]
 
     def step4_trae_login(self):
@@ -80,5 +91,6 @@ class TraeRegister:
             self.log(f"  create_order status={r.status_code} resp={r.text[:200]}")
             return r.json().get("order_info", {}).get("cashier_url", "")
         except Exception as e:
-            self.log(f"  create_order 失败: {e}")
+            self.log_key("trae.d87a47e4", exc=str(e))
+            # was: self.log(f"  create_order 失败: {e}")
             return ""

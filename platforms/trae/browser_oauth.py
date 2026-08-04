@@ -1,5 +1,6 @@
 """Trae OAuth 浏览器流程。"""
 import time
+from typing import Callable, Optional
 
 from core.executors.protocol import ProtocolExecutor
 from core.oauth_browser import (
@@ -8,6 +9,7 @@ from core.oauth_browser import (
     finalize_oauth_email,
     oauth_provider_label,
 )
+from platforms.trae._i18n_helpers import _emit_log_key, _raise_keyed
 from platforms.trae.core import TraeRegister
 
 
@@ -18,6 +20,7 @@ def register_with_browser_oauth(
     email_hint: str = "",
     timeout: int = 300,
     log_fn=print,
+    log_key: Optional[Callable[[str, dict], None]] = None,
     headless: bool = False,
     chrome_user_data_dir: str = "",
     chrome_cdp_url: str = "",
@@ -30,6 +33,7 @@ def register_with_browser_oauth(
         chrome_user_data_dir=chrome_user_data_dir,
         chrome_cdp_url=chrome_cdp_url,
         log_fn=log_fn,
+        log_key_fn=log_key,
     ) as browser:
         browser.goto("https://www.trae.ai/account-setting?type=login")
         time.sleep(2)
@@ -39,26 +43,30 @@ def register_with_browser_oauth(
         if chrome_user_data_dir or chrome_cdp_url:
             browser.auto_select_google_account()
         else:
-            log_fn(f"请在浏览器中完成登录，可使用 {method_text}，最长等待 {timeout} 秒")
+            _emit_log_key(log_fn, log_key, "trae.a45d8569", method_text=method_text, timeout=timeout)
+            # was: log_fn(f"请在浏览器中完成登录，可使用 {method_text}，最长等待 {timeout} 秒")
             if email_hint:
-                log_fn(f"请确认最终登录账号邮箱为: {email_hint}")
+                _emit_log_key(log_fn, log_key, "trae.18555deb", email_hint=email_hint)
+                # was: log_fn(f"请确认最终登录账号邮箱为: {email_hint}")
 
         final_url = browser.wait_for_url(
             lambda url: "trae.ai" in url and ("account-setting" in url or "workspace" in url or "ide" in url),
             timeout=timeout,
         )
         if not final_url:
-            raise RuntimeError(f"Trae 浏览器登录未在 {timeout} 秒内完成")
+            _raise_keyed(RuntimeError, "trae.3cf17fea", timeout=timeout)
+            # was: raise RuntimeError(f"Trae 浏览器登录未在 {timeout} 秒内完成")
 
         browser_cookies = browser.cookie_dict(domain_substrings=("trae.ai",))
 
     with ProtocolExecutor(proxy=proxy) as ex:
         ex.set_cookies(browser_cookies)
-        reg = TraeRegister(executor=ex, log_fn=log_fn)
+        reg = TraeRegister(executor=ex, log_fn=log_fn, log_key_fn=log_key)
         reg.step4_trae_login()
         token = reg.step5_get_token()
         if not token:
-            raise RuntimeError("Trae OAuth 登录后未获取到平台 token")
+            _raise_keyed(RuntimeError, "trae.92d61184")
+            # was: raise RuntimeError("Trae OAuth 登录后未获取到平台 token")
         result = reg.step6_check_login()
         cashier_url = reg.step7_create_order(token)
 

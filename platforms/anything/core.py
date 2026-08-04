@@ -4,12 +4,13 @@ from __future__ import annotations
 import json
 from datetime import datetime, timedelta, timezone
 from http.cookies import SimpleCookie
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 from urllib.parse import unquote, urlparse
 
 from curl_cffi.requests import Session
 
 from core.base_platform import Account
+from platforms.anything._i18n_helpers import _emit_log_key, _raise_keyed
 
 ANYTHING_BASE = "https://www.anything.com"
 ANYTHING_GRAPHQL = f"{ANYTHING_BASE}/api/graphql"
@@ -301,8 +302,15 @@ def extract_anything_account_context(account: Account | Any) -> dict[str, str]:
 
 
 class AnythingClient:
-    def __init__(self, *, proxy: str | None = None, log_fn: Callable[[str], None] = print):
+    def __init__(
+        self,
+        *,
+        proxy: str | None = None,
+        log_fn: Callable[[str], None] = print,
+        log_key_fn: Optional[Callable[[str, dict], None]] = None,
+    ):
         self._log = log_fn
+        self._log_key_fn = log_key_fn
         proxies = {"http": proxy, "https": proxy} if proxy else None
         self.s = Session(impersonate="chrome", proxies=proxies, timeout=30)
         self.s.headers.update(
@@ -321,6 +329,9 @@ class AnythingClient:
     def log(self, message: str) -> None:
         self._log(message)
 
+    def log_key(self, key: str, **params) -> None:
+        _emit_log_key(self._log, self._log_key_fn, key, **params)
+
     def _resolve_referer(self, referer: str | None) -> str:
         raw = str(referer or ANYTHING_BASE).strip() or ANYTHING_BASE
         if raw.startswith("http://") or raw.startswith("https://"):
@@ -338,11 +349,13 @@ class AnythingClient:
         response = self.s.post(ANYTHING_GRAPHQL, headers=headers, data=json.dumps(payload))
         self.log(f"POST /api/graphql -> {response.status_code}")
         if response.status_code != 200:
-            raise RuntimeError(f"anything graphql 请求失败: {response.status_code} {response.text[:200]}")
+            _raise_keyed(RuntimeError, "anything.4b2e1922", status_code=response.status_code, body=response.text[:200])
+            # was: raise RuntimeError(f"anything graphql 请求失败: {response.status_code} {response.text[:200]}")
         try:
             return response.json()
         except Exception as exc:
-            raise RuntimeError(f"anything graphql 响应不是 JSON: {exc}") from exc
+            _raise_keyed(RuntimeError, "anything.580ad1a6", exc=str(exc))
+            # was: raise RuntimeError(f"anything graphql 响应不是 JSON: {exc}") from exc
 
     def _fetch_state_once(
         self,
@@ -367,7 +380,8 @@ class AnythingClient:
         ]
         batch_result = self._graphql(batch_payload, access_token=access_token, referer=referer or "/")
         if not isinstance(batch_result, list) or len(batch_result) < 2:
-            raise RuntimeError(f"anything 账号状态返回异常: {json.dumps(batch_result, ensure_ascii=False)[:300]}")
+            _raise_keyed(RuntimeError, "anything.76a0eb31", body=json.dumps(batch_result, ensure_ascii=False)[:300])
+            # was: raise RuntimeError(f"anything 账号状态返回异常: {json.dumps(batch_result, ensure_ascii=False)[:300]}")
         me = (((batch_result[0] or {}).get("data") or {}).get("me") or {})
         organizations_payload = ((batch_result[1] or {}).get("data") or {})
         return {
@@ -398,7 +412,8 @@ class AnythingClient:
         post_login_redirect: str | None = None,
     ) -> dict[str, Any]:
         referral = str(referral_code).strip()
-        self.log(f"Step1: 发起注册 {email}")
+        self.log_key("anything.8495c215", email=email)
+        # was: self.log(f"Step1: 发起注册 {email}")
         payload = {
             "operationName": "SignUpWithAppPrompt",
             "variables": {
@@ -415,11 +430,13 @@ class AnythingClient:
         data = self._graphql(payload, referer=f"/signup?rid={referral}" if referral else "/signup")
         result = ((data or {}).get("data") or {}).get("signUpAndStartAgent") or {}
         if not result or not result.get("success"):
-            raise RuntimeError(f"anything 注册失败: {json.dumps(result, ensure_ascii=False)[:300]}")
+            _raise_keyed(RuntimeError, "anything.54300d8f", body=json.dumps(result, ensure_ascii=False)[:300])
+            # was: raise RuntimeError(f"anything 注册失败: {json.dumps(result, ensure_ascii=False)[:300]}")
         return dict(result)
 
     def sign_in_with_magic_link_code(self, *, email: str, code: str, referer: str | None = None) -> dict[str, Any]:
-        self.log(f"Step2: 使用 magic link code 登录 {email}")
+        self.log_key("anything.80d47974", email=email)
+        # was: self.log(f"Step2: 使用 magic link code 登录 {email}")
         payload = {
             "operationName": "SignInWithMagicLinkCode",
             "variables": {"input": {"email": email, "codeAttempt": code}},
@@ -435,13 +452,15 @@ class AnythingClient:
         )
         self.log(f"POST /api/graphql SignInWithMagicLinkCode -> {response.status_code}")
         if response.status_code != 200:
-            raise RuntimeError(f"anything magic link 登录失败: {response.status_code} {response.text[:200]}")
+            _raise_keyed(RuntimeError, "anything.8b8028c9", status_code=response.status_code, body=response.text[:200])
+            # was: raise RuntimeError(f"anything magic link 登录失败: {response.status_code} {response.text[:200]}")
         body = response.json()
         data = ((body or {}).get("data") or {}).get("signInWithMagicLinkCode") or {}
         access_token = str(data.get("accessToken") or "").strip()
         refresh_token = _extract_refresh_token_from_set_cookie(response)
         if not access_token:
-            raise RuntimeError(f"anything 未返回 accessToken: {json.dumps(body, ensure_ascii=False)[:300]}")
+            _raise_keyed(RuntimeError, "anything.0fe3767f", detail=json.dumps(body, ensure_ascii=False)[:300])
+            # was: raise RuntimeError(f"anything 未返回 accessToken: {json.dumps(body, ensure_ascii=False)[:300]}")
         if refresh_token:
             self._bind_refresh_token(refresh_token)
         self.log(f"  access_token={_clip(access_token)} refresh_token={_clip(refresh_token)}")
@@ -454,7 +473,8 @@ class AnythingClient:
     def resolve_magic_link(self, raw_link: str, *, referer: str | None = None) -> str:
         candidate = str(raw_link or "").strip()
         if not candidate:
-            raise RuntimeError("空 magic link")
+            _raise_keyed(RuntimeError, "anything.989ea928")
+            # was: raise RuntimeError("空 magic link")
         if "/auth/magic-link" in candidate:
             return candidate
 
@@ -481,7 +501,8 @@ class AnythingClient:
                 tail = source[idx:]
                 tail = tail.split('"', 1)[0].split("'", 1)[0].split("&amp;", 1)[0]
                 return tail
-        raise RuntimeError(f"无法解析 anything 魔法链接跳转: {candidate[:200]}")
+        _raise_keyed(RuntimeError, "anything.6d3d9039", candidate=candidate[:200])
+        # was: raise RuntimeError(f"无法解析 anything 魔法链接跳转: {candidate[:200]}")
 
     def refresh_access_token(self, refresh_token: str, *, referer: str | None = None) -> dict[str, Any]:
         self._bind_refresh_token(refresh_token)
@@ -493,14 +514,17 @@ class AnythingClient:
         )
         self.log(f"POST /api/refresh_token -> {response.status_code}")
         if response.status_code != 200:
-            raise RuntimeError(f"anything refresh_token 请求失败: {response.status_code} {response.text[:200]}")
+            _raise_keyed(RuntimeError, "anything.ad3e1dc6", status_code=response.status_code, body=response.text[:200])
+            # was: raise RuntimeError(f"anything refresh_token 请求失败: {response.status_code} {response.text[:200]}")
         payload = response.json()
         if not payload.get("ok"):
-            raise RuntimeError(f"anything refresh_token 失败: {json.dumps(payload, ensure_ascii=False)[:200]}")
+            _raise_keyed(RuntimeError, "anything.799dd56d", detail=json.dumps(payload, ensure_ascii=False)[:200])
+            # was: raise RuntimeError(f"anything refresh_token 失败: {json.dumps(payload, ensure_ascii=False)[:200]}")
         new_access = str(payload.get("accessToken") or "").strip()
         new_refresh = str(payload.get("refreshToken") or refresh_token or "").strip()
         if not new_access:
-            raise RuntimeError("anything refresh_token 成功但未返回 accessToken")
+            _raise_keyed(RuntimeError, "anything.596574ad")
+            # was: raise RuntimeError("anything refresh_token 成功但未返回 accessToken")
         if new_refresh:
             self._bind_refresh_token(new_refresh)
         return {
@@ -530,7 +554,8 @@ class AnythingClient:
             current_access = refreshed["access_token"]
             current_refresh = refreshed["refresh_token"]
         if not current_access:
-            raise RuntimeError("缺少 anything access_token")
+            _raise_keyed(RuntimeError, "anything.4babf0f3")
+            # was: raise RuntimeError("缺少 anything access_token")
         try:
             state = self._fetch_state_once(
                 access_token=current_access,
@@ -560,7 +585,8 @@ class AnythingClient:
                         referer=f"/dashboard/team/{organization_id}/subscription",
                     )
                 except Exception as exc:
-                    self.log(f"获取 usage 摘要失败，忽略并继续: {exc}")
+                    self.log_key("anything.0942a8d9", exc=str(exc))
+                    # was: self.log(f"获取 usage 摘要失败，忽略并继续: {exc}")
         return state
 
     def fetch_aggregated_usage_by_organization(
@@ -628,7 +654,8 @@ class AnythingClient:
         data = ((body or {}).get("data") or {}).get("createCheckoutSessionWithPriceLookup") or {}
         url = str(data.get("url") or "").strip()
         if not url:
-            raise RuntimeError(f"anything 未返回 checkout url: {json.dumps(body, ensure_ascii=False)[:300]}")
+            _raise_keyed(RuntimeError, "anything.d35805bf", detail=json.dumps(body, ensure_ascii=False)[:300])
+            # was: raise RuntimeError(f"anything 未返回 checkout url: {json.dumps(body, ensure_ascii=False)[:300]}")
         return {
             "url": url,
             "lookup": lookup,
@@ -641,10 +668,11 @@ def load_anything_account_state(
     *,
     proxy: str | None = None,
     log_fn: Callable[[str], None] = print,
+    log_key_fn: Optional[Callable[[str, dict], None]] = None,
     force_refresh: bool = False,
 ) -> dict[str, Any]:
     context = extract_anything_account_context(account)
-    client = AnythingClient(proxy=proxy, log_fn=log_fn)
+    client = AnythingClient(proxy=proxy, log_fn=log_fn, log_key_fn=log_key_fn)
     state = client.fetch_account_state(
         access_token=context["access_token"],
         refresh_token=context["refresh_token"],

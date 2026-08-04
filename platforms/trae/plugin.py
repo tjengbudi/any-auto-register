@@ -6,6 +6,7 @@ from core.base_mailbox import BaseMailbox
 from core.registration import BrowserRegistrationAdapter, OtpSpec, ProtocolMailboxAdapter, ProtocolOAuthAdapter, RegistrationCapability, RegistrationResult
 from core.registration.helpers import resolve_timeout
 from core.registry import register
+from platforms.trae._i18n_helpers import _raise_keyed
 
 
 def _marker(key: str, **params) -> str:
@@ -57,6 +58,7 @@ class TraePlatform(BasePlatform):
             email_hint=ctx.identity.email,
             timeout=resolve_timeout(ctx.extra, ("browser_oauth_timeout", "manual_oauth_timeout"), 300),
             log_fn=ctx.log,
+            log_key=ctx.log_key_fn,
             headless=(ctx.executor_type == "headless"),
             chrome_user_data_dir=ctx.identity.chrome_user_data_dir,
             chrome_cdp_url=ctx.identity.chrome_cdp_url,
@@ -70,6 +72,7 @@ class TraePlatform(BasePlatform):
                 proxy=ctx.proxy,
                 otp_callback=artifacts.otp_callback,
                 log_fn=ctx.log,
+                log_key_fn=ctx.log_key_fn,
             ),
             browser_register_runner=lambda worker, ctx, artifacts: worker.run(
                 email=ctx.identity.email or "",
@@ -92,6 +95,7 @@ class TraePlatform(BasePlatform):
             worker_builder=lambda ctx, artifacts: __import__("platforms.trae.protocol_mailbox", fromlist=["TraeProtocolMailboxWorker"]).TraeProtocolMailboxWorker(
                 executor=artifacts.executor,
                 log_fn=ctx.log,
+                log_key_fn=ctx.log_key_fn,
             ),
             register_runner=lambda worker, ctx, artifacts: worker.run(
                 email=ctx.identity.email,
@@ -176,4 +180,5 @@ class TraePlatform(BasePlatform):
                 return {"ok": False, "error": _marker("trae.4f63142e")}
             return {"ok": True, "data": {"cashier_url": cashier_url, "message": _marker("trae.2a2280d2")}}
 
-        raise NotImplementedError(f"未知操作: {action_id}")
+        _raise_keyed(NotImplementedError, "trae.701d383a", action_id=action_id)
+        # was: raise NotImplementedError(f"未知操作: {action_id}")
