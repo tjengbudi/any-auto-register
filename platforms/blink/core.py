@@ -11,6 +11,19 @@ blink.new 注册与账号状态请求封装。
   7. POST /api/credits/migrate 与 /api/referral/generate 完成注册后动作
   8. GET /api/auth/session-data 查询套餐/额度
   9. POST /api/stripe/checkout 生成 Stripe Checkout 链接
+
+blink.new registration and account-state request wrapper.
+
+Core chain:
+  1. POST /api/auth/main-app/magic-link to send the magic link
+  2. GET /api/auth/main-app/magic-link to redeem the customToken
+  3. POST Firebase signInWithCustomToken to obtain the idToken / firebase refresh token
+  4. POST /api/auth/token to obtain the Blink access_token / refresh_token
+  5. POST /api/auth/session to obtain the Blink session cookie
+  6. POST /api/users/create to initialize the user record
+  7. POST /api/credits/migrate and /api/referral/generate to complete post-registration actions
+  8. GET /api/auth/session-data to query the plan/quota
+  9. POST /api/stripe/checkout to generate the Stripe Checkout link
 """
 from __future__ import annotations
 

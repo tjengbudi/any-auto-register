@@ -1,4 +1,4 @@
-"""anything.com 注册、登录、状态查询与支付链接封装。"""
+"""anything.com 注册、登录、状态查询与支付链接封装。 — anything.com registration, login, account-state queries, and payment-link wrapper."""
 from __future__ import annotations
 
 import json

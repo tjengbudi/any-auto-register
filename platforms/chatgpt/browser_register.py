@@ -1,4 +1,4 @@
-"""ChatGPT 浏览器注册流程（Camoufox）。"""
+"""ChatGPT 浏览器注册流程（Camoufox）。 — ChatGPT browser registration flow (Camoufox)."""
 import base64
 import json
 import random
@@ -196,6 +196,10 @@ def _parse_phone_country_and_local(phone_number: str) -> tuple[str, str, str]:
     """从完整手机号解析出 (拨号码, 本地号码, 国家名)。
 
     例: +66959075673 -> ("66", "959075673", "Thailand")
+
+    Parse (dial code, local number, country name) from a full phone number.
+
+    Example: +66959075673 -> ("66", "959075673", "Thailand")
     """
     num = str(phone_number or "").lstrip("+").strip()
     for length in (3, 2, 1):
@@ -212,6 +216,12 @@ def _select_phone_country_ui(page, dial_code: str, country_name: str, log, log_k
 
     OpenAI add-phone 页面使用 React Aria Select 组件，底层有一个隐藏的原生 <select>
     和一个可视的 button trigger + listbox 弹出层。
+
+    Select the matching country in the add-phone page's country dropdown.
+
+    The OpenAI add-phone page uses a React Aria Select component: a hidden
+    native <select> underneath, plus a visible button trigger and listbox
+    popup on top.
     """
     if not dial_code and not country_name:
         _emit_log_key(log, log_key, "chatgpt.814efd3f")
@@ -1775,7 +1785,7 @@ def _submit_login_email_via_page(page, email: str, log, log_key: Optional[Callab
 
 
 def _do_codex_oauth(page, cookies_dict: dict, email: str, password: str, otp_callback, phone_callback, proxy: str | None, log, log_key: Optional[Callable[[str, dict], None]] = None) -> dict | None:
-    """在真实浏览器会话内完成 Codex OAuth，返回完整 token 包。"""
+    """在真实浏览器会话内完成 Codex OAuth，返回完整 token 包。 — Complete the Codex OAuth flow inside a real browser session, returning the full token bundle."""
     from .oauth import generate_oauth_url
     from .constants import CODEX_CLIENT_ID, CODEX_REDIRECT_URI, CODEX_SCOPE
 
@@ -2202,6 +2212,12 @@ def _handle_add_phone_challenge(
 
     流程: 选择国家 -> 输入本地号码 -> 点击发送 -> 填写 OTP -> 点击验证。
     如果验证码超时未收到，自动换号重试（最多 max_phone_attempts 次）。
+
+    Complete phone verification via UI interaction on the add-phone page.
+
+    Flow: select country -> enter local number -> click send -> fill in the
+    OTP -> click verify. If the OTP times out without arriving, automatically
+    retry with a new number (up to max_phone_attempts times).
     """
     if not phone_callback:
         _raise_keyed(RuntimeError, "chatgpt.52d3c834")
@@ -2268,7 +2284,7 @@ def _do_add_phone_attempt(
     log_key: Optional[Callable[[str, dict], None]] = None,
     resume_url: str = "",
 ) -> dict:
-    """单次手机号验证尝试（内部函数）。"""
+    """单次手机号验证尝试（内部函数）。 — A single phone-verification attempt (internal function)."""
 
     # 保留 HTTP resend 回调供 SMS provider 内部使用 — Keep the HTTP resend callback for internal use by the SMS provider
     referer = _normalize_url(str(page.url or ""), OPENAI_AUTH) or f"{OPENAI_AUTH}/add-phone"
@@ -2690,6 +2706,14 @@ def _complete_oauth_in_browser(page, oauth_start, proxy, log, log_key: Optional[
     - consent 页面是一个 <form action="/sign-in-with-chatgpt/.../consent">
     - 首选 form.requestSubmit(button) 而非 button.click()
     - 多轮重试: requestSubmit → click → dispatchEvent → 刷新重试
+
+    Complete the OAuth consent flow in the browser, retrying the Continue
+    click with multiple strategies.
+
+    Modeled on the Chrome-extension reference project's step9 implementation:
+    - The consent page is a <form action="/sign-in-with-chatgpt/.../consent">
+    - Prefer form.requestSubmit(button) over button.click()
+    - Multi-round retry: requestSubmit -> click -> dispatchEvent -> refresh and retry
     """
     from .oauth import submit_callback_url
 
@@ -2800,7 +2824,7 @@ def _complete_oauth_in_browser(page, oauth_start, proxy, log, log_key: Optional[
         return None
 
     def _find_consent_button():
-        """按优先级查找 consent 页面的 Continue 按钮"""
+        """按优先级查找 consent 页面的 Continue 按钮 — Find the consent page's Continue button, by priority."""
         # 策略 1: 在 consent form 内找 submit 按钮 — Strategy 1: find the submit button inside the consent form
         _sel = CONSENT_FORM_SEL
         btn = page.evaluate("""(sel) => {
@@ -2840,7 +2864,7 @@ def _complete_oauth_in_browser(page, oauth_start, proxy, log, log_key: Optional[
         return None
 
     def _click_strategy_request_submit(log_round: int) -> bool:
-        """策略 1: form.requestSubmit(button) — 最可靠的表单提交方式"""
+        """策略 1: form.requestSubmit(button) — 最可靠的表单提交方式 — Strategy 1: form.requestSubmit(button), the most reliable way to submit the form"""
         try:
             result = page.evaluate("""(sel) => {
                 const form = document.querySelector(sel);
@@ -2871,7 +2895,7 @@ def _complete_oauth_in_browser(page, oauth_start, proxy, log, log_key: Optional[
             return False
 
     def _click_strategy_playwright(log_round: int) -> bool:
-        """策略 2: Playwright locator.click()"""
+        """策略 2: Playwright locator.click() — Strategy 2: Playwright locator.click()"""
         for sel in [
             'button:has-text("Continue")',
             'button:has-text("继续")',
@@ -2892,7 +2916,7 @@ def _complete_oauth_in_browser(page, oauth_start, proxy, log, log_key: Optional[
         return False
 
     def _click_strategy_js_dispatch(log_round: int) -> bool:
-        """策略 3: JS dispatchEvent 模拟点击"""
+        """策略 3: JS dispatchEvent 模拟点击 — Strategy 3: simulate a click via JS dispatchEvent"""
         try:
             result = page.evaluate("""() => {
                 const buttons = document.querySelectorAll('button, [role="button"]');
@@ -3013,7 +3037,7 @@ def _complete_oauth_in_browser(page, oauth_start, proxy, log, log_key: Optional[
 
 
 def _submit_oauth_password_direct(page, password: str, log, log_key: Optional[Callable[[str, dict], None]] = None) -> dict:
-    """OAuth 流程专用：直接填密码登录，不尝试恢复到注册态。"""
+    """OAuth 流程专用：直接填密码登录，不尝试恢复到注册态。 — OAuth-flow-specific: fill in the password and log in directly, without trying to recover registration state."""
     input_selector = _wait_for_any_selector(page, PASSWORD_INPUT_SELECTORS, timeout=15)
     if not input_selector:
         # 密码输入框没出现，可能页面还在加载或跳转了 — The password input didn't appear; the page may still be loading or navigating
@@ -3341,7 +3365,7 @@ def _submit_about_you_via_page(page, log, log_key: Optional[Callable[[str, dict]
         return None
 
     def _fill_second_visible_input(values: list[str], excluded_visible_indices: set[int] | None = None) -> bool:
-        """兜底：about_you 卡片一般是 Full name + Birthday/Age 两个输入框。"""
+        """兜底：about_you 卡片一般是 Full name + Birthday/Age 两个输入框。 — Fallback: the about_you card usually has two inputs, Full name + Birthday/Age."""
         try:
             locator = page.locator(
                 "input:visible:not([type='hidden']):not([disabled]):not([readonly])"
@@ -3385,7 +3409,7 @@ def _submit_about_you_via_page(page, log, log_key: Optional[Callable[[str, dict]
             return False
 
     def _fill_birthday_selects(yyyy: str, mm: str, dd: str) -> bool:
-        """处理 Month/Day/Year 下拉样式的生日控件。"""
+        """处理 Month/Day/Year 下拉样式的生日控件。 — Handle the Month/Day/Year dropdown-style birthday control."""
         try:
             select_locator = page.locator("select:visible")
             count = select_locator.count()
@@ -3655,7 +3679,11 @@ def _submit_about_you_via_page(page, log, log_key: Optional[Callable[[str, dict]
 
     def _fill_segmented_date(mm: str, dd: str, yyyy: str) -> bool:
         """处理 MM / DD / YYYY 分段日期输入框（React DateField 样式）。
-        特征：一个 Birthday label 下有多个小 input 或 div[data-type] 段。"""
+        特征：一个 Birthday label 下有多个小 input 或 div[data-type] 段。
+
+        Handle the segmented MM / DD / YYYY date input (React DateField style).
+        Characteristic: under a single Birthday label there are multiple small
+        input or div[data-type] segments."""
         try:
             # 方式1: div[data-type] 段 (React Aria DateField) — Method 1: div[data-type] segments (React Aria DateField)
             month_seg = page.locator('div[data-type="month"], input[data-type="month"]')
@@ -4205,7 +4233,7 @@ class ChatGPTBrowserRegister:
         # was: raise RuntimeError("ChatGPT registration did not complete a full OAuth callback; refusing to fall back to a partial session/access_token result")
 
     def _retry_oauth_fresh_browser(self, email, password):
-        """在全新浏览器 context 里做 Codex OAuth（绕过 add_phone session）。"""
+        """在全新浏览器 context 里做 Codex OAuth（绕过 add_phone session）。 — Perform Codex OAuth in a fresh browser context (bypassing the add_phone session)."""
         proxy = _build_proxy_config(self.proxy)
         launch_opts = {"headless": self.headless}
         if proxy:

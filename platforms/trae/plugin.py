@@ -1,4 +1,4 @@
-"""Trae.ai 平台插件"""
+"""Trae.ai 平台插件 — Trae.ai platform plugin"""
 import json
 
 from core.base_platform import BasePlatform, Account, AccountStatus, RegisterConfig
@@ -113,7 +113,7 @@ class TraePlatform(BasePlatform):
         return bool(account.token)
 
     def get_platform_actions(self) -> list:
-        """返回平台支持的操作列表"""
+        """返回平台支持的操作列表 — Return the list of actions supported by the platform"""
         return [
             {"id": "switch_account", "label": "trae.5b67f763", "params": []},
             {"id": "get_user_info", "label": "trae.3012e673", "params": []},
@@ -121,7 +121,7 @@ class TraePlatform(BasePlatform):
         ]
 
     def execute_action(self, action_id: str, account: Account, params: dict) -> dict:
-        """执行平台操作"""
+        """执行平台操作 — Execute a platform action"""
         if action_id == "switch_account":
             from platforms.trae.switch import switch_trae_account, restart_trae_ide
             

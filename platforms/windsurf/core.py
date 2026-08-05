@@ -6,6 +6,16 @@ HAR 里 Windsurf 网站主要使用两类接口：
 
 这里不依赖完整 protobuf 生成代码，只实现当前自动化需要的轻量
 protobuf wire 编解码。
+
+Wraps Windsurf registration and account-status requests.
+
+The Windsurf website's HAR traffic mainly uses two kinds of APIs:
+  1. /_devin-auth/* JSON APIs handle email-code signup/login
+  2. /_backend/exa.* application/proto APIs query user, plan, and quota info
+
+This does not depend on fully generated protobuf code -- it only
+implements the lightweight protobuf wire encode/decode this
+automation currently needs.
 """
 from __future__ import annotations
 
@@ -537,7 +547,7 @@ class WindsurfClient:
         return data
 
     def login_with_password(self, email: str, password: str) -> dict[str, str]:
-        """用邮箱+密码登录已有账号，返回 session_token 等信息"""
+        """用邮箱+密码登录已有账号，返回 session_token 等信息 — Log in to an existing account with email + password, returning the session_token and related info"""
         self.log_key("windsurf.ad982c2d", email=email)
         # was: self.log(f"密码登录 Windsurf: {email}")
         # was: self.log(f"Password login to Windsurf: {email}")

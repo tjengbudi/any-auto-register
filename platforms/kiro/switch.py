@@ -1,6 +1,9 @@
 """
 Kiro 账号切换 —— 写入 ~/.aws/sso/cache/ token 文件，Kiro IDE 自动识别
 参考 kiro-account-manager (Tauri/Rust) 的 switch_kiro_account 实现
+
+Kiro account switching -- writes token files to ~/.aws/sso/cache/, which the Kiro IDE picks up automatically.
+Based on the switch_kiro_account implementation from kiro-account-manager (Tauri/Rust).
 """
 
 import os
@@ -26,7 +29,7 @@ DEFAULT_PROFILE_ARN = "arn:aws:codewhisperer:us-east-1:699475941385:profile/EHGA
 
 
 def _calculate_client_id_hash(start_url: str) -> str:
-    """与 Kiro IDE 源码一致的 clientIdHash 计算"""
+    """与 Kiro IDE 源码一致的 clientIdHash 计算 — clientIdHash computation matching the Kiro IDE source"""
     input_str = json.dumps({"startUrl": start_url}, separators=(",", ":"))
     return hashlib.sha1(input_str.encode()).hexdigest()
 
@@ -63,7 +66,7 @@ def _kiro_process_patterns() -> list[str]:
 
 
 def _atomic_write(filepath: str, content: str):
-    """原子写入：先写临时文件，再 rename"""
+    """原子写入：先写临时文件，再 rename — Atomic write: write to a temp file first, then rename"""
     dir_path = os.path.dirname(filepath)
     fd, tmp_path = tempfile.mkstemp(dir=dir_path, suffix=".tmp")
     try:
@@ -82,7 +85,11 @@ def refresh_kiro_token(
     client_id: str,
     client_secret: str,
 ) -> Tuple[bool, dict]:
-    """刷新 Kiro OIDC token，返回 (ok, {accessToken, refreshToken, expiresIn})"""
+    """
+    刷新 Kiro OIDC token，返回 (ok, {accessToken, refreshToken, expiresIn})
+
+    Refresh the Kiro OIDC token; returns (ok, {accessToken, refreshToken, expiresIn}).
+    """
     if not refresh_token or not client_id or not client_secret:
         # worker 线程无请求上下文，写入标记字符串，由读边界渲染 (AD-3/AD-8) —
         # No request context in a worker thread; write a marker string,
@@ -209,7 +216,7 @@ def get_kiro_portal_state(
     *,
     profile_arn: str = "",
 ) -> dict | None:
-    """查询 Kiro Web Portal 的账号、套餐与 usage 信息。"""
+    """查询 Kiro Web Portal 的账号、套餐与 usage 信息。 — Query the Kiro Web Portal for account, plan, and usage information."""
     if not access_token or not session_token:
         return None
 
@@ -254,7 +261,7 @@ def get_kiro_portal_state(
 
 
 def summarize_kiro_usage(portal_state: dict | None) -> dict | None:
-    """提炼 Kiro Portal 返回，便于前端直接展示。"""
+    """提炼 Kiro Portal 返回，便于前端直接展示。 — Distill the Kiro Portal response for direct frontend display."""
     if not portal_state:
         return None
 
@@ -336,6 +343,12 @@ def switch_kiro_account(
     BuilderId 账号: auth_method="IdC", provider="BuilderId"
     Social 账号:    auth_method="social", provider="Google"/"GitHub"
     Enterprise:     auth_method="IdC", provider="Enterprise", 需提供 start_url
+
+    Switch the Kiro desktop app account (writes the token file; no IDE restart needed).
+
+    BuilderId account: auth_method="IdC", provider="BuilderId"
+    Social account:    auth_method="social", provider="Google"/"GitHub"
+    Enterprise:        auth_method="IdC", provider="Enterprise", requires start_url
     """
     cache_dir = _get_cache_dir()
     os.makedirs(cache_dir, exist_ok=True)
@@ -398,7 +411,7 @@ def switch_kiro_account(
 
 
 def restart_kiro_ide() -> Tuple[bool, str]:
-    """关闭并重启 Kiro IDE，使新 token 立即生效"""
+    """关闭并重启 Kiro IDE，使新 token 立即生效 — Close and restart the Kiro IDE so the new token takes effect immediately"""
     import subprocess
     import platform
     import time
@@ -454,7 +467,7 @@ def restart_kiro_ide() -> Tuple[bool, str]:
 
 
 def read_current_kiro_account() -> dict | None:
-    """读取当前 Kiro IDE 正在使用的账号 token"""
+    """读取当前 Kiro IDE 正在使用的账号 token — Read the account token currently in use by the Kiro IDE"""
     token_path = os.path.join(_get_cache_dir(), "kiro-auth-token.json")
     if not os.path.exists(token_path):
         return None

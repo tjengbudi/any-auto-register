@@ -1,4 +1,4 @@
-"""Tavily 平台插件"""
+"""Tavily 平台插件 — Tavily platform plugin"""
 import random, string
 from core.base_platform import BasePlatform, Account, AccountStatus, RegisterConfig
 from core.base_mailbox import BaseMailbox

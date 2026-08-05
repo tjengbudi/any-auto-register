@@ -1,4 +1,4 @@
-"""OpenAI 专用 HTTP 客户端"""
+"""OpenAI 专用 HTTP 客户端 — OpenAI-specific HTTP client."""
 from typing import Any, Dict, Optional, Tuple
 
 from core.http_client import HTTPClient, HTTPClientError, RequestConfig
@@ -11,6 +11,9 @@ class OpenAIHTTPClient(HTTPClient):
     """
     OpenAI 专用 HTTP 客户端
     包含 OpenAI API 特定的请求方法
+
+    OpenAI-specific HTTP client.
+    Includes request methods specific to the OpenAI API.
     """
 
     def __init__(
@@ -24,6 +27,12 @@ class OpenAIHTTPClient(HTTPClient):
         Args:
             proxy_url: 代理 URL
             config: 请求配置
+
+        Initialize the OpenAI HTTP client.
+
+        Args:
+            proxy_url: proxy URL
+            config: request config
         """
         super().__init__(proxy_url, config)
 
@@ -51,6 +60,11 @@ class OpenAIHTTPClient(HTTPClient):
 
         Returns:
             Tuple[是否支持, 位置信息]
+
+        Check the IP's geographic location.
+
+        Returns:
+            Tuple[whether supported, location info]
         """
         try:
             response = self.get("https://cloudflare.com/cdn-cgi/trace", timeout=10)
@@ -95,6 +109,22 @@ class OpenAIHTTPClient(HTTPClient):
 
         Raises:
             HTTPClientError: 请求失败
+
+        Send an OpenAI API request.
+
+        Args:
+            endpoint: API endpoint
+            method: HTTP method
+            data: form data
+            json_data: JSON data
+            headers: request headers
+            **kwargs: other parameters
+
+        Returns:
+            response JSON data
+
+        Raises:
+            HTTPClientError: request failed
         """
         # 合并请求头 — Merge request headers
         request_headers = self.default_headers.copy()
@@ -140,6 +170,15 @@ class OpenAIHTTPClient(HTTPClient):
 
         Returns:
             Sentinel token 或 None
+
+        Check the Sentinel challenge.
+
+        Args:
+            did: Device ID
+            proxies: proxy config
+
+        Returns:
+            Sentinel token, or None
         """
         from .constants import OPENAI_API_ENDPOINTS
 
@@ -180,6 +219,15 @@ def create_http_client(
 
     Returns:
         HTTPClient 实例
+
+    Factory function to create an HTTP client.
+
+    Args:
+        proxy_url: proxy URL
+        config: request config
+
+    Returns:
+        an HTTPClient instance
     """
     return HTTPClient(proxy_url, config)
 
@@ -197,5 +245,14 @@ def create_openai_client(
 
     Returns:
         OpenAIHTTPClient 实例
+
+    Factory function to create an OpenAI HTTP client.
+
+    Args:
+        proxy_url: proxy URL
+        config: request config
+
+    Returns:
+        an OpenAIHTTPClient instance
     """
     return OpenAIHTTPClient(proxy_url, config)

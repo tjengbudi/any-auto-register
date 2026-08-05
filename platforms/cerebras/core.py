@@ -5,6 +5,14 @@
   2. POST Stytch OTP authenticate → 验证 OTP，获取 session
   3. GET /api/api-keys → 获取已有 API Key
   4. POST /api/api-keys → 创建新 API Key（如果没有）
+
+Cerebras Cloud registration protocol core implementation (Stytch Email OTP flow).
+
+Flow:
+  1. POST Stytch OTP send → send the verification code to the email
+  2. POST Stytch OTP authenticate → verify the OTP, obtain a session
+  3. GET /api/api-keys → fetch an existing API Key
+  4. POST /api/api-keys → create a new API Key (if none exists)
 """
 from __future__ import annotations
 
@@ -22,7 +30,7 @@ STYTCH_ENV = "https://web.stytch.com"
 
 
 class CerebrasRegister:
-    """Cerebras Cloud 协议注册。"""
+    """Cerebras Cloud 协议注册。 — Cerebras Cloud protocol registration."""
 
     def __init__(
         self,
@@ -41,7 +49,7 @@ class CerebrasRegister:
         _emit_log_key(self.log, self._log_key_fn, key, **params)
 
     def step1_send_otp(self, email: str) -> str:
-        """发送 OTP 到邮箱，返回 method_id。"""
+        """发送 OTP 到邮箱，返回 method_id。 — Send an OTP to the email, returning the method_id."""
         self.log_key("cerebras.4959d22c", email=email)
         # was: self.log(f"发送验证码到 {email}...") — was: self.log(f"Sending the verification code to {email}...")
         r = self.ex.post(
@@ -76,7 +84,7 @@ class CerebrasRegister:
         return method_id
 
     def step2_verify_otp(self, email: str, code: str, method_id: str) -> dict:
-        """验证 OTP，返回 session 信息。"""
+        """验证 OTP，返回 session 信息。 — Verify the OTP, returning session info."""
         self.log_key("cerebras.3508be33")
         # was: self.log("验证 OTP...") — was: self.log("Verifying the OTP...")
         r = self.ex.post(
@@ -117,7 +125,7 @@ class CerebrasRegister:
         }
 
     def step3_get_or_create_api_key(self) -> str:
-        """获取或创建 API Key。"""
+        """获取或创建 API Key。 — Get or create the API Key."""
         if not self._session_jwt:
             _raise_keyed(RuntimeError, "cerebras.a56b812f")
             # was: raise RuntimeError("未登录，无法获取 API Key") — was: raise RuntimeError("Not logged in; unable to obtain the API Key")

@@ -1,4 +1,4 @@
-"""Trae OAuth 浏览器流程。"""
+"""Trae OAuth 浏览器流程。 — Trae OAuth browser flow."""
 import time
 from typing import Callable, Optional
 

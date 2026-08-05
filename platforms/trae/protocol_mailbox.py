@@ -1,4 +1,4 @@
-"""Trae 协议邮箱注册 worker。"""
+"""Trae 协议邮箱注册 worker。 — Trae protocol mailbox registration worker."""
 from __future__ import annotations
 
 from typing import Callable, Optional

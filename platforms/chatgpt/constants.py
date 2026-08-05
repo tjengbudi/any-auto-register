@@ -1,5 +1,7 @@
 """
 常量定义
+
+Constant definitions.
 """
 
 import os
@@ -14,7 +16,7 @@ from typing import Dict, List, Tuple
 # ============================================================================
 
 class AccountStatus(str, Enum):
-    """账户状态"""
+    """账户状态 — Account status."""
     ACTIVE = "active"
     EXPIRED = "expired"
     BANNED = "banned"
@@ -22,7 +24,7 @@ class AccountStatus(str, Enum):
 
 
 class TaskStatus(str, Enum):
-    """任务状态"""
+    """任务状态 — Task status."""
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -31,7 +33,7 @@ class TaskStatus(str, Enum):
 
 
 class EmailServiceType(str, Enum):
-    """邮箱服务类型"""
+    """邮箱服务类型 — Mailbox service type."""
     TEMPMAIL = "tempmail"
     OUTLOOK = "outlook"
     CUSTOM_DOMAIN = "custom_domain"
@@ -201,6 +203,11 @@ def generate_random_user_info() -> dict:
 
     Returns:
         包含 name 和 birthdate 的字典
+
+    Generate random user info.
+
+    Returns:
+        A dict containing name and birthdate.
     """
     first_name = random.choice(FIRST_NAMES)
     last_name = random.choice(LAST_NAMES)

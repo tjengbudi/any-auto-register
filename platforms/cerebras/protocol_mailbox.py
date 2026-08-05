@@ -1,4 +1,4 @@
-"""Cerebras 协议邮箱注册 worker。"""
+"""Cerebras 协议邮箱注册 worker。 — Cerebras protocol mailbox registration worker."""
 from __future__ import annotations
 
 from typing import Callable, Optional

@@ -1,4 +1,4 @@
-"""Kiro OAuth 浏览器流程。"""
+"""Kiro OAuth 浏览器流程。 — Kiro OAuth browser flow."""
 from urllib.parse import parse_qs, urlparse
 
 import cbor2

@@ -1,4 +1,4 @@
-"""Trae.ai 注册协议核心实现"""
+"""Trae.ai 注册协议核心实现 — Trae.ai registration protocol core implementation"""
 import random, string
 from typing import Optional, Callable
 

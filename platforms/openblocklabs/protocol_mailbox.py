@@ -1,4 +1,4 @@
-"""OpenBlockLabs 协议邮箱注册 worker。"""
+"""OpenBlockLabs 协议邮箱注册 worker。 — OpenBlockLabs protocol-mailbox registration worker."""
 from __future__ import annotations
 
 import random

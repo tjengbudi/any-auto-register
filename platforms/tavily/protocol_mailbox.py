@@ -1,4 +1,4 @@
-"""Tavily 协议邮箱注册 worker。"""
+"""Tavily 协议邮箱注册 worker。 — Tavily protocol mailbox registration worker."""
 from __future__ import annotations
 
 from typing import Callable, Optional

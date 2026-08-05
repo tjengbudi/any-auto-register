@@ -1,4 +1,4 @@
-"""anything.com 平台插件。"""
+"""anything.com 平台插件。 — anything.com platform plugin."""
 from __future__ import annotations
 
 import json

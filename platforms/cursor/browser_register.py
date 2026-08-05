@@ -6,6 +6,15 @@
   3. 提交 → Cloudflare Turnstile 验证（自动/注入）
   4. 收取邮箱验证码（6位）→ 输入
   5. 跳转 cursor.com → 获取 WorkosCursorSessionToken
+
+Cursor browser registration flow (Camoufox).
+
+Actual flow:
+  1. https://authenticator.cursor.sh/sign-up
+  2. Fill in FirstName / LastName / Email (same page)
+  3. Submit → Cloudflare Turnstile verification (automatic/injected)
+  4. Retrieve the email verification code (6 digits) → enter it
+  5. Redirect to cursor.com → obtain WorkosCursorSessionToken
 """
 import random, string, time, uuid
 from typing import Callable, Optional
@@ -50,7 +59,7 @@ def _get_turnstile_sitekey(page) -> str:
 
 
 def _inject_turnstile(page, token: str) -> bool:
-    """注入 Turnstile token，兼容 explicit 渲染模式（Cursor 使用此模式）。"""
+    """注入 Turnstile token，兼容 explicit 渲染模式（Cursor 使用此模式）。 — Inject the Turnstile token; compatible with explicit render mode (the mode Cursor uses)."""
     safe = token.replace("\\", "\\\\").replace("'", "\\'")
     script = f"""(function() {{
         const token = '{safe}';
@@ -105,7 +114,7 @@ def _inject_turnstile(page, token: str) -> bool:
 
 
 def _click_continue(page) -> bool:
-    """尝试点击 Continue/Next/Sign up 按钮，兜底用 Enter。"""
+    """尝试点击 Continue/Next/Sign up 按钮，兜底用 Enter。 — Try clicking the Continue/Next/Sign up button, falling back to pressing Enter."""
     for sel in [
         'button[data-action-button-primary="true"]',
         'button[type="submit"]:not([aria-hidden="true"])',
@@ -144,9 +153,14 @@ def _wait_for_token(page, timeout: int = 120) -> str:
 
 def _is_cf_full_block(page) -> bool:
     """检测是否被 CF 全页拦截（区别于表单内嵌 Turnstile widget）。
-    
+
     全页拦截特征：页面只有 CF 挑战，没有正常的表单内容。
     内嵌 Turnstile：页面表单正常显示，只是其中有 CF iframe。
+
+    Detect whether the page is fully blocked by a CF challenge (as opposed to an inline Turnstile widget embedded in the form).
+
+    Full-page block signature: the page shows only the CF challenge, with no normal form content.
+    Inline Turnstile: the page's form displays normally, just with a CF iframe embedded somewhere in it.
     """
     try:
         content = page.content().lower()
@@ -177,10 +191,16 @@ def _wait_cf_full_block_clear(
     log_key: Optional[Callable[[str, dict], None]] = None,
 ) -> None:
     """等待 CF 全页拦截消失，并主动点击 Interstitial Turnstile checkbox。
-    
+
     CF 全页拦截分两种：
     1. Interactive Turnstile：显示 checkbox，需要点击
     2. Managed Challenge： no-checkbox 被动验证，显示圆圈/加载中，就等
+
+    Wait for the CF full-page block to clear, and proactively click the interstitial Turnstile checkbox.
+
+    There are two kinds of CF full-page block:
+    1. Interactive Turnstile: shows a checkbox that needs to be clicked
+    2. Managed Challenge: passive, checkbox-less verification that shows a spinner/loading state — just wait it out
     """
     deadline = time.time() + timeout
     warned = False
@@ -250,7 +270,7 @@ def _wait_cf_full_block_clear(
 
 
 def _has_turnstile_iframe(page) -> bool:
-    """检测页面中是否有 Turnstile iframe（包括内嵌 widget）。"""
+    """检测页面中是否有 Turnstile iframe（包括内嵌 widget）。 — Detect whether the page contains a Turnstile iframe (including an inline widget)."""
     try:
         for frame in page.frames:
             if "challenges.cloudflare.com" in frame.url:
@@ -269,7 +289,7 @@ def _has_turnstile_iframe(page) -> bool:
         return False
 
 def _is_turnstile_modal_visible(page) -> bool:
-    """检测 Turnstile 挑战是否可见（使用 body 文字，因为 iframe 延迟加载）。"""
+    """检测 Turnstile 挑战是否可见（使用 body 文字，因为 iframe 延迟加载）。 — Detect whether the Turnstile challenge is visible (checks the body text, since the iframe loads lazily)."""
     try:
         content = page.content().lower()
         signals = [
@@ -292,10 +312,16 @@ def _click_turnstile_in_iframe(
     log_key: Optional[Callable[[str, dict], None]] = None,
 ) -> bool:
     """在注册 Camoufox 浏览器里直接找到 Turnstile iframe 并点击 checkbox。
-    
+
     Turnstile iframe 内部使用 closed Shadow DOM，JS querySelector 无法访问。
     改用 bounding box 坐标点击：checkbox 在 iframe 左侧约 1/4 处。
     返回 True 表示点击了（不代表 Turnstile 已通过）。
+
+    Find the Turnstile iframe directly inside the registration Camoufox browser and click its checkbox.
+
+    The Turnstile iframe uses a closed Shadow DOM internally, so JS querySelector can't reach into it.
+    Click by bounding-box coordinates instead: the checkbox sits roughly 1/4 in from the iframe's left edge.
+    Returns True if a click was performed (this does not mean Turnstile actually passed).
     """
     # 等待 iframe 的 frame 出现在 page.frames 列表中 — Wait for the iframe's frame to appear in page.frames
     deadline = time.time() + 15
@@ -399,9 +425,14 @@ def _handle_turnstile(
     log_key: Optional[Callable[[str, dict], None]] = None,
 ) -> bool:
     """通用 Turnstile 处理：检测到 Turnstile 后点击 checkbox。
-    
+
     可在表单提交后、密码提交后等任意阶段调用。
     返回 True 表示检测到并处理了 Turnstile。
+
+    General-purpose Turnstile handling: click the checkbox once Turnstile is detected.
+
+    Can be called at any stage — after form submission, after password submission, and so on.
+    Returns True if Turnstile was detected and handled.
     """
     # 检测 Turnstile 是否出现（最多等 wait_secs 秒） — Detect whether Turnstile appears (wait at most wait_secs seconds)
     deadline = time.time() + wait_secs
@@ -454,7 +485,7 @@ def _handle_turnstile(
 
 
 class CursorBrowserRegister:
-    """Cursor 浏览器填表注册（Camoufox + mailbox OTP）。"""
+    """Cursor 浏览器填表注册（Camoufox + mailbox OTP）。 — Cursor browser form-fill registration (Camoufox + mailbox OTP)."""
 
     def __init__(
         self,
@@ -479,7 +510,7 @@ class CursorBrowserRegister:
         _emit_log_key(self.log, self._log_key_fn, key, **params)
 
     def _solve_turnstile(self, url: str, sitekey: str) -> Optional[str]:
-        """调用 Captcha Solver 解决 Turnstile，返回 token 或 None。"""
+        """调用 Captcha Solver 解决 Turnstile，返回 token 或 None。 — Call the Captcha Solver to solve Turnstile, returning a token or None."""
         if not self.captcha:
             self.log_key("cursor.f4c4d88f")
             # was: self.log("未配置 Captcha Solver，跳过自动解题") — was: self.log("No Captcha Solver configured, skipping auto-solve")

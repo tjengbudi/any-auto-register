@@ -1,4 +1,4 @@
-"""Cursor 平台插件"""
+"""Cursor 平台插件 — Cursor platform plugin"""
 import json
 
 from core.base_platform import BasePlatform, Account, AccountStatus, RegisterConfig
@@ -144,7 +144,7 @@ class CursorPlatform(BasePlatform):
             return False
 
     def get_platform_actions(self) -> list:
-        """返回平台支持的操作列表"""
+        """返回平台支持的操作列表 — Return the list of actions supported by the platform"""
         return [
             {"id": "switch_account", "label": "cursor.5b67f763", "params": []},
             {"id": "get_account_state", "label": "cursor.da0f5916", "params": []},
@@ -157,7 +157,7 @@ class CursorPlatform(BasePlatform):
         return get_cursor_desktop_state(lang)
 
     def execute_action(self, action_id: str, account: Account, params: dict) -> dict:
-        """执行平台操作"""
+        """执行平台操作 — Execute a platform action"""
         if action_id == "switch_account":
             from platforms.cursor.switch import (
                 get_cursor_billing_info,

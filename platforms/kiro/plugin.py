@@ -1,4 +1,4 @@
-"""Kiro 平台插件 - 基于 AWS Builder ID 注册"""
+"""Kiro 平台插件 - 基于 AWS Builder ID 注册 — Kiro platform plugin - registers via AWS Builder ID"""
 import json
 
 from core.base_platform import BasePlatform, Account, AccountStatus, RegisterConfig
@@ -146,7 +146,7 @@ class KiroPlatform(BasePlatform):
         )
 
     def check_valid(self, account: Account) -> bool:
-        """通过 refreshToken 检测账号是否有效"""
+        """通过 refreshToken 检测账号是否有效 — Check whether the account is valid via its refreshToken"""
         extra = account.extra or {}
         refresh_token = extra.get("refreshToken", "")
         if not refresh_token:

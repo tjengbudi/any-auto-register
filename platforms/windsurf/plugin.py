@@ -1,4 +1,4 @@
-"""Windsurf 平台插件。"""
+"""Windsurf 平台插件。 — Windsurf platform plugin."""
 from __future__ import annotations
 
 import json
@@ -180,11 +180,17 @@ class WindsurfPlatform(BasePlatform):
 
     def _handle_switch_desktop(self, account: Account, params: dict) -> dict:
         """
-        Handle switch_desktop capability for Windsurf.
+        处理 Windsurf 的 switch_desktop 能力。
 
         纯协议实现：
         1. 用 session_token 调 GetOneTimeAuthToken → 获取 OTT
         2. 通过 windsurf:// deep link 传给 Windsurf → 完成认证切换
+
+        Handle switch_desktop capability for Windsurf.
+
+        Pure protocol implementation:
+        1. Call GetOneTimeAuthToken with session_token → obtain the OTT
+        2. Pass it to Windsurf via the windsurf:// deep link → complete the authentication switch
         """
         from platforms.windsurf.core import extract_windsurf_account_context
         from platforms.windsurf.switch import (

@@ -3,6 +3,12 @@ ChatGPT / Codex 本地桌面端切号与状态查询。
 
 当前实现面向本机 Electron 客户端 `Codex`，通过写入其 Chromium Cookies 数据库
 完成 best-effort 本地登录态切换。
+
+ChatGPT / Codex local desktop account switching and state queries.
+
+The current implementation targets the local Electron client `Codex`, performing
+a best-effort local login-state switch by writing directly to its Chromium
+Cookies database.
 """
 
 from __future__ import annotations

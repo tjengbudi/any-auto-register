@@ -1,5 +1,6 @@
 """
 支付核心逻辑 — 生成 Plus/Team 支付链接、无痕打开浏览器、检测订阅状态
+Core payment logic — generate Plus/Team payment links, open the browser in incognito mode, and check subscription status
 """
 
 import json
@@ -44,7 +45,7 @@ _COUNTRY_CURRENCY_MAP = {
 
 
 def _extract_oai_did(cookies_str: str) -> Optional[str]:
-    """从 cookie 字符串中提取 oai-device-id"""
+    """从 cookie 字符串中提取 oai-device-id — Extract oai-device-id from the cookie string"""
     for part in cookies_str.split(";"):
         part = part.strip()
         if part.startswith("oai-did="):
@@ -145,7 +146,7 @@ def _fetch_usage_data(account, proxy: Optional[str] = None) -> dict:
 
 
 def _parse_cookie_str(cookies_str: str, domain: str) -> list:
-    """将 'key=val; key2=val2' 格式解析为 Playwright cookie 列表"""
+    """将 'key=val; key2=val2' 格式解析为 Playwright cookie 列表 — Parse a 'key=val; key2=val2' string into a list of Playwright cookies"""
     cookies = []
     # Playwright对于部分域名的cookie要求首字母带点 — Playwright requires some domains' cookies to start with a dot
     if domain == "chatgpt.com":
@@ -175,7 +176,7 @@ def _parse_cookie_str(cookies_str: str, domain: str) -> list:
 
 
 def _open_url_system_browser(url: str) -> bool:
-    """回退方案：调用系统浏览器以无痕模式打开"""
+    """回退方案：调用系统浏览器以无痕模式打开 — Fallback: open via the system browser in incognito mode"""
     platform = sys.platform
     try:
         if platform == "win32":
@@ -205,7 +206,7 @@ def generate_plus_link(
     proxy: Optional[str] = None,
     country: str = "SG",
 ) -> str:
-    """生成 Plus 支付链接（后端携带账号 cookie 发请求）"""
+    """生成 Plus 支付链接（后端携带账号 cookie 发请求） — Generate a Plus payment link (the backend request carries the account cookie)"""
     if not account.access_token:
         _raise_keyed(ValueError, "chatgpt.9fbc4659")  # "账号缺少 access_token" —
         # "Account is missing access_token"
@@ -259,7 +260,7 @@ def generate_team_link(
     proxy: Optional[str] = None,
     country: str = "SG",
 ) -> str:
-    """生成 Team 支付链接（后端携带账号 cookie 发请求）"""
+    """生成 Team 支付链接（后端携带账号 cookie 发请求） — Generate a Team payment link (the backend request carries the account cookie)"""
     if not account.access_token:
         _raise_keyed(ValueError, "chatgpt.9fbc4659")  # "账号缺少 access_token" —
         # "Account is missing access_token"
@@ -312,7 +313,7 @@ def generate_team_link(
 
 
 def open_url_incognito(url: str, cookies_str: Optional[str] = None) -> bool:
-    """用 Playwright 以无痕模式打开 URL，可注入 cookie"""
+    """用 Playwright 以无痕模式打开 URL，可注入 cookie — Open a URL in incognito mode via Playwright, optionally injecting cookies"""
     import threading
     try:
         from playwright.sync_api import sync_playwright
@@ -341,6 +342,11 @@ def open_url_incognito(url: str, cookies_str: Optional[str] = None) -> bool:
 def check_subscription_status(account: Account, proxy: Optional[str] = None) -> str:
     """
     检测账号当前订阅状态。
+
+    Returns:
+        'free' / 'plus' / 'team'
+
+    Check the account's current subscription status.
 
     Returns:
         'free' / 'plus' / 'team'

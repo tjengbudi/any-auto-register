@@ -1,6 +1,9 @@
 """
 OpenAI OAuth 授权模块
 从 main.py 中提取的 OAuth 相关函数
+
+OpenAI OAuth authorization module.
+OAuth-related functions extracted from main.py.
 """
 
 import base64
@@ -24,27 +27,27 @@ from .constants import (
 
 
 def _b64url_no_pad(raw: bytes) -> str:
-    """Base64 URL 编码（无填充）"""
+    """Base64 URL 编码（无填充） — Base64 URL-encode (no padding)."""
     return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
 
 
 def _sha256_b64url_no_pad(s: str) -> str:
-    """SHA256 哈希后 Base64 URL 编码"""
+    """SHA256 哈希后 Base64 URL 编码 — SHA256-hash then Base64 URL-encode."""
     return _b64url_no_pad(hashlib.sha256(s.encode("ascii")).digest())
 
 
 def _random_state(nbytes: int = 16) -> str:
-    """生成随机 state"""
+    """生成随机 state — Generate a random state value."""
     return secrets.token_urlsafe(nbytes)
 
 
 def _pkce_verifier() -> str:
-    """生成 PKCE code_verifier"""
+    """生成 PKCE code_verifier — Generate a PKCE code_verifier."""
     return secrets.token_urlsafe(64)
 
 
 def _parse_callback_url(callback_url: str) -> Dict[str, str]:
-    """解析回调 URL"""
+    """解析回调 URL — Parse the callback URL."""
     candidate = callback_url.strip()
     if not candidate:
         return {"code": "", "state": "", "error": "", "error_description": ""}
@@ -89,7 +92,7 @@ def _parse_callback_url(callback_url: str) -> Dict[str, str]:
 
 
 def _jwt_claims_no_verify(id_token: str) -> Dict[str, Any]:
-    """解析 JWT ID Token（不验证签名）"""
+    """解析 JWT ID Token（不验证签名） — Parse the JWT ID token (signature not verified)."""
     if not id_token or id_token.count(".") < 2:
         return {}
     payload_b64 = id_token.split(".")[1]
@@ -102,7 +105,7 @@ def _jwt_claims_no_verify(id_token: str) -> Dict[str, Any]:
 
 
 def _decode_jwt_segment(seg: str) -> Dict[str, Any]:
-    """解码 JWT 片段"""
+    """解码 JWT 片段 — Decode a JWT segment."""
     raw = (seg or "").strip()
     if not raw:
         return {}
@@ -115,7 +118,7 @@ def _decode_jwt_segment(seg: str) -> Dict[str, Any]:
 
 
 def _to_int(v: Any) -> int:
-    """转换为整数"""
+    """转换为整数 — Convert to an integer."""
     try:
         return int(v)
     except (TypeError, ValueError):
@@ -139,6 +142,17 @@ def _post_form(
 
     Returns:
         响应 JSON 数据
+
+    Send a POST form request.
+
+    Args:
+        url: request URL
+        data: form data
+        timeout: timeout duration
+        proxy_url: proxy URL
+
+    Returns:
+        response JSON data
     """
     # 构建代理配置 — Build the proxy configuration
     proxies = None
@@ -180,7 +194,7 @@ def _post_form(
 
 @dataclass(frozen=True)
 class OAuthStart:
-    """OAuth 开始信息"""
+    """OAuth 开始信息 — OAuth start info."""
     auth_url: str
     state: str
     code_verifier: str
@@ -204,6 +218,16 @@ def generate_oauth_url(
 
     Returns:
         OAuthStart 对象，包含授权 URL 和必要参数
+
+    Generate the OAuth authorization URL.
+
+    Args:
+        redirect_uri: callback address
+        scope: permission scope
+        client_id: OpenAI client ID
+
+    Returns:
+        an OAuthStart object containing the authorization URL and required parameters
     """
     state = _random_state()
     code_verifier = _pkce_verifier()
@@ -267,6 +291,24 @@ def submit_callback_url(
     Raises:
         RuntimeError: OAuth 错误
         ValueError: 缺少必要参数或 state 不匹配
+
+    Handle the OAuth callback URL and obtain the access token.
+
+    Args:
+        callback_url: callback URL
+        expected_state: expected state value
+        code_verifier: PKCE code_verifier
+        redirect_uri: callback address
+        client_id: OpenAI client ID
+        token_url: token exchange address
+        proxy_url: proxy URL
+
+    Returns:
+        a JSON string containing the access token and related info
+
+    Raises:
+        RuntimeError: OAuth error
+        ValueError: missing required parameter, or state mismatch
     """
     cb = _parse_callback_url(callback_url)
     if cb["error"]:
@@ -323,7 +365,7 @@ def submit_callback_url(
 
 
 class OAuthManager:
-    """OAuth 管理器"""
+    """OAuth 管理器 — OAuth manager."""
 
     def __init__(
         self,
@@ -342,7 +384,7 @@ class OAuthManager:
         self.proxy_url = proxy_url
 
     def start_oauth(self) -> OAuthStart:
-        """开始 OAuth 流程"""
+        """开始 OAuth 流程 — Start the OAuth flow."""
         return generate_oauth_url(
             redirect_uri=self.redirect_uri,
             scope=self.scope,
@@ -355,7 +397,7 @@ class OAuthManager:
         expected_state: str,
         code_verifier: str
     ) -> Dict[str, Any]:
-        """处理 OAuth 回调"""
+        """处理 OAuth 回调 — Handle the OAuth callback."""
         result_json = submit_callback_url(
             callback_url=callback_url,
             expected_state=expected_state,
@@ -368,7 +410,7 @@ class OAuthManager:
         return json.loads(result_json)
 
     def extract_account_info(self, id_token: str) -> Dict[str, Any]:
-        """从 ID Token 中提取账户信息"""
+        """从 ID Token 中提取账户信息 — Extract account info from the ID token."""
         claims = _jwt_claims_no_verify(id_token)
         email = str(claims.get("email") or "").strip()
         auth_claims = claims.get("https://api.openai.com/auth") or {}

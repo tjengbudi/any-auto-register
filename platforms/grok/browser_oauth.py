@@ -1,4 +1,4 @@
-"""Grok OAuth 浏览器流程。"""
+"""Grok OAuth 浏览器流程。 — Grok OAuth browser flow."""
 import time
 from typing import Callable, Optional
 

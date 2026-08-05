@@ -1,5 +1,7 @@
 """
 CPA (Codex Protocol API) 上传功能
+
+CPA (Codex Protocol API) upload functionality.
 """
 
 import json
@@ -38,7 +40,7 @@ def _get_config_value(key: str) -> str:
 
 
 def _extract_credential(account, key: str) -> str:
-    """从 account 对象提取凭证，支持直接属性和 credentials 列表两种结构。"""
+    """从 account 对象提取凭证，支持直接属性和 credentials 列表两种结构。 — Extract a credential from the account object; supports both a direct attribute and a credentials-list structure."""
     val = getattr(account, key, None)
     if val:
         return str(val)
@@ -82,7 +84,7 @@ def _format_cpa_timestamp(value) -> str:
 
 
 def generate_token_json(account) -> dict:
-    """生成 CPA 格式的 Token JSON。"""
+    """生成 CPA 格式的 Token JSON。 — Generate a CPA-format token JSON."""
     email = getattr(account, "email", "")
     access_token = _extract_credential(account, "access_token")
     refresh_token = _extract_credential(account, "refresh_token")
@@ -210,7 +212,7 @@ def upload_to_cpa(
     api_key: str = None,
     proxy: str = None,
 ) -> Tuple[bool, str]:
-    """上传单个账号到 CPA 管理平台（不走代理）。"""
+    """上传单个账号到 CPA 管理平台（不走代理）。 — Upload a single account to the CPA management platform (bypasses the proxy)."""
     if not api_url:
         api_url = _get_config_value("cpa_api_url")
     if not api_key:
@@ -263,7 +265,7 @@ def upload_to_cpa(
 def upload_to_team_manager(
     account, api_url: str = None, api_key: str = None,
 ) -> Tuple[bool, str]:
-    """上传单账号到 Team Manager（直连，不走代理）。"""
+    """上传单账号到 Team Manager（直连，不走代理）。 — Upload a single account to Team Manager (direct connection, bypasses the proxy)."""
     if not api_url:
         api_url = _get_config_value("team_manager_url")
     if not api_key:
@@ -308,7 +310,7 @@ def upload_to_team_manager(
 
 
 def test_cpa_connection(api_url: str, api_token: str, proxy: str = None) -> Tuple[bool, str]:
-    """测试 CPA 连接（不走代理）"""
+    """测试 CPA 连接（不走代理） — Test the CPA connection (bypasses the proxy)."""
     if not api_url:
         return False, "API URL 不能为空"
     if not api_token:

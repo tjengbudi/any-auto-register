@@ -12,6 +12,19 @@ OpenBlockLabs 自动注册 (WorkOS AuthKit)
   8. GET dashboard.openblocklabs.com/auth/callback?code=... → wos-session cookie
   9. GET /api/create-personal-org → 完成
 
+OpenBlockLabs automated registration (WorkOS AuthKit).
+
+Flow:
+  1. GET auth-relay/.../initiate_signup → authorization_session_id
+  2. GET auth.openblocklabs.com/sign-up?... → extract the next-action ID
+  3. POST /sign-up (first_name/last_name/email/intent=sign-up) → __Host-state cookie
+  4. GET /sign-up/password → extract the next-action ID
+  5. POST /sign-up/password (password/signals/...) → pendingAuthenticationToken from RSC body
+  6. GET /email-verification → extract the next-action ID
+  7. POST /email-verification (code + pending_authentication_token) → 303 → callback
+  8. GET dashboard.openblocklabs.com/auth/callback?code=... → wos-session cookie
+  9. GET /api/create-personal-org → done
+
 pip install curl_cffi requests
 """
 import re, json, time, base64, random, string, os
@@ -56,7 +69,7 @@ def _build_multipart(fields: list, boundary: str = "----WebKitFormBoundaryPyAPI"
 
 
 def _make_signals() -> str:
-    """生成伪造的 browser signals (base64 JSON)"""
+    """生成伪造的 browser signals (base64 JSON) — Generate fabricated browser signals (base64 JSON)"""
     data = {
         "createdAtMs": int(time.time() * 1000),
         "timezone": "Asia/Shanghai",
@@ -173,7 +186,7 @@ class OpenBlockLabsRegister:
         return bool(self.authorization_session_id)
 
     def step2_get_signup_page(self) -> bool:
-        """已在 step1 完成，直接返回 True"""
+        """已在 step1 完成，直接返回 True — Already done in step1; just return True directly"""
         return bool(self.authorization_session_id)
 
     def step3_submit_signup(self, email: str, first_name: str, last_name: str) -> bool:
@@ -202,7 +215,7 @@ class OpenBlockLabsRegister:
         return resp.status_code == 303
 
     def step4_get_password_page(self) -> bool:
-        """GET /sign-up/password → 提取 next-action ID"""
+        """GET /sign-up/password → 提取 next-action ID — GET /sign-up/password → extract the next-action ID"""
         self.log("Step4: GET /sign-up/password")
         url = f"{AUTH_BASE}/sign-up/password?" + urlencode({
             "redirect_uri": DASHBOARD_CALLBACK,
@@ -217,7 +230,7 @@ class OpenBlockLabsRegister:
         return r.status_code == 200
 
     def step5_submit_password(self, email: str, password: str, first_name: str, last_name: str) -> str:
-        """POST /sign-up/password → RSC body 包含 pendingAuthenticationToken"""
+        """POST /sign-up/password → RSC body 包含 pendingAuthenticationToken — POST /sign-up/password → the RSC body contains pendingAuthenticationToken"""
         self.log("Step5: POST /sign-up/password")
         url = f"{AUTH_BASE}/sign-up/password?" + urlencode({
             "redirect_uri": DASHBOARD_CALLBACK,
@@ -250,7 +263,7 @@ class OpenBlockLabsRegister:
         return token
 
     def step6_get_email_verification_page(self) -> bool:
-        """GET /email-verification → 提取 next-action ID"""
+        """GET /email-verification → 提取 next-action ID — GET /email-verification → extract the next-action ID"""
         self.log("Step6: GET /email-verification")
         url = f"{AUTH_BASE}/email-verification?" + urlencode({
             "redirect_uri": DASHBOARD_CALLBACK,
@@ -314,7 +327,7 @@ class OpenBlockLabsRegister:
         return None
 
     def step9_create_personal_org(self) -> bool:
-        """GET /api/create-personal-org → 完成组织创建"""
+        """GET /api/create-personal-org → 完成组织创建 — GET /api/create-personal-org → complete org creation"""
         self.log("Step9: GET /api/create-personal-org")
         r = self.s.get(
             f"{DASHBOARD_BASE}/api/create-personal-org",

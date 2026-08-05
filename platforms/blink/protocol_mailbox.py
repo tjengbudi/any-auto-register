@@ -1,4 +1,4 @@
-"""blink.new 协议邮箱注册 worker。"""
+"""blink.new 协议邮箱注册 worker。 — blink.new protocol mailbox registration worker."""
 from __future__ import annotations
 
 import re
@@ -31,7 +31,7 @@ class BlinkProtocolMailboxWorker:
         email: str,
         link_callback: Optional[Callable[[], str]] = None,
     ) -> dict:
-        """完整注册流程，返回持久化所需的 Blink 账号字段。"""
+        """完整注册流程，返回持久化所需的 Blink 账号字段。 — Full registration flow; returns the Blink account fields needed for persistence."""
         # Step 1: 触发魔法链接邮件 — Step 1: trigger the magic link email
         ok = self.client.step1_send_magic_link(email)
         if not ok:
@@ -192,7 +192,7 @@ class BlinkProtocolMailboxWorker:
 
     @staticmethod
     def _extract_token(raw: str) -> str:
-        """从完整 URL 或原始字符串中提取 magic_token。"""
+        """从完整 URL 或原始字符串中提取 magic_token。 — Extract the magic_token from a full URL or a raw string."""
         m = re.search(r'magic_token=([a-f0-9]{64})', raw)
         if m:
             return m.group(1)

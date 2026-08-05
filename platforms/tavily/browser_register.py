@@ -1,4 +1,4 @@
-"""Tavily 浏览器注册流程。"""
+"""Tavily 浏览器注册流程。 — Tavily browser registration flow."""
 import re
 import time
 from typing import Callable, Optional

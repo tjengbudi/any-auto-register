@@ -1,4 +1,4 @@
-"""Grok (x.ai) 浏览器注册流程（Camoufox）。"""
+"""Grok (x.ai) 浏览器注册流程（Camoufox）。 — Grok (x.ai) browser registration flow (Camoufox)."""
 import time
 from typing import Callable, Optional
 from urllib.parse import urlparse

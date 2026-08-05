@@ -1,4 +1,4 @@
-"""Tavily OAuth 浏览器流程。"""
+"""Tavily OAuth 浏览器流程。 — Tavily OAuth browser flow."""
 from __future__ import annotations
 
 import time

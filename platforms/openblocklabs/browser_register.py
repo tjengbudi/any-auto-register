@@ -1,4 +1,4 @@
-"""OpenBlockLabs 浏览器注册流程（Camoufox）。"""
+"""OpenBlockLabs 浏览器注册流程（Camoufox）。 — OpenBlockLabs browser registration flow (Camoufox)."""
 import random, string, time
 from typing import Callable, Optional
 from urllib.parse import parse_qs, quote, urlparse

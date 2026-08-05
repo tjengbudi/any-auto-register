@@ -1,4 +1,4 @@
-"""OpenBlockLabs OAuth 浏览器流程。"""
+"""OpenBlockLabs OAuth 浏览器流程。 — OpenBlockLabs OAuth browser flow."""
 import time
 from typing import Callable, Optional
 

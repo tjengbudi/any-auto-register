@@ -1,4 +1,4 @@
-"""anything.com 协议邮箱注册 worker。"""
+"""anything.com 协议邮箱注册 worker。 — anything.com protocol mailbox registration worker."""
 from __future__ import annotations
 
 import re

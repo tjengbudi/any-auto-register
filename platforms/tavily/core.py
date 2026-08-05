@@ -1,4 +1,4 @@
-"""Tavily 注册协议核心实现 (Auth0 流程)"""
+"""Tavily 注册协议核心实现 (Auth0 流程) — Tavily registration protocol core implementation (Auth0 flow)"""
 import re, json, secrets, hashlib, base64, urllib.parse
 from typing import Optional, Callable
 
@@ -22,7 +22,7 @@ class TavilyRegister:
         _emit_log_key(self.log, self._log_key_fn, key, **params)
 
     def step1_authorize(self) -> str:
-        """GET /authorize → 返回 state"""
+        """GET /authorize → 返回 state — GET /authorize → return the state"""
         nonce = secrets.token_urlsafe(32)
         code_verifier = secrets.token_urlsafe(43)
         code_challenge = base64.urlsafe_b64encode(

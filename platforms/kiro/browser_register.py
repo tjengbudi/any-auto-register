@@ -10,6 +10,19 @@
      c. verify-email 步：填写 OTP → Continue
      d. create-password 步：设置密码 → Continue
   5. 跳回 app.kiro.dev，从 localStorage 提取 Cognito tokens
+
+Kiro (AWS Builder ID) browser registration flow (Camoufox).
+
+Registration flow:
+  1. Open app.kiro.dev/signin
+  2. Click the "AWS Builder ID" option
+  3. Redirect to us-east-1.signin.aws → profile.aws.amazon.com
+  4. AWS Builder ID registration SPA:
+     a. enter-email step: confirm/fill in email → Continue
+     b. enter-name step: fill in name → Continue
+     c. verify-email step: fill in OTP → Continue
+     d. create-password step: set password → Continue
+  5. Redirect back to app.kiro.dev, extract Cognito tokens from localStorage
 """
 import random
 import string
@@ -50,7 +63,7 @@ def _wait_for_url(page, substring: str, timeout: int = 60) -> bool:
 
 
 def _js_click_by_text(page, *texts) -> bool:
-    """用 JS 找到 textContent 精确匹配的最小叶节点并点击。"""
+    """用 JS 找到 textContent 精确匹配的最小叶节点并点击。 — Use JS to find the smallest leaf node whose textContent matches exactly, and click it."""
     for text in texts:
         try:
             clicked = page.evaluate(f"""
@@ -76,7 +89,7 @@ def _js_click_by_text(page, *texts) -> bool:
 
 
 def _click_submit_button(page, timeout: int = 8) -> bool:
-    """点击 submit 按钮（AWS 页面用 button[type=submit]）。"""
+    """点击 submit 按钮（AWS 页面用 button[type=submit]）。 — Click the submit button (AWS pages use button[type=submit])."""
     deadline = time.time() + timeout
     while time.time() < deadline:
         # 1. 优先 Playwright locator text 精确匹配 — 1. First, try an exact-text match via Playwright locator
@@ -120,7 +133,7 @@ def _fill_input_wait(page, selectors: list, value: str, timeout: int = 20) -> bo
 
 
 def _get_kiro_tokens(page, timeout: int = 30) -> dict:
-    """从 localStorage 提取 Cognito accessToken / refreshToken。"""
+    """从 localStorage 提取 Cognito accessToken / refreshToken。 — Extract the Cognito accessToken / refreshToken from localStorage."""
     deadline = time.time() + timeout
     while time.time() < deadline:
         try:
@@ -177,12 +190,20 @@ class KiroBrowserRegister:
 
     def _handle_aws_profile_spa(self, page, email: str, password: str) -> None:
         """处理 profile.aws.amazon.com 上的多步注册 SPA。
-        
+
         步骤对应 URL hash：
           #/signup/enter-email  → 填/确认邮箱 → Continue
           #/signup/enter-name   → 填姓名 → Continue
           #/signup/verify-email → 填 OTP → Continue
           #/signup/create-password → 填密码 → Continue (可选)
+
+        Handle the multi-step registration SPA on profile.aws.amazon.com.
+
+        Steps correspond to the URL hash:
+          #/signup/enter-email  → fill/confirm email → Continue
+          #/signup/enter-name   → fill in name → Continue
+          #/signup/verify-email → fill in OTP → Continue
+          #/signup/create-password → set password → Continue (optional)
         """
         deadline = time.time() + 300  # 最多等 5 分钟完成整个流程 — wait at most 5 minutes for the whole flow
 

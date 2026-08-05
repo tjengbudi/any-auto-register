@@ -1,4 +1,4 @@
-"""Windsurf 协议邮箱注册 worker。"""
+"""Windsurf 协议邮箱注册 worker。 — Windsurf protocol email-registration worker."""
 from __future__ import annotations
 
 import re

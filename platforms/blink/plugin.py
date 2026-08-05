@@ -1,4 +1,4 @@
-"""blink.new 平台插件"""
+"""blink.new 平台插件 — blink.new platform plugin"""
 import json
 
 from core.base_mailbox import BaseMailbox

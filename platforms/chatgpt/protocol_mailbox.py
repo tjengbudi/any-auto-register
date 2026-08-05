@@ -1,4 +1,4 @@
-"""ChatGPT 协议邮箱注册 worker。"""
+"""ChatGPT 协议邮箱注册 worker。 — ChatGPT protocol mailbox registration worker."""
 from __future__ import annotations
 
 from typing import Callable

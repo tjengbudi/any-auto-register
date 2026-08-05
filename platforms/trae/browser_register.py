@@ -10,6 +10,20 @@
 
 注意：Trae 使用 ByteDance Passport 系统，API 请求带有 X-Bogus/X-Gnarly 签名头，
 浏览器模式自动生成这些头，无需额外处理。
+
+Trae.ai browser registration flow (Camoufox).
+
+Registration flow:
+  1. Open trae.ai/sign-up
+  2. Fill in the email → click "Send Code"
+  3. Wait for the email verification code (6 digits) → enter it
+  4. Fill in the password → click "Sign Up"
+  5. Wait for the redirect to the trae.ai homepage
+  6. Extract the token from Cookie / localStorage
+
+Note: Trae uses the ByteDance Passport system; API requests carry X-Bogus/X-Gnarly
+signature headers, which browser mode generates automatically with no extra
+handling needed.
 """
 import random
 import string
@@ -49,7 +63,8 @@ def _wait_for_url(page, substring: str, timeout: int = 60) -> bool:
 
 
 def _click_element(page, *selectors, timeout: int = 10) -> bool:
-    """按选择器列表尝试点击第一个可见元素。"""
+    """按选择器列表尝试点击第一个可见元素。
+    Try clicking the first visible element from a selector list."""
     deadline = time.time() + timeout
     while time.time() < deadline:
         for sel in selectors:
@@ -71,6 +86,14 @@ def _get_trae_cloudide_token(page, log_fn=print, *, log_key: Optional[Callable[[
       step4: POST /cloudide/api/v3/trae/Login    （建立 IDE session）
       step5: POST /cloudide/api/v3/common/GetUserToken  →  Result.Token = Cloud-IDE JWT
       step6: POST /cloudide/api/v3/trae/CheckLogin  →  Region / UserId 等
+
+    After registration completes, use the browser session to call the Trae API
+    and obtain the Cloud-IDE JWT token.
+
+    Same flow as core.py:
+      step4: POST /cloudide/api/v3/trae/Login    (establishes the IDE session)
+      step5: POST /cloudide/api/v3/common/GetUserToken  →  Result.Token = Cloud-IDE JWT
+      step6: POST /cloudide/api/v3/trae/CheckLogin  →  Region / UserId, etc.
     """
     BASE_URL = "https://ug-normal.trae.ai"
     API_SG = "https://api-sg-central.trae.ai"

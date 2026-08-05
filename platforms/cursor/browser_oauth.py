@@ -1,4 +1,4 @@
-"""Cursor OAuth 浏览器流程。"""
+"""Cursor OAuth 浏览器流程。 — Cursor OAuth browser flow."""
 import time
 from typing import Callable, Optional
 

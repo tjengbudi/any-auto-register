@@ -1,4 +1,4 @@
-"""ChatGPT OAuth 浏览器流程。"""
+"""ChatGPT OAuth 浏览器流程。 — ChatGPT OAuth browser flow."""
 import time
 
 from curl_cffi import requests as curl_requests

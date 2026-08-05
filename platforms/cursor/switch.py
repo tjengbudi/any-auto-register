@@ -1,6 +1,9 @@
 """
 Cursor 账号切换 —— 写入本地配置文件，Cursor IDE 自动识别
 支持 macOS / Windows / Linux
+
+Cursor account switching -- writes to the local config file, which Cursor IDE picks up automatically
+Supports macOS / Windows / Linux
 """
 
 import os
@@ -27,7 +30,7 @@ def _cursor_headers(token: str) -> dict:
 
 
 def _get_cursor_config_dir() -> str:
-    """获取 Cursor 配置目录路径"""
+    """获取 Cursor 配置目录路径 — Get the Cursor config directory path"""
     system = platform.system()
     
     if system == "Darwin":  # macOS
@@ -45,7 +48,7 @@ def _get_cursor_config_dir() -> str:
 
 
 def _get_cursor_storage_path() -> str:
-    """获取 Cursor storage.json 路径"""
+    """获取 Cursor storage.json 路径 — Get the Cursor storage.json path"""
     config_dir = _get_cursor_config_dir()
     return os.path.join(config_dir, "globalStorage", "storage.json")
 
@@ -77,7 +80,7 @@ def _cursor_process_patterns() -> list[str]:
 
 
 def _atomic_write(filepath: str, content: str):
-    """原子写入：先写临时文件，再 rename"""
+    """原子写入：先写临时文件，再 rename — Atomic write: write to a temp file first, then rename"""
     dir_path = os.path.dirname(filepath)
     os.makedirs(dir_path, exist_ok=True)
     
@@ -99,10 +102,18 @@ def _atomic_write(filepath: str, content: str):
 def switch_cursor_account(token: str) -> Tuple[bool, str]:
     """
     切换 Cursor 账号（写入 storage.json，需要重启 Cursor）
-    
+
     Args:
         token: WorkosCursorSessionToken
-    
+
+    Returns:
+        (success, message)
+
+    Switch the Cursor account (writes storage.json; requires restarting Cursor).
+
+    Args:
+        token: WorkosCursorSessionToken
+
     Returns:
         (success, message)
     """
@@ -136,7 +147,7 @@ def switch_cursor_account(token: str) -> Tuple[bool, str]:
 
 
 def restart_cursor_ide() -> Tuple[bool, str]:
-    """关闭并重启 Cursor IDE"""
+    """关闭并重启 Cursor IDE — Close and restart Cursor IDE"""
     system = platform.system()
 
     # worker 线程无请求上下文，写入标记字符串，由读边界渲染 (AD-3/AD-8) —
@@ -203,7 +214,7 @@ def restart_cursor_ide() -> Tuple[bool, str]:
 
 
 def read_current_cursor_account() -> dict | None:
-    """读取当前 Cursor IDE 正在使用的账号 token"""
+    """读取当前 Cursor IDE 正在使用的账号 token — Read the account token currently in use by Cursor IDE"""
     storage_path = _get_cursor_storage_path()
     
     if not os.path.exists(storage_path):
@@ -245,7 +256,7 @@ def get_cursor_desktop_state(lang: str = "zh") -> dict:
 
 
 def get_cursor_user_info(token: str) -> dict | None:
-    """通过 token 获取用户信息"""
+    """通过 token 获取用户信息 — Get user info via the token"""
     from curl_cffi import requests as curl_req
     
     try:
@@ -266,7 +277,7 @@ def get_cursor_user_info(token: str) -> dict | None:
 
 
 def get_cursor_billing_info(token: str) -> dict | None:
-    """获取 Cursor 套餐、试用与账单状态。"""
+    """获取 Cursor 套餐、试用与账单状态。 — Get Cursor's plan, trial, and billing status."""
     from curl_cffi import requests as curl_req
 
     try:
@@ -290,7 +301,7 @@ def get_cursor_billing_info(token: str) -> dict | None:
 
 
 def has_cursor_valid_payment_method(token: str) -> bool | None:
-    """查询 Cursor 是否已绑定有效支付方式。"""
+    """查询 Cursor 是否已绑定有效支付方式。 — Query whether Cursor has a valid payment method bound."""
     from curl_cffi import requests as curl_req
 
     try:
@@ -311,7 +322,7 @@ def has_cursor_valid_payment_method(token: str) -> bool | None:
 
 
 def get_cursor_usage(token: str, user_id: str) -> dict | None:
-    """查询 Cursor usage 数据。"""
+    """查询 Cursor usage 数据。 — Query Cursor usage data."""
     from curl_cffi import requests as curl_req
 
     if not user_id:
@@ -334,7 +345,7 @@ def get_cursor_usage(token: str, user_id: str) -> dict | None:
 
 
 def summarize_cursor_usage(usage_data: dict | None) -> dict | None:
-    """提炼更适合 UI 展示的 Cursor usage 摘要。"""
+    """提炼更适合 UI 展示的 Cursor usage 摘要。 — Distill a Cursor usage summary better suited for UI display."""
     if not usage_data:
         return None
 
@@ -375,7 +386,7 @@ def generate_cursor_checkout_link(
     allow_automatic_payment: bool = False,
     yearly: bool = False,
 ) -> str | None:
-    """生成 Cursor Pro 结账链接，可用于 7 天试用入口。"""
+    """生成 Cursor Pro 结账链接，可用于 7 天试用入口。 — Generate a Cursor Pro checkout link, usable as a 7-day trial entry point."""
     from curl_cffi import requests as curl_req
 
     try:

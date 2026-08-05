@@ -1,6 +1,10 @@
 """
 Trae.ai 账号切换 —— 写入本地配置文件，Trae IDE 自动识别
 支持 macOS / Windows / Linux
+
+Trae.ai account switching -- writes the local config file, which the Trae IDE
+detects automatically.
+Supports macOS / Windows / Linux.
 """
 
 import os
@@ -16,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 def _get_trae_config_dir() -> str:
-    """获取 Trae 配置目录路径"""
+    """获取 Trae 配置目录路径 — Get the Trae config directory path"""
     system = platform.system()
     
     if system == "Darwin":  # macOS
@@ -34,13 +38,13 @@ def _get_trae_config_dir() -> str:
 
 
 def _get_trae_storage_path() -> str:
-    """获取 Trae storage.json 路径"""
+    """获取 Trae storage.json 路径 — Get the Trae storage.json path"""
     config_dir = _get_trae_config_dir()
     return os.path.join(config_dir, "globalStorage", "storage.json")
 
 
 def _atomic_write(filepath: str, content: str):
-    """原子写入：先写临时文件，再 rename"""
+    """原子写入：先写临时文件，再 rename — Atomic write: write to a temp file first, then rename"""
     dir_path = os.path.dirname(filepath)
     os.makedirs(dir_path, exist_ok=True)
     
@@ -67,13 +71,24 @@ def switch_trae_account(
 ) -> Tuple[bool, str]:
     """
     切换 Trae 账号（写入 storage.json，需要重启 Trae）
-    
+
     Args:
         token: Trae API token
         user_id: 用户 ID
         email: 邮箱
         region: 区域
-    
+
+    Returns:
+        (success, message)
+
+    Switch the Trae account (writes storage.json; requires restarting Trae).
+
+    Args:
+        token: Trae API token
+        user_id: user ID
+        email: email address
+        region: region
+
     Returns:
         (success, message)
     """
@@ -113,7 +128,7 @@ def switch_trae_account(
 
 
 def restart_trae_ide() -> Tuple[bool, str]:
-    """关闭并重启 Trae IDE"""
+    """关闭并重启 Trae IDE — Quit and restart the Trae IDE"""
     system = platform.system()
 
     # worker 线程无请求上下文，写入标记字符串，由读边界渲染 (AD-3/AD-8) —
@@ -180,7 +195,7 @@ def restart_trae_ide() -> Tuple[bool, str]:
 
 
 def read_current_trae_account() -> dict | None:
-    """读取当前 Trae IDE 正在使用的账号信息"""
+    """读取当前 Trae IDE 正在使用的账号信息 — Read the account info currently in use by the Trae IDE"""
     storage_path = _get_trae_storage_path()
     
     if not os.path.exists(storage_path):
@@ -206,7 +221,7 @@ def read_current_trae_account() -> dict | None:
 
 
 def get_trae_user_info(token: str) -> dict | None:
-    """通过 token 获取用户信息"""
+    """通过 token 获取用户信息 — Fetch user info via the token"""
     from curl_cffi import requests as curl_req
     
     try:

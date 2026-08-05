@@ -1,6 +1,9 @@
 """
 注册流程引擎
 从 main.py 中提取并重构的注册流程
+
+Registration flow engine.
+Extracted and refactored from main.py's registration flow.
 """
 
 import re
@@ -46,7 +49,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class RegistrationResult:
-    """注册结果"""
+    """注册结果 — Registration result"""
     success: bool
     email: str = ""
     password: str = ""  # 注册密码 — Registration password
@@ -63,7 +66,7 @@ class RegistrationResult:
     # 'register' or 'login', distinguishing the account's origin
 
     def to_dict(self) -> Dict[str, Any]:
-        """转换为字典"""
+        """转换为字典 — Convert to a dict"""
         return {
             "success": self.success,
             "email": self.email,
@@ -83,7 +86,7 @@ class RegistrationResult:
 
 @dataclass
 class SignupFormResult:
-    """提交注册表单的结果"""
+    """提交注册表单的结果 — Result of submitting the registration form"""
     success: bool
     page_type: str = ""  # 响应中的 page.type 字段 — The page.type field from the response
     is_existing_account: bool = False  # 是否为已注册账号 — Whether the account is already registered
@@ -93,7 +96,7 @@ class SignupFormResult:
 
 @dataclass
 class SentinelPayload:
-    """Sentinel 请求结果。"""
+    """Sentinel 请求结果。 — Sentinel request result."""
     p: str
     c: str
     flow: str
@@ -191,6 +194,9 @@ class RegistrationEngine:
     """
     注册引擎
     负责协调邮箱服务、OAuth 流程和 OpenAI API 调用
+
+    Registration engine.
+    Coordinates the mailbox service, OAuth flow, and OpenAI API calls.
     """
 
     def __init__(
@@ -210,6 +216,15 @@ class RegistrationEngine:
             callback_logger: 日志回调函数
             log_key_fn: keyed 日志回调函数（用于 i18n），优先于 callback_logger 使用
             task_uuid: 任务 UUID（用于数据库记录）
+
+        Initialize the registration engine.
+
+        Args:
+            email_service: the mailbox service instance
+            proxy_url: proxy URL
+            callback_logger: log callback function
+            log_key_fn: keyed log callback function (for i18n), takes priority over callback_logger
+            task_uuid: task UUID (for database records)
         """
         self.email_service = email_service
         self.proxy_url = proxy_url
@@ -251,7 +266,7 @@ class RegistrationEngine:
         self._otp_page_type: Optional[str] = None
 
     def _log(self, message: str, level: str = "info"):
-        """记录日志"""
+        """记录日志 — Record a log entry"""
         timestamp = datetime.now(timezone.utc).astimezone().strftime("%H:%M:%S")
         log_message = f"[{timestamp}] {message}"
 
@@ -285,7 +300,7 @@ class RegistrationEngine:
             self._log(t(key, "zh", **params), level)
 
     def _generate_password(self, length: int = DEFAULT_PASSWORD_LENGTH) -> str:
-        """生成随机密码"""
+        """生成随机密码 — Generate a random password"""
         # OpenAI 注册页对纯字母数字密码存在更高概率拒绝，补一个符号位更稳。 —
         # OpenAI's signup page rejects alphanumeric-only passwords more often; adding a symbol is safer.
         specials = ",._!@#"
@@ -300,7 +315,7 @@ class RegistrationEngine:
         )[:length]
 
     def _load_create_account_password_page(self) -> bool:
-        """预加载 create-account/password 页面，拿到页面阶段 cookie。"""
+        """预加载 create-account/password 页面，拿到页面阶段 cookie。 — Preload the create-account/password page to obtain the page-stage cookie."""
         try:
             response = self.session.get(
                 "https://auth.openai.com/create-account/password",
@@ -319,7 +334,7 @@ class RegistrationEngine:
             return False
 
     def _check_ip_location(self) -> Tuple[bool, Optional[str]]:
-        """检查 IP 地理位置"""
+        """检查 IP 地理位置 — Check the IP geolocation"""
         try:
             return self.http_client.check_ip_location()
         except Exception as e:
@@ -328,7 +343,7 @@ class RegistrationEngine:
             return False, None
 
     def _create_email(self) -> bool:
-        """创建邮箱"""
+        """创建邮箱 — Create the mailbox"""
         try:
             self._log_key("chatgpt.c2b68bf9", service_type=self.email_service.service_type.value)
             # was: self._log(f"正在创建 {self.email_service.service_type.value} 邮箱...") — Creating mailbox
@@ -350,7 +365,7 @@ class RegistrationEngine:
             return False
 
     def _start_oauth(self) -> bool:
-        """通过 chatgpt.com NextAuth 发起 OAuth 流程"""
+        """通过 chatgpt.com NextAuth 发起 OAuth 流程 — Start the OAuth flow via chatgpt.com's NextAuth"""
         try:
             from .constants import CHATGPT_APP
             self._log_key("chatgpt.044b62c2")
@@ -419,7 +434,7 @@ class RegistrationEngine:
             return False
 
     def _init_session(self) -> bool:
-        """初始化会话"""
+        """初始化会话 — Initialize the session"""
         try:
             self.session = self.http_client.session
             return True
@@ -429,7 +444,7 @@ class RegistrationEngine:
             return False
 
     def _get_device_id(self) -> Optional[str]:
-        """获取 Device ID"""
+        """获取 Device ID — Get the Device ID"""
         try:
             if not self.oauth_start:
                 return None
@@ -448,7 +463,7 @@ class RegistrationEngine:
             return None
 
     def _check_sentinel(self, did: str, *, flow: str = "authorize_continue") -> Optional[SentinelPayload]:
-        """检查 Sentinel 拦截（动态生成 token + 处理 PoW）"""
+        """检查 Sentinel 拦截（动态生成 token + 处理 PoW） — Check Sentinel interception (dynamically generate the token + handle PoW)"""
         try:
             ua = self.http_client.default_headers.get("User-Agent", "")
             generator = _SentinelTokenGenerator(did, ua)
@@ -519,6 +534,11 @@ class RegistrationEngine:
 
         Returns:
             SignupFormResult: 提交结果，包含账号状态判断
+
+        Submit the registration form (establishes the session via authorize/continue).
+
+        Returns:
+            SignupFormResult: the submission result, including the account-status determination
         """
         try:
             self._device_id = did
@@ -588,7 +608,7 @@ class RegistrationEngine:
             return SignupFormResult(success=False, error_message=str(e))
 
     def _register_password(self) -> Tuple[bool, Optional[str]]:
-        """注册密码"""
+        """注册密码 — Register the password"""
         try:
             ua = self.http_client.default_headers.get("User-Agent", "")
             chrome_match = re.search(r"Chrome/(\d+)", ua)
@@ -699,7 +719,7 @@ class RegistrationEngine:
             return False, None
 
     def _mark_email_as_registered(self):
-        """标记邮箱为已注册状态（用于防止重复尝试）"""
+        """标记邮箱为已注册状态（用于防止重复尝试） — Mark the mailbox as already registered (to prevent repeated attempts)"""
         try:
             with get_db() as db:
                 # 检查是否已存在该邮箱的记录 — Check whether a record for this mailbox already exists
@@ -723,7 +743,7 @@ class RegistrationEngine:
             logger.warning(f"标记邮箱状态失败: {e}")
 
     def _send_verification_code(self) -> bool:
-        """发送验证码"""
+        """发送验证码 — Send the verification code"""
         try:
             # 记录发送时间戳 — Record the send timestamp
             self._otp_sent_at = time.time()
@@ -746,7 +766,7 @@ class RegistrationEngine:
             return False
 
     def _get_verification_code(self) -> Optional[str]:
-        """获取验证码"""
+        """获取验证码 — Get the verification code"""
         try:
             self._log_key("chatgpt.19ede5cd", email=self.email)
             # was: self._log(f"正在等待邮箱 {self.email} 的验证码...") —
@@ -776,7 +796,7 @@ class RegistrationEngine:
             return None
 
     def _validate_verification_code(self, code: str) -> bool:
-        """验证验证码"""
+        """验证验证码 — Validate the verification code"""
         try:
             code_body = f'{{"code":"{code}"}}'
 
@@ -816,7 +836,7 @@ class RegistrationEngine:
             return False
 
     def _create_user_account(self) -> bool:
-        """创建用户账户"""
+        """创建用户账户 — Create the user account"""
         try:
             user_info = generate_random_user_info()
             self._log_key("chatgpt.a36a4296", name=user_info['name'], birthdate=user_info['birthdate'])
@@ -901,6 +921,10 @@ class RegistrationEngine:
         """
         注册完成后，通过 Codex CLI OAuth 完整登录流程获取 callback URL。
         使用新 session，走 authorize → authorize/continue → OTP → callback 流程。
+
+        After registration completes, obtain the callback URL via the full Codex CLI
+        OAuth login flow. Uses a fresh session, going through the
+        authorize → authorize/continue → OTP → callback sequence.
         """
         try:
             from .constants import (
@@ -1172,7 +1196,7 @@ class RegistrationEngine:
             return None
 
     def _get_workspace_id(self) -> Optional[str]:
-        """获取 Workspace ID"""
+        """获取 Workspace ID — Get the Workspace ID"""
         try:
             auth_cookie = self.session.cookies.get("oai-client-auth-session")
             if not auth_cookie:
@@ -1223,7 +1247,7 @@ class RegistrationEngine:
             return None
 
     def _select_workspace(self, workspace_id: str) -> Optional[str]:
-        """选择 Workspace"""
+        """选择 Workspace — Select the Workspace"""
         try:
             select_body = f'{{"workspace_id":"{workspace_id}"}}'
 
@@ -1258,7 +1282,7 @@ class RegistrationEngine:
             return None
 
     def _follow_redirects(self, start_url: str) -> Optional[str]:
-        """跟随重定向链，寻找回调 URL"""
+        """跟随重定向链，寻找回调 URL — Follow the redirect chain to find the callback URL"""
         try:
             current_url = start_url
             max_redirects = 6
@@ -1308,7 +1332,7 @@ class RegistrationEngine:
             return None
 
     def _handle_oauth_callback(self, callback_url: str) -> Optional[Dict[str, Any]]:
-        """处理 OAuth 回调"""
+        """处理 OAuth 回调 — Handle the OAuth callback"""
         try:
             if not self.oauth_start:
                 self._log_key("chatgpt.2c17f7c8", level="error")
@@ -1343,6 +1367,16 @@ class RegistrationEngine:
 
         Returns:
             RegistrationResult: 注册结果
+
+        Run the complete registration flow.
+
+        Supports automatic login for already-registered accounts:
+        - If the mailbox is detected as already registered, automatically switch to the login flow
+        - Already-registered accounts skip: setting the password, sending the verification code, creating the user account
+        - Shared steps: getting the verification code, validating the verification code, Workspace, and the OAuth callback
+
+        Returns:
+            RegistrationResult: the registration result
         """
         result = RegistrationResult(success=False, logs=self.logs)
 
@@ -1759,6 +1793,14 @@ class RegistrationEngine:
 
         Returns:
             是否保存成功
+
+        Save the registration result to the database.
+
+        Args:
+            result: the registration result
+
+        Returns:
+            whether the save succeeded
         """
         if not result.success:
             return False

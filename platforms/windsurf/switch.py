@@ -11,6 +11,19 @@ Windsurf 认证信息缓存在 state.vscdb SQLite 数据库中:
   macOS:   ~/Library/Application Support/Windsurf/User/globalStorage/state.vscdb
   Windows: %APPDATA%/Windsurf/User/globalStorage/state.vscdb
   Linux:   ~/.config/Windsurf/User/globalStorage/state.vscdb
+
+Windsurf desktop app account switching -- pure protocol implementation.
+Supports macOS / Windows / Linux.
+
+Switch flow (no browser needed, no Electron safeStorage manipulation needed):
+1. Call the GetOneTimeAuthToken API with session_token to get a one-time OTT
+2. Pass the OTT to the Windsurf desktop app via the windsurf:// deep link
+3. Windsurf internally uses the OTT to complete authentication and switch accounts
+
+Windsurf auth info is cached in the state.vscdb SQLite database:
+  macOS:   ~/Library/Application Support/Windsurf/User/globalStorage/state.vscdb
+  Windows: %APPDATA%/Windsurf/User/globalStorage/state.vscdb
+  Linux:   ~/.config/Windsurf/User/globalStorage/state.vscdb
 """
 
 import json
@@ -31,7 +44,7 @@ _DB_KEY = "windsurfAuthStatus"
 
 
 def _get_windsurf_config_dir() -> str:
-    """获取 Windsurf 配置目录路径"""
+    """获取 Windsurf 配置目录路径 — Get the Windsurf config directory path"""
     system = platform.system()
 
     if system == "Darwin":
@@ -49,7 +62,7 @@ def _get_windsurf_config_dir() -> str:
 
 
 def _get_windsurf_db_path() -> str:
-    """获取 Windsurf state.vscdb 路径"""
+    """获取 Windsurf state.vscdb 路径 — Get the Windsurf state.vscdb path"""
     config_dir = _get_windsurf_config_dir()
     return os.path.join(config_dir, "globalStorage", "state.vscdb")
 
@@ -81,7 +94,7 @@ def _windsurf_process_patterns() -> list[str]:
 
 
 def _read_db_key(db_path: str, key: str) -> str | None:
-    """从 state.vscdb 读取指定 key 的值"""
+    """从 state.vscdb 读取指定 key 的值 — Read the value for a given key from state.vscdb"""
     if not os.path.exists(db_path):
         return None
     try:
@@ -97,7 +110,7 @@ def _read_db_key(db_path: str, key: str) -> str | None:
 
 
 def _write_db_key(db_path: str, key: str, value: str):
-    """写入 state.vscdb 指定 key 的值（INSERT OR REPLACE）"""
+    """写入 state.vscdb 指定 key 的值（INSERT OR REPLACE） — Write the value for a given key into state.vscdb (INSERT OR REPLACE)"""
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
     conn = sqlite3.connect(db_path, timeout=10)
     try:
@@ -114,7 +127,7 @@ def _write_db_key(db_path: str, key: str, value: str):
 
 
 def _clear_old_auth_keys(db_path: str):
-    """清除 state.vscdb 中旧账号的加密 session 和 auth 缓存"""
+    """清除 state.vscdb 中旧账号的加密 session 和 auth 缓存 — Clear the old account's encrypted session and auth cache from state.vscdb"""
     if not os.path.exists(db_path):
         return
     # 需要删除的 key 模式：
@@ -147,7 +160,7 @@ def _clear_old_auth_keys(db_path: str):
 
 
 def _get_one_time_auth_token(session_token: str, proxy: str | None = None) -> str:
-    """用 session_token 调 GetOneTimeAuthToken 获取一次性认证 token"""
+    """用 session_token 调 GetOneTimeAuthToken 获取一次性认证 token — Call GetOneTimeAuthToken with session_token to get a one-time auth token"""
     from platforms.windsurf.core import WindsurfClient, _field_string
 
     api_key = session_token
@@ -167,7 +180,7 @@ def _get_one_time_auth_token(session_token: str, proxy: str | None = None) -> st
 
 
 def _open_deep_link(ott: str) -> bool:
-    """通过 windsurf:// deep link 将 OTT 传给 Windsurf 桌面端"""
+    """通过 windsurf:// deep link 将 OTT 传给 Windsurf 桌面端 — Pass the OTT to the Windsurf desktop app via the windsurf:// deep link"""
     deep_link = f"windsurf://codeium.windsurf#state=switch&access_token={quote(ott, safe='')}"
     system = platform.system()
     try:
@@ -195,6 +208,15 @@ def switch_windsurf_account(
     1. 用 session_token 调 GetOneTimeAuthToken API → 获取 OTT
     2. 通过 windsurf:// deep link 传给 Windsurf → 完成认证切换
 
+    返回:
+        (success, message)
+
+    Switch the Windsurf desktop app account (pure protocol, no browser required).
+
+    Flow:
+    1. Call the GetOneTimeAuthToken API with session_token → obtain OTT
+    2. Pass it to Windsurf via the windsurf:// deep link → complete the authentication switch
+
     Returns:
         (success, message)
     """
@@ -219,7 +241,7 @@ def switch_windsurf_account(
 
 
 def restart_windsurf_ide() -> Tuple[bool, str]:
-    """关闭并重启 Windsurf IDE"""
+    """关闭并重启 Windsurf IDE — Close and restart the Windsurf IDE"""
     system = platform.system()
 
     try:
@@ -273,7 +295,7 @@ def restart_windsurf_ide() -> Tuple[bool, str]:
 
 
 def read_current_windsurf_account() -> dict | None:
-    """读取当前 Windsurf IDE 正在使用的账号信息"""
+    """读取当前 Windsurf IDE 正在使用的账号信息 — Read the account info currently in use by the Windsurf IDE"""
     db_path = _get_windsurf_db_path()
     raw = _read_db_key(db_path, _DB_KEY)
     if not raw:
@@ -300,7 +322,7 @@ def read_current_windsurf_account() -> dict | None:
 
 
 def get_windsurf_desktop_state(lang: str = "zh") -> dict:
-    """获取 Windsurf 桌面应用状态"""
+    """获取 Windsurf 桌面应用状态 — Get the Windsurf desktop app state"""
     current = read_current_windsurf_account() or {}
     db_path = _get_windsurf_db_path()
     config_dir = _get_windsurf_config_dir()

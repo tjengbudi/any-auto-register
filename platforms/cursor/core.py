@@ -1,4 +1,4 @@
-"""Cursor 注册协议核心实现"""
+"""Cursor 注册协议核心实现 — Core implementation of the Cursor registration protocol"""
 import re, uuid, json, urllib.parse, random, string
 from typing import Optional, Callable
 

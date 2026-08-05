@@ -1,4 +1,4 @@
-"""ChatGPT / Codex CLI 平台插件"""
+"""ChatGPT / Codex CLI 平台插件 — ChatGPT / Codex CLI platform plugin"""
 import json
 import secrets
 from core.base_platform import BasePlatform, Account, AccountStatus, RegisterConfig
@@ -32,6 +32,14 @@ def _generate_chatgpt_registration_password(length: int = 16) -> str:
 
     旧协议流已经验证过：至少带小写、数字、符号时，成功率明显更稳。
     这里再补一个大写字符，避免浏览器流随机生成出“看起来够长但组合不够强”的密码。
+
+    Generate a password more likely to pass OpenAI's signup-page validation.
+
+    The legacy protocol flow already confirmed that including lowercase letters,
+    digits, and symbols makes the success rate noticeably more reliable. Here we
+    also add an extra uppercase character, to avoid the browser flow randomly
+    generating a password that looks long enough but isn't actually strong
+    enough.
     """
     specials = ",._!@#"
     minimum_length = 12

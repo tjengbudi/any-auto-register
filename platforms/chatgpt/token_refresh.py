@@ -1,6 +1,9 @@
 """
 Token 刷新模块
 支持 Session Token 和 OAuth Refresh Token 两种刷新方式
+
+Token refresh module.
+Supports two refresh methods: Session Token and OAuth Refresh Token.
 """
 
 import logging
@@ -26,7 +29,7 @@ def _utcnow() -> datetime:
 
 @dataclass
 class TokenRefreshResult:
-    """Token 刷新结果"""
+    """Token 刷新结果 — Token refresh result"""
     success: bool
     access_token: str = ""
     refresh_token: str = ""
@@ -40,6 +43,11 @@ class TokenRefreshManager:
     支持两种刷新方式：
     1. Session Token 刷新（优先）
     2. OAuth Refresh Token 刷新
+
+    Token refresh manager.
+    Supports two refresh methods:
+    1. Session Token refresh (preferred)
+    2. OAuth Refresh Token refresh
     """
 
     # OpenAI OAuth 端点 — OpenAI OAuth endpoints
@@ -52,6 +60,11 @@ class TokenRefreshManager:
 
         Args:
             proxy_url: 代理 URL
+
+        Initialize the Token refresh manager.
+
+        Args:
+            proxy_url: proxy URL
         """
         self.proxy_url = proxy_url
         from .constants import OAUTH_CLIENT_ID, OAUTH_REDIRECT_URI
@@ -59,7 +72,7 @@ class TokenRefreshManager:
         self._oauth_redirect_uri = OAUTH_REDIRECT_URI
 
     def _create_session(self) -> cffi_requests.Session:
-        """创建 HTTP 会话"""
+        """创建 HTTP 会话 — Create the HTTP session"""
         session = cffi_requests.Session(impersonate="chrome120", proxy=self.proxy_url)
         return session
 
@@ -72,6 +85,14 @@ class TokenRefreshManager:
 
         Returns:
             TokenRefreshResult: 刷新结果
+
+        Refresh using the Session Token.
+
+        Args:
+            session_token: session token
+
+        Returns:
+            TokenRefreshResult: the refresh result
         """
         result = TokenRefreshResult(success=False)
 
@@ -145,6 +166,15 @@ class TokenRefreshManager:
 
         Returns:
             TokenRefreshResult: 刷新结果
+
+        Refresh using the OAuth Refresh Token.
+
+        Args:
+            refresh_token: OAuth refresh token
+            client_id: OAuth client ID
+
+        Returns:
+            TokenRefreshResult: the refresh result
         """
         result = TokenRefreshResult(success=False)
 
@@ -218,6 +248,18 @@ class TokenRefreshManager:
 
         Returns:
             TokenRefreshResult: 刷新结果
+
+        Refresh the account's token.
+
+        Priority:
+        1. Session Token refresh
+        2. OAuth Refresh Token refresh
+
+        Args:
+            account: the account object
+
+        Returns:
+            TokenRefreshResult: the refresh result
         """
         # 优先尝试 Session Token — Prefer Session Token first
         if account.session_token:
@@ -251,6 +293,14 @@ class TokenRefreshManager:
 
         Returns:
             Tuple[bool, Optional[str]]: (是否有效, 错误信息)
+
+        Validate whether the Access Token is still valid.
+
+        Args:
+            access_token: the access token
+
+        Returns:
+            Tuple[bool, Optional[str]]: (whether valid, error message)
         """
         try:
             session = self._create_session()
@@ -288,6 +338,15 @@ def refresh_account_token(account_id: int, proxy_url: Optional[str] = None) -> T
 
     Returns:
         TokenRefreshResult: 刷新结果
+
+    Refresh the specified account's token and update the database.
+
+    Args:
+        account_id: account ID
+        proxy_url: proxy URL
+
+    Returns:
+        TokenRefreshResult: the refresh result
     """
     with get_db() as db:
         account = crud.get_account_by_id(db, account_id)
@@ -325,6 +384,15 @@ def validate_account_token(account_id: int, proxy_url: Optional[str] = None) -> 
 
     Returns:
         Tuple[bool, Optional[str]]: (是否有效, 错误信息)
+
+    Validate whether the specified account's token is still valid.
+
+    Args:
+        account_id: account ID
+        proxy_url: proxy URL
+
+    Returns:
+        Tuple[bool, Optional[str]]: (whether valid, error message)
     """
     with get_db() as db:
         account = crud.get_account_by_id(db, account_id)

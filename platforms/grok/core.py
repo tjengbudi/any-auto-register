@@ -1,5 +1,6 @@
 """
 Grok (x.ai) 自动注册 - 纯协议实现
+Grok (x.ai) automated registration - pure protocol implementation
 """
 import re, struct, random, string, time
 from typing import Callable, Optional
