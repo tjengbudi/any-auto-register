@@ -5,7 +5,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlmodel import Session
 
-from customer_portal_api.app.deps import get_db_session, require_admin
+from customer_portal_api.app.deps import get_db_session, get_portal_locale, require_admin
 from customer_portal_api.app.models import PortalUser
 from customer_portal_api.app.services.portal import PortalService
 
@@ -122,8 +122,9 @@ def list_users(
     status: str = "",
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).list_users(keyword=keyword, role_code=role_code, status_value=status)
+    return PortalService(session, lang).list_users(keyword=keyword, role_code=role_code, status_value=status)
 
 
 @router.post("/admin/users")
@@ -131,8 +132,9 @@ def create_user(
     body: UserCreateRequest,
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).create_user(body.model_dump())
+    return PortalService(session, lang).create_user(body.model_dump())
 
 
 @router.patch("/admin/users/{user_id}")
@@ -141,8 +143,9 @@ def update_user(
     body: UserUpdateRequest,
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).update_user(user_id, body.model_dump(exclude_unset=True))
+    return PortalService(session, lang).update_user(user_id, body.model_dump(exclude_unset=True))
 
 
 @router.get("/admin/users/{user_id}/platform-access")
@@ -150,8 +153,9 @@ def get_user_platform_access(
     user_id: int,
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).get_user_platform_access(user_id)
+    return PortalService(session, lang).get_user_platform_access(user_id)
 
 
 @router.post("/admin/users/{user_id}/platform-access")
@@ -160,8 +164,9 @@ def set_user_platform_access(
     body: PlatformAccessUpdateRequest,
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).set_user_platform_access(user_id, body.platform_codes)
+    return PortalService(session, lang).set_user_platform_access(user_id, body.platform_codes)
 
 
 @router.delete("/admin/users/{user_id}/platform-access/{platform_code}")
@@ -170,40 +175,45 @@ def remove_user_platform_access(
     platform_code: str,
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).remove_user_platform_access(user_id, platform_code)
+    return PortalService(session, lang).remove_user_platform_access(user_id, platform_code)
 
 
 @router.get("/admin/roles")
 def list_roles(
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).list_roles()
+    return PortalService(session, lang).list_roles()
 
 
 @router.get("/admin/permissions")
 def list_permissions(
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).list_permissions()
+    return PortalService(session, lang).list_permissions()
 
 
 @router.get("/admin/products")
 def list_products(
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).list_products()
+    return PortalService(session, lang).list_products()
 
 
 @router.get("/platforms")
 def list_platforms(
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).list_platforms()
+    return PortalService(session, lang).list_platforms()
 
 
 @router.get("/platforms/{platform}/desktop-state")
@@ -211,24 +221,27 @@ def get_desktop_state(
     platform: str,
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).get_desktop_state(platform)
+    return PortalService(session, lang).get_desktop_state(platform)
 
 
 @router.get("/config")
 def get_config(
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).get_config()
+    return PortalService(session, lang).get_config()
 
 
 @router.get("/config/options")
 def get_config_options(
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).get_config_options()
+    return PortalService(session, lang).get_config_options()
 
 
 @router.put("/config")
@@ -236,8 +249,9 @@ def update_config(
     body: ConfigUpdateRequest,
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).update_config(body.data)
+    return PortalService(session, lang).update_config(body.data)
 
 
 @router.post("/tasks/register")
@@ -245,8 +259,9 @@ def create_register_task(
     body: RegisterTaskRequest,
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).create_admin_register_task(body.model_dump())
+    return PortalService(session, lang).create_admin_register_task(body.model_dump())
 
 
 @router.get("/tasks/logs")
@@ -256,8 +271,9 @@ def list_task_logs(
     page_size: int = 50,
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).list_task_logs(platform=platform, page=page, page_size=page_size)
+    return PortalService(session, lang).list_task_logs(platform=platform, page=page, page_size=page_size)
 
 
 @router.get("/tasks")
@@ -268,8 +284,9 @@ def list_tasks(
     page_size: int = 50,
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).list_tasks(platform=platform, status_value=status, page=page, page_size=page_size)
+    return PortalService(session, lang).list_tasks(platform=platform, status_value=status, page=page, page_size=page_size)
 
 
 @router.get("/tasks/{task_id}")
@@ -277,8 +294,9 @@ def get_task(
     task_id: str,
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).get_task(task_id)
+    return PortalService(session, lang).get_task(task_id)
 
 
 @router.get("/tasks/{task_id}/events")
@@ -288,8 +306,9 @@ def list_task_events(
     limit: int = 200,
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).list_task_events(task_id, since=since, limit=limit)
+    return PortalService(session, lang).list_task_events(task_id, since=since, limit=limit)
 
 
 @router.get("/tasks/{task_id}/logs/stream")
@@ -298,8 +317,9 @@ async def stream_task_events(
     since: int = 0,
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    service = PortalService(session)
+    service = PortalService(session, lang)
     return StreamingResponse(
         await service.stream_task_events(task_id, since=since),
         media_type="text/event-stream",
@@ -312,8 +332,9 @@ def cancel_task(
     task_id: str,
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).cancel_task(task_id)
+    return PortalService(session, lang).cancel_task(task_id)
 
 
 @router.get("/accounts")
@@ -325,8 +346,9 @@ def list_accounts(
     page_size: int = 20,
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).list_accounts(platform=platform, status_value=status, email=email, page=page, page_size=page_size)
+    return PortalService(session, lang).list_accounts(platform=platform, status_value=status, email=email, page=page, page_size=page_size)
 
 
 @router.post("/accounts")
@@ -334,16 +356,18 @@ def create_account(
     body: AccountCreateRequest,
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).create_account(body.model_dump())
+    return PortalService(session, lang).create_account(body.model_dump())
 
 
 @router.get("/accounts/stats")
 def get_account_stats(
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).get_account_stats()
+    return PortalService(session, lang).get_account_stats()
 
 
 @router.post("/accounts/import")
@@ -351,8 +375,9 @@ def import_accounts(
     body: ImportAccountsRequest,
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).import_accounts(body.platform, body.lines)
+    return PortalService(session, lang).import_accounts(body.platform, body.lines)
 
 
 @router.get("/accounts/export")
@@ -361,8 +386,9 @@ def export_accounts(
     status: str = "",
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).export_accounts_csv_stream(platform=platform, status_value=status)
+    return PortalService(session, lang).export_accounts_csv_stream(platform=platform, status_value=status)
 
 
 @router.post("/accounts/export/json")
@@ -370,8 +396,9 @@ def export_accounts_json(
     body: BatchExportRequest,
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).export_accounts_json(body.model_dump())
+    return PortalService(session, lang).export_accounts_json(body.model_dump())
 
 
 @router.post("/accounts/export/csv")
@@ -379,8 +406,9 @@ def export_accounts_csv(
     body: BatchExportRequest,
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).export_accounts_csv_zip(body.model_dump())
+    return PortalService(session, lang).export_accounts_csv_zip(body.model_dump())
 
 
 @router.post("/accounts/export/sub2api")
@@ -388,8 +416,9 @@ def export_accounts_sub2api(
     body: BatchExportRequest,
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).export_accounts_sub2api(body.model_dump())
+    return PortalService(session, lang).export_accounts_sub2api(body.model_dump())
 
 
 @router.post("/accounts/export/cpa")
@@ -397,8 +426,9 @@ def export_accounts_cpa(
     body: BatchExportRequest,
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).export_accounts_cpa(body.model_dump())
+    return PortalService(session, lang).export_accounts_cpa(body.model_dump())
 
 
 @router.get("/accounts/{account_id}")
@@ -406,8 +436,9 @@ def get_account(
     account_id: int,
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).get_account(account_id)
+    return PortalService(session, lang).get_account(account_id)
 
 
 @router.patch("/accounts/{account_id}")
@@ -416,8 +447,9 @@ def update_account(
     body: AccountUpdateRequest,
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).update_account(account_id, body.model_dump(exclude_unset=True))
+    return PortalService(session, lang).update_account(account_id, body.model_dump(exclude_unset=True))
 
 
 @router.delete("/accounts/{account_id}")
@@ -425,8 +457,9 @@ def delete_account(
     account_id: int,
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).delete_account(account_id)
+    return PortalService(session, lang).delete_account(account_id)
 
 
 @router.get("/actions/{platform}")
@@ -434,8 +467,9 @@ def list_actions(
     platform: str,
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).list_actions(platform)
+    return PortalService(session, lang).list_actions(platform)
 
 
 @router.post("/actions/{platform}/{account_id}/{action_id}")
@@ -446,16 +480,18 @@ def execute_action(
     body: ActionRequest,
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).execute_action(platform, account_id, action_id, body.params)
+    return PortalService(session, lang).execute_action(platform, account_id, action_id, body.params)
 
 
 @router.get("/proxies")
 def list_proxies(
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).list_proxies()
+    return PortalService(session, lang).list_proxies()
 
 
 @router.post("/proxies")
@@ -463,8 +499,9 @@ def create_proxy(
     body: ProxyCreateRequest,
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).create_proxy(body.url, body.region)
+    return PortalService(session, lang).create_proxy(body.url, body.region)
 
 
 @router.post("/proxies/bulk")
@@ -472,8 +509,9 @@ def bulk_create_proxies(
     body: ProxyBulkCreateRequest,
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).bulk_create_proxies(body.proxies, body.region)
+    return PortalService(session, lang).bulk_create_proxies(body.proxies, body.region)
 
 
 @router.delete("/proxies/{proxy_id}")
@@ -481,8 +519,9 @@ def delete_proxy(
     proxy_id: int,
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).delete_proxy(proxy_id)
+    return PortalService(session, lang).delete_proxy(proxy_id)
 
 
 @router.patch("/proxies/{proxy_id}/toggle")
@@ -490,29 +529,33 @@ def toggle_proxy(
     proxy_id: int,
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).toggle_proxy(proxy_id)
+    return PortalService(session, lang).toggle_proxy(proxy_id)
 
 
 @router.post("/proxies/check")
 def check_proxies(
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).check_proxies()
+    return PortalService(session, lang).check_proxies()
 
 
 @router.get("/solver/status")
 def solver_status(
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).solver_status()
+    return PortalService(session, lang).solver_status()
 
 
 @router.post("/solver/restart")
 def solver_restart(
     _: PortalUser = Depends(require_admin),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).restart_solver()
+    return PortalService(session, lang).restart_solver()

@@ -33,14 +33,16 @@ from customer_portal_api.app.models import (
     UserPlatformAccess,
 )
 from customer_portal_api.app.security import hash_password
+from i18n import t
 
 
 TASK_TERMINAL_STATUSES = {"succeeded", "failed", "cancelled"}
 
 
 class PortalService:
-    def __init__(self, session: Session):
+    def __init__(self, session: Session, lang: str = "zh"):
         self.session = session
+        self.lang = lang
 
     def list_products(self, user: PortalUser | None = None) -> dict:
         items = self.session.exec(
@@ -78,13 +80,13 @@ class PortalService:
     def create_app_register_task(self, user: PortalUser, payload: dict[str, Any]) -> dict:
         platform = str(payload.get("platform", "") or "")
         if not platform:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="缺少 platform")
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=t("customerPortalApi.42f6111f", self.lang))
         if user.role_code != "admin" and platform not in self._active_platform_codes(user.id):
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="当前用户无该平台注册权限")
-        raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="独立版暂未实现注册任务")
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=t("customerPortalApi.d7dc1b51", self.lang))
+        raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail=t("customerPortalApi.efa847aa", self.lang))
 
     def create_admin_register_task(self, payload: dict[str, Any]) -> dict:
-        raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="独立版暂未实现注册任务")
+        raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail=t("customerPortalApi.efa847aa", self.lang))
 
     def list_app_tasks(self, user: PortalUser, *, platform: str = "", status_value: str = "", page: int = 1, page_size: int = 50) -> dict:
         query = select(PortalTask).where(PortalTask.owner_user_id == int(user.id or 0)).order_by(PortalTask.created_at.desc())
@@ -94,7 +96,7 @@ class PortalService:
     def get_app_task(self, user: PortalUser, task_id: str) -> dict:
         task = self.session.get(PortalTask, task_id)
         if not task or int(task.owner_user_id or 0) != int(user.id or 0):
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="任务不存在")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=t("customerPortalApi.d1817495", self.lang))
         return self._serialize_task(task)
 
     def list_app_task_events(self, user: PortalUser, task_id: str, *, since: int = 0, limit: int = 200) -> dict:
@@ -136,7 +138,7 @@ class PortalService:
             select(PortalOrder).where(PortalOrder.user_id == int(user.id or 0), PortalOrder.order_no == order_no)
         ).first()
         if not item:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="订单不存在")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=t("customerPortalApi.6898ca86", self.lang))
         return self._serialize_order(item)
 
     def list_subscriptions(self, user: PortalUser) -> dict:
@@ -152,7 +154,7 @@ class PortalService:
             select(PortalProduct).where(PortalProduct.product_code == product_code, PortalProduct.status == "active")
         ).first()
         if not product:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="商品不存在")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=t("customerPortalApi.1ae6d9f1", self.lang))
         order = PortalOrder(
             order_no=self._make_no("ord"),
             user_id=int(user.id or 0),
@@ -182,9 +184,9 @@ class PortalService:
             select(PortalOrder).where(PortalOrder.order_no == order_no, PortalOrder.user_id == int(user.id or 0))
         ).first()
         if not order:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="订单不存在")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=t("customerPortalApi.6898ca86", self.lang))
         if order.status not in {"pending", "failed"}:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="当前订单状态不允许发起支付")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=t("customerPortalApi.9111abf6", self.lang))
         payment = PortalPaymentRecord(
             payment_no=self._make_no("pay"),
             order_no=order.order_no,
@@ -215,10 +217,10 @@ class PortalService:
                 select(PortalPaymentRecord).where(PortalPaymentRecord.order_no == order_no).order_by(PortalPaymentRecord.created_at.desc())
             ).first()
         if not payment:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="支付单不存在")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=t("customerPortalApi.c589c607", self.lang))
         order = self.session.exec(select(PortalOrder).where(PortalOrder.order_no == payment.order_no)).first()
         if not order:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="订单不存在")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=t("customerPortalApi.6898ca86", self.lang))
         callback_status = str(data.get("status", "") or "success").lower()
         if payment.status == "success" and callback_status in {"success", "paid"}:
             return {"ok": True, "payment": self._serialize_payment(payment), "order": self._serialize_order(order)}
@@ -287,9 +289,9 @@ class PortalService:
         username = str(data.get("username", "") or "").strip()
         password = str(data.get("password", "") or "")
         if not username or not password:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="username 和 password 必填")
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=t("customerPortalApi.17415c33", self.lang))
         if self.session.exec(select(PortalUser).where(PortalUser.username == username)).first():
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="用户名已存在")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=t("customerPortalApi.d1ee5409", self.lang))
         self._ensure_unique_fields(email=data.get("email") or None, mobile=data.get("mobile") or None)
         user = PortalUser(
             username=username,
@@ -312,7 +314,7 @@ class PortalService:
     def update_user(self, user_id: int, data: dict[str, Any]) -> dict:
         user = self.session.get(PortalUser, user_id)
         if not user:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=t("customerPortalApi.a82de572", self.lang))
         if "email" in data:
             self._ensure_unique_fields(email=data["email"] or None, exclude_user_id=user_id)
             user.email = data["email"] or None
@@ -374,7 +376,7 @@ class PortalService:
             select(UserPlatformAccess).where(UserPlatformAccess.user_id == user_id, UserPlatformAccess.platform_code == platform_code)
         ).first()
         if not row:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="平台授权不存在")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=t("customerPortalApi.cdb8c4ec", self.lang))
         self.session.delete(row)
         self.session.commit()
         return {"ok": True}
@@ -439,7 +441,7 @@ class PortalService:
     def get_task(self, task_id: str) -> dict:
         task = self.session.get(PortalTask, task_id)
         if not task:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="任务不存在")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=t("customerPortalApi.d1817495", self.lang))
         return self._serialize_task(task)
 
     def list_task_events(self, task_id: str, *, since: int = 0, limit: int = 200) -> dict:
@@ -459,7 +461,7 @@ class PortalService:
     def cancel_task(self, task_id: str) -> dict:
         task = self.session.get(PortalTask, task_id)
         if not task:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="任务不存在")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=t("customerPortalApi.d1817495", self.lang))
         if task.status in TASK_TERMINAL_STATUSES:
             return self._serialize_task(task)
         task.status = "cancelled"
@@ -515,7 +517,7 @@ class PortalService:
     def get_account(self, account_id: int) -> dict:
         item = self.session.get(PortalAccount, account_id)
         if not item:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="账号不存在")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=t("customerPortalApi.af8bb650", self.lang))
         return self._serialize_account(item)
 
     def create_account(self, data: dict[str, Any]) -> dict:
@@ -523,7 +525,7 @@ class PortalService:
         email = str(data.get("email", "") or "").strip()
         password = str(data.get("password", "") or "")
         if not platform_code or not email or not password:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="platform、email、password 必填")
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=t("customerPortalApi.69b0c9c6", self.lang))
         self._require_platform(platform_code)
         item = PortalAccount(
             platform_code=platform_code,
@@ -553,7 +555,7 @@ class PortalService:
     def update_account(self, account_id: int, data: dict[str, Any]) -> dict:
         item = self.session.get(PortalAccount, account_id)
         if not item:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="账号不存在")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=t("customerPortalApi.af8bb650", self.lang))
         mapping = {
             "password": "password",
             "user_id": "user_id",
@@ -586,7 +588,7 @@ class PortalService:
     def delete_account(self, account_id: int) -> dict:
         item = self.session.get(PortalAccount, account_id)
         if not item:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="账号不存在")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=t("customerPortalApi.af8bb650", self.lang))
         self.session.delete(item)
         self.session.commit()
         return {"ok": True}
@@ -719,7 +721,7 @@ class PortalService:
     def execute_action(self, platform: str, account_id: int, action_id: str, params: dict[str, Any]) -> dict:
         self._require_platform(platform)
         self.get_account(account_id)
-        raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="独立版暂未实现平台动作")
+        raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail=t("customerPortalApi.4a512fca", self.lang))
 
     def list_proxies(self) -> list[dict]:
         rows = self.session.exec(select(PortalProxy).order_by(PortalProxy.created_at.desc())).all()
@@ -728,7 +730,7 @@ class PortalService:
     def create_proxy(self, url: str, region: str = "") -> dict:
         existing = self.session.exec(select(PortalProxy).where(PortalProxy.url == url)).first()
         if existing:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="代理已存在")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=t("customerPortalApi.4ab0a7ed", self.lang))
         item = PortalProxy(url=url, region=region, created_at=utcnow(), updated_at=utcnow())
         self.session.add(item)
         self.session.commit()
@@ -752,7 +754,7 @@ class PortalService:
     def delete_proxy(self, proxy_id: int) -> dict:
         item = self.session.get(PortalProxy, proxy_id)
         if not item:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="代理不存在")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=t("customerPortalApi.345790e2", self.lang))
         self.session.delete(item)
         self.session.commit()
         return {"ok": True}
@@ -760,7 +762,7 @@ class PortalService:
     def toggle_proxy(self, proxy_id: int) -> dict:
         item = self.session.get(PortalProxy, proxy_id)
         if not item:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="代理不存在")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=t("customerPortalApi.345790e2", self.lang))
         item.is_active = not item.is_active
         item.updated_at = utcnow()
         self.session.add(item)
@@ -821,7 +823,7 @@ class PortalService:
     def _require_user(self, user_id: int) -> PortalUser:
         user = self.session.get(PortalUser, user_id)
         if not user:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=t("customerPortalApi.a82de572", self.lang))
         return user
 
     def _require_platform(self, platform_code: str) -> PortalPlatform:
@@ -829,18 +831,18 @@ class PortalService:
             select(PortalPlatform).where(PortalPlatform.platform_code == platform_code, PortalPlatform.status == "active")
         ).first()
         if not item:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="平台不存在")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=t("customerPortalApi.4c4ba2df", self.lang))
         return item
 
     def _ensure_unique_fields(self, *, email: str | None = None, mobile: str | None = None, exclude_user_id: int | None = None) -> None:
         if email:
             row = self.session.exec(select(PortalUser).where(PortalUser.email == email)).first()
             if row and int(row.id or 0) != int(exclude_user_id or 0):
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="邮箱已被占用")
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=t("customerPortalApi.d0372d56", self.lang))
         if mobile:
             row = self.session.exec(select(PortalUser).where(PortalUser.mobile == mobile)).first()
             if row and int(row.id or 0) != int(exclude_user_id or 0):
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="手机号已被占用")
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=t("customerPortalApi.1120563e", self.lang))
 
     def _select_accounts_for_export(self, data: dict[str, Any]) -> list[dict]:
         platform = str(data.get("platform", "") or "")

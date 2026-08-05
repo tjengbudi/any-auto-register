@@ -899,6 +899,28 @@
     "f6167694": "Fetching Turnstile token...",
     "fe53dc8a": "Switch failed: {reason}"
   },
+  "customerPortalApi": {
+    "1120563e": "Mobile number already in use",
+    "17415c33": "username and password are required",
+    "1ae6d9f1": "Product not found",
+    "345790e2": "Proxy not found",
+    "42f6111f": "Missing platform",
+    "4a512fca": "Platform actions are not implemented in the standalone edition",
+    "4ab0a7ed": "Proxy already exists",
+    "4c4ba2df": "Platform not found",
+    "6898ca86": "Order not found",
+    "69b0c9c6": "platform, email, and password are required",
+    "9111abf6": "Current order status does not allow payment",
+    "a82de572": "User not found",
+    "af8bb650": "Account not found",
+    "c589c607": "Payment not found",
+    "cdb8c4ec": "Platform access not found",
+    "d0372d56": "Email already in use",
+    "d1817495": "Task not found",
+    "d1ee5409": "Username already exists",
+    "d7dc1b51": "Current user has no registration permission for this platform",
+    "efa847aa": "Registration tasks are not implemented in the standalone edition"
+  },
   "grok": {
     "06a77300": "Waiting for the Grok verification code",
     "13939cce": "Verification code not received",

@@ -5,7 +5,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlmodel import Session
 
-from customer_portal_api.app.deps import get_current_user, get_db_session
+from customer_portal_api.app.deps import get_current_user, get_db_session, get_portal_locale
 from customer_portal_api.app.models import PortalUser
 from customer_portal_api.app.services.portal import PortalService
 
@@ -45,24 +45,27 @@ class SubmitPaymentRequest(BaseModel):
 def list_platforms(
     user: PortalUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).list_app_platforms(user)
+    return PortalService(session, lang).list_app_platforms(user)
 
 
 @router.get("/config/options")
 def get_config_options(
     user: PortalUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).get_app_config_options(user)
+    return PortalService(session, lang).get_app_config_options(user)
 
 
 @router.get("/products")
 def list_products(
     user: PortalUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).list_products(user)
+    return PortalService(session, lang).list_products(user)
 
 
 @router.post("/tasks/register")
@@ -70,8 +73,9 @@ def create_register_task(
     body: RegisterTaskRequest,
     user: PortalUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).create_app_register_task(user, body.model_dump())
+    return PortalService(session, lang).create_app_register_task(user, body.model_dump())
 
 
 @router.get("/tasks")
@@ -82,8 +86,9 @@ def list_tasks(
     page_size: int = 50,
     user: PortalUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).list_app_tasks(user, platform=platform, status_value=status, page=page, page_size=page_size)
+    return PortalService(session, lang).list_app_tasks(user, platform=platform, status_value=status, page=page, page_size=page_size)
 
 
 @router.get("/tasks/{task_id}")
@@ -91,8 +96,9 @@ def get_task(
     task_id: str,
     user: PortalUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).get_app_task(user, task_id)
+    return PortalService(session, lang).get_app_task(user, task_id)
 
 
 @router.get("/tasks/{task_id}/events")
@@ -102,8 +108,9 @@ def list_task_events(
     limit: int = 200,
     user: PortalUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).list_app_task_events(user, task_id, since=since, limit=limit)
+    return PortalService(session, lang).list_app_task_events(user, task_id, since=since, limit=limit)
 
 
 @router.get("/tasks/{task_id}/logs/stream")
@@ -112,8 +119,9 @@ async def stream_task_events(
     since: int = 0,
     user: PortalUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    service = PortalService(session)
+    service = PortalService(session, lang)
     return StreamingResponse(
         await service.stream_app_task_events(user, task_id, since=since),
         media_type="text/event-stream",
@@ -125,8 +133,9 @@ async def stream_task_events(
 def list_orders(
     user: PortalUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).list_orders(user)
+    return PortalService(session, lang).list_orders(user)
 
 
 @router.post("/orders")
@@ -134,8 +143,9 @@ def create_order(
     body: CreateOrderRequest,
     user: PortalUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).create_order(user, body.model_dump())
+    return PortalService(session, lang).create_order(user, body.model_dump())
 
 
 @router.get("/orders/{order_no}")
@@ -143,8 +153,9 @@ def get_order(
     order_no: str,
     user: PortalUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).get_order(user, order_no)
+    return PortalService(session, lang).get_order(user, order_no)
 
 
 @router.post("/payments/{order_no}/submit")
@@ -153,24 +164,27 @@ def submit_payment(
     body: SubmitPaymentRequest,
     user: PortalUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).submit_payment(user, order_no, body.model_dump())
+    return PortalService(session, lang).submit_payment(user, order_no, body.model_dump())
 
 
 @router.get("/subscriptions")
 def list_subscriptions(
     user: PortalUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).list_subscriptions(user)
+    return PortalService(session, lang).list_subscriptions(user)
 
 
 @router.get("/profile")
 def get_profile(
     user: PortalUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).get_profile(user)
+    return PortalService(session, lang).get_profile(user)
 
 
 @router.patch("/profile")
@@ -178,5 +192,6 @@ def update_profile(
     body: ProfileUpdateRequest,
     user: PortalUser = Depends(get_current_user),
     session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
 ):
-    return PortalService(session).update_profile(user, body.model_dump(exclude_unset=True))
+    return PortalService(session, lang).update_profile(user, body.model_dump(exclude_unset=True))
