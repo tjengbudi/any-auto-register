@@ -3,6 +3,7 @@ from core.base_platform import BasePlatform, Account, AccountStatus, RegisterCon
 from core.base_mailbox import BaseMailbox
 from core.registration import OtpSpec, ProtocolMailboxAdapter, RegistrationResult
 from core.registry import register
+from platforms.cerebras._i18n_helpers import _raise_keyed
 
 
 @register
@@ -45,6 +46,7 @@ class CerebrasPlatform(BasePlatform):
             ).CerebrasProtocolMailboxWorker(
                 executor=artifacts.executor,
                 log_fn=ctx.log,
+                log_key_fn=ctx.log_key_fn,
             ),
             register_runner=lambda worker, ctx, artifacts: worker.run(
                 email=ctx.identity.email,
@@ -89,4 +91,5 @@ class CerebrasPlatform(BasePlatform):
                     "api_key_preview": f"{api_key[:8]}...{api_key[-4:]}" if len(api_key) > 12 else api_key,
                 },
             }
-        raise NotImplementedError(f"未知操作: {action_id}")
+        _raise_keyed(NotImplementedError, "cerebras.701d383a", action_id=action_id)
+        # was: raise NotImplementedError(f"未知操作: {action_id}")

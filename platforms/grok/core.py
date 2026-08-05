@@ -2,7 +2,11 @@
 Grok (x.ai) 自动注册 - 纯协议实现
 """
 import re, struct, random, string, time
+from typing import Callable, Optional
+
 from curl_cffi import requests as cffi_requests
+
+from platforms.grok._i18n_helpers import _emit_log_key
 
 ACCOUNTS_URL = "https://accounts.x.ai"
 TURNSTILE_SITEKEY = "0x4AAAAAAAhr9JGVDZbrZOo0"
@@ -44,14 +48,18 @@ def _rand_password(n=12):
 
 
 class GrokRegister:
-    def __init__(self, captcha_solver=None, yescaptcha_key='', proxy=None, log_fn=print):
+    def __init__(self, captcha_solver=None, yescaptcha_key='', proxy=None, log_fn=print, log_key_fn: Optional[Callable[[str, dict], None]] = None):
         self.captcha_solver = captcha_solver
         self.key = yescaptcha_key
         self.log = log_fn
+        self._log_key_fn = log_key_fn
         self.s = cffi_requests.Session(impersonate="chrome131")
         if proxy:
             self.s.proxies = {"http": proxy, "https": proxy}
         self.s.headers.update({"user-agent": UA})
+
+    def log_key(self, key: str, **params) -> None:
+        _emit_log_key(self.log, self._log_key_fn, key, **params)
 
     def _grpc_post(self, path: str, body: bytes) -> bytes:
         r = self.s.post(f'{ACCOUNTS_URL}{path}',
@@ -63,7 +71,8 @@ class GrokRegister:
         return r.content
 
     def _solve_turnstile(self) -> str:
-        self.log("获取 Turnstile token...")
+        self.log_key("grok.f6167694")
+        # was: self.log("获取 Turnstile token...")
         solver = self.captcha_solver
         if not solver:
             from core.base_captcha import YesCaptcha
@@ -73,23 +82,29 @@ class GrokRegister:
         return token
 
     def step1_send_otp(self, email: str):
-        self.log(f"Step1: 发送验证码到 {email}...")
+        self.log_key("grok.89bd438f", email=email)
+        # was: self.log(f"Step1: 发送验证码到 {email}...")
         body = _pb_string(1, email)
         self._grpc_post('/auth_mgmt.AuthManagement/CreateEmailValidationCode', body)
-        self.log("  验证码已发送")
+        self.log_key("grok.6cbfeaf9")
+        # was: self.log("  验证码已发送")
 
     def step2_verify_otp(self, email: str, code: str) -> bool:
-        self.log(f"Step2: 验证码校验 {code}...")
+        self.log_key("grok.91d3a0aa", code=code)
+        # was: self.log(f"Step2: 验证码校验 {code}...")
         body = _pb_string(1, email) + _pb_string(2, code)
         resp = self._grpc_post('/auth_mgmt.AuthManagement/VerifyEmailValidationCode', body)
         ok = b'grpc-status:0' in resp
-        self.log(f"  校验: {'OK' if ok else 'FAIL'}")
+        status = 'OK' if ok else 'FAIL'
+        self.log_key("grok.a8514109", status=status)
+        # was: self.log(f"  校验: {'OK' if ok else 'FAIL'}")
         return ok
 
     def step3_signup(self, email: str, password: str, code: str,
                      given_name: str, family_name: str) -> str:
         turnstile = self._solve_turnstile()
-        self.log("Step3: 提交注册...")
+        self.log_key("grok.85e9553d")
+        # was: self.log("Step3: 提交注册...")
         payload = [{
             'emailValidationCode': code,
             'createUserAndSessionRequest': {
@@ -111,7 +126,8 @@ class GrokRegister:
         return r.text
 
     def step4_set_cookies(self, signup_body: str):
-        self.log("Step4: 设置 session cookies...")
+        self.log_key("grok.9e7cc7c6")
+        # was: self.log("Step4: 设置 session cookies...")
         urls = re.findall(r'https://auth\.[^"\s\\]+/set-cookie[^"\s\\]*', signup_body)
         for url in urls:
             url = url.replace('\\u0026', '&').replace('\\u003d', '=')

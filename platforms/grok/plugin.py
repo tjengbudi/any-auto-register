@@ -4,6 +4,7 @@ from core.base_mailbox import BaseMailbox
 from core.registration import BrowserRegistrationAdapter, OtpSpec, ProtocolMailboxAdapter, ProtocolOAuthAdapter, RegistrationCapability, RegistrationResult
 from core.registration.helpers import resolve_timeout
 from core.registry import register
+from platforms.grok._i18n_helpers import _raise_keyed
 
 
 @register
@@ -46,6 +47,7 @@ class GrokPlatform(BasePlatform):
             email_hint=ctx.identity.email,
             timeout=resolve_timeout(ctx.extra, ("browser_oauth_timeout", "manual_oauth_timeout"), 300),
             log_fn=ctx.log,
+            log_key=ctx.log_key_fn,
             headless=(ctx.executor_type == "headless"),
             chrome_user_data_dir=ctx.identity.chrome_user_data_dir,
             chrome_cdp_url=ctx.identity.chrome_cdp_url,
@@ -59,6 +61,7 @@ class GrokPlatform(BasePlatform):
                 proxy=ctx.proxy,
                 otp_callback=artifacts.otp_callback,
                 log_fn=ctx.log,
+                log_key_fn=ctx.log_key_fn,
             ),
             browser_register_runner=lambda worker, ctx, artifacts: worker.run(
                 email=ctx.identity.email or "",
@@ -82,6 +85,7 @@ class GrokPlatform(BasePlatform):
                 captcha_solver=artifacts.captcha_solver,
                 proxy=ctx.proxy,
                 log_fn=ctx.log,
+                log_key_fn=ctx.log_key_fn,
             ),
             register_runner=lambda worker, ctx, artifacts: worker.run(
                 email=ctx.identity.email,
@@ -99,4 +103,5 @@ class GrokPlatform(BasePlatform):
         return []
 
     def execute_action(self, action_id: str, account: Account, params: dict) -> dict:
-        raise NotImplementedError(f"未知操作: {action_id}")
+        _raise_keyed(NotImplementedError, "grok.701d383a", action_id=action_id)
+        # was: raise NotImplementedError(f"未知操作: {action_id}")

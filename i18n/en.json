@@ -140,7 +140,25 @@
     "fc64ab50": "Obtaining the Blink token failed: {status_code} {body}"
   },
   "cerebras": {
-    "3a43d2c8": "Check account status"
+    "13939cce": "Verification code not received",
+    "3508be33": "Verifying the OTP...",
+    "3a43d2c8": "Check account status",
+    "48a7a9d6": "Creating the API Key failed: HTTP {status_code}",
+    "4959d22c": "Sending the verification code to {email}...",
+    "63da20cd": "OTP verified successfully (user_id={user_id})",
+    "6e9a60f4": "OTP verification failed: HTTP {status_code}",
+    "701d383a": "Unknown operation: {action_id}",
+    "7f445322": "OTP verification failed: {error}",
+    "80c84930": "Stytch OTP send failed: HTTP {status_code}",
+    "8f3b2133": "Verification code: {otp}",
+    "95f1bde6": "Creating a new API Key...",
+    "a56b812f": "Not logged in; unable to obtain the API Key",
+    "bdfd8fe2": "API Key not received",
+    "c0088f3b": "API Key created successfully",
+    "c53d6313": "Verification code sent (method_id={method_id}...)",
+    "dd2cf36c": "Using the existing API Key",
+    "df22fccf": "Stytch OTP send failed: {error}",
+    "f4bc415b": "Getting the API Key..."
   },
   "chatgpt": {
     "00d39a57": "  ✓ Playwright selectOption(value={match_value}) succeeded",
@@ -880,6 +898,31 @@
     "f5afbbc0": "Registration succeeded: {resolved_email}",
     "f6167694": "Fetching Turnstile token...",
     "fe53dc8a": "Switch failed: {reason}"
+  },
+  "grok": {
+    "06a77300": "Waiting for the Grok verification code",
+    "13939cce": "Verification code not received",
+    "18555deb": "Please confirm the final login account email is: {email_hint}",
+    "1e727e4f": "Waiting for the Grok sso cookie",
+    "28066ba7": "No name or password input field detected; saving a screenshot to /tmp/grok_debug.png",
+    "5e9195f8": "Grok sso cookie not received",
+    "64764871": "Grok browser login did not obtain the SSO Cookie within {timeout} seconds",
+    "6cbfeaf9": "  Verification code sent",
+    "701d383a": "Unknown operation: {action_id}",
+    "85e9553d": "Step3: Submitting registration...",
+    "89bd438f": "Step1: Sending the verification code to {email}...",
+    "91d3a0aa": "Step2: Verifying the code {code}...",
+    "9e7cc7c6": "Step4: Setting session cookies...",
+    "a45d8569": "Please complete login in the browser, you can use {method_text}, waiting up to {timeout} seconds",
+    "a8514109": "  Verify: {status}",
+    "a991998c": "  ⚠️ sso cookie not received",
+    "ab0eedc2": "Did not reach the verification code page: {fb_or_url}",
+    "cb6da5c4": "Waiting for the name/password step",
+    "d4a97c50": "Grok registration requires an email verification code but no otp_callback was provided",
+    "d9dbdf1a": "Registration succeeded: {email}",
+    "e19f0990": "sso cookie not received; saving a screenshot to /tmp/grok_fail_final.png",
+    "e3386d6c": "Opening the Grok registration page",
+    "f6167694": "Getting the Turnstile token..."
   },
   "infrastructure": {
     "06bfac32": "FreeMail (auto-generated)",
