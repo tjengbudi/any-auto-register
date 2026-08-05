@@ -146,7 +146,7 @@ function EditModal({
   const [asyncOptions, setAsyncOptions] = useState<Record<string, Array<{ value: string; label: string }>>>({})
   const [asyncLoading, setAsyncLoading] = useState<Record<string, boolean>>({})
 
-  // 加载 async-select 字段的选项
+  // 加载 async-select 字段的选项 — Load options for async-select fields
   useEffect(() => {
     for (const field of fields) {
       if (field.type === 'async-select' && field.asyncUrl && !asyncOptions[field.key]) {
@@ -155,7 +155,7 @@ function EditModal({
           .then((data: any) => {
             const valueKey = field.asyncValueKey || 'value'
             const labelKey = field.asyncLabelKey || 'label'
-            // 支持多种响应格式
+            // 支持多种响应格式 — Support multiple response formats
             let items: any[] = []
             if (Array.isArray(data)) items = data
             else if (data?.countries) items = data.countries

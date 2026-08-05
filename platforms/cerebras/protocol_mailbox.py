@@ -34,9 +34,9 @@ class CerebrasProtocolMailboxWorker:
         otp = otp_callback() if otp_callback else input("OTP: ")
         if not otp:
             _raise_keyed(RuntimeError, "cerebras.13939cce")
-            # was: raise RuntimeError("未获取到验证码")
+            # was: raise RuntimeError("未获取到验证码") — was: raise RuntimeError("Failed to obtain the verification code")
         self.log_key("cerebras.8f3b2133", otp=otp)
-        # was: self.log(f"验证码: {otp}")
+        # was: self.log(f"验证码: {otp}") — was: self.log(f"Verification code: {otp}")
 
         session = self.client.step2_verify_otp(email, otp, method_id)
         api_key = self.client.step3_get_or_create_api_key()
@@ -46,6 +46,7 @@ class CerebrasProtocolMailboxWorker:
         else:
             self.log_key("cerebras.bdfd8fe2")
             # was: self.log(f"API Key: {api_key[:20]}..." if api_key else "未获取到 API Key")
+            # was: self.log(f"API Key: {api_key[:20]}..." if api_key else "API Key not obtained")
         return {
             "email": email,
             "password": "",

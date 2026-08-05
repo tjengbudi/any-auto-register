@@ -436,7 +436,7 @@ class ProviderDefinitionsRepository:
                 item = existing.get(key)
 
                 if item is None:
-                    # 新增
+                    # 新增 — New
                     item = ProviderDefinitionModel(
                         provider_type=seed["provider_type"],
                         provider_key=seed["provider_key"],
@@ -454,7 +454,7 @@ class ProviderDefinitionsRepository:
                             ", ".join(overwritten),
                         )
 
-                # 更新元数据（每次启动都同步，确保代码变更生效）
+                # 更新元数据（每次启动都同步，确保代码变更生效） — Update metadata (synced on every startup, so code changes take effect)
                 item.label = seed.get("label", seed["provider_key"])
                 item.description = seed.get("description", "")
                 item.driver_type = seed.get("driver_type", seed["provider_key"])
@@ -465,7 +465,7 @@ class ProviderDefinitionsRepository:
                 item.set_auth_modes(list(seed.get("auth_modes") or []))
                 item.set_fields(list(seed.get("fields") or []))
                 if not item.get_metadata():
-                    # 只在 metadata 为空时写入种子值，避免覆盖用户自定义的 pipeline
+                    # 只在 metadata 为空时写入种子值，避免覆盖用户自定义的 pipeline — Only write the seed value when metadata is empty, so user-customized pipelines aren't overwritten
                     item.set_metadata(dict(seed.get("metadata") or {}))
                 item.updated_at = _utcnow()
                 session.add(item)
@@ -474,7 +474,7 @@ class ProviderDefinitionsRepository:
             if changed:
                 session.commit()
 
-    # ── 查询（全部从 DB） ────────────────────────────────────────────
+    # ── 查询（全部从 DB） — Query (all from DB) ─────────────────────────
 
     def list_by_type(self, provider_type: str, *, enabled_only: bool = False) -> list[ProviderDefinitionModel]:
         with Session(engine) as session:
@@ -532,7 +532,7 @@ class ProviderDefinitionsRepository:
                 "fields": ref.get_fields(),
             }
 
-    # ── 写入 ────────────────────────────────────────────────────────
+    # ── 写入 — Write ─────────────────────────────────────────────────
 
     def save(
         self,

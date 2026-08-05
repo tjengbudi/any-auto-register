@@ -22,7 +22,7 @@ from datetime import datetime
 from urllib.parse import urlparse, parse_qs, unquote
 
 
-# 认证相关 URL 关键词
+# 认证相关 URL 关键词 — Auth-related URL keywords
 AUTH_KEYWORDS = {
     "auth", "login", "signin", "sign-in", "signup", "sign-up", "register",
     "oauth", "authorize", "callback", "token", "session", "csrf",
@@ -31,7 +31,7 @@ AUTH_KEYWORDS = {
     "account", "user", "profile", "me",
 }
 
-# 敏感 header
+# 敏感 header — Sensitive headers
 AUTH_HEADERS = {
     "authorization", "cookie", "set-cookie", "x-csrf-token",
     "openai-sentinel-token", "x-api-key", "x-auth-token",
@@ -47,20 +47,20 @@ def is_auth_related(url: str, method: str, req_headers: dict, resp_headers: dict
     """判断请求是否与认证相关"""
     url_lower = url.lower()
 
-    # URL 包含认证关键词
+    # URL 包含认证关键词 — URL contains an auth keyword
     if any(kw in url_lower for kw in AUTH_KEYWORDS):
         return True
 
-    # POST 请求通常更重要
+    # POST 请求通常更重要 — POST requests are usually more important
     if method == "POST":
         return True
 
-    # 设置 cookie 的请求
+    # 设置 cookie 的请求 — Requests that set a cookie
     for h in resp_headers:
         if h.get("name", "").lower() == "set-cookie":
             return True
 
-    # 包含认证 header
+    # 包含认证 header — Contains an auth header
     for h in req_headers:
         if h.get("name", "").lower() in AUTH_HEADERS:
             return True
@@ -186,12 +186,12 @@ def analyze_har(har_data: dict, auth_only: bool = False) -> dict:
     """分析 HAR 文件，返回结构化报告"""
     entries = har_data.get("log", {}).get("entries", [])
 
-    # 基本信息
+    # 基本信息 — Basic info
     domains = set()
     for entry in entries:
         domains.add(urlparse(entry["request"]["url"]).netloc)
 
-    # 过滤认证相关请求
+    # 过滤认证相关请求 — Filter auth-related requests
     auth_entries = []
     for entry in entries:
         req = entry["request"]
@@ -202,15 +202,15 @@ def analyze_har(har_data: dict, auth_only: bool = False) -> dict:
         if auth_only and not is_auth_related(url, method, req["headers"], resp["headers"]):
             continue
 
-        # 解析请求体
+        # 解析请求体 — Parse the request body
         post_data = ""
         if req.get("postData"):
             post_data = req["postData"].get("text", "")
 
-        # 解析响应体
+        # 解析响应体 — Parse the response body
         resp_body = resp.get("content", {}).get("text", "")
 
-        # 提取关键响应头
+        # 提取关键响应头 — Extract key response headers
         resp_cookies = []
         resp_location = ""
         for h in resp["headers"]:
@@ -233,7 +233,7 @@ def analyze_har(har_data: dict, auth_only: bool = False) -> dict:
             ),
         })
 
-    # 分析结果
+    # 分析结果 — Analysis results
     redirects = extract_redirects(entries)
     cookies = extract_cookies(entries)
     js_files = extract_js_files(entries)
@@ -248,7 +248,7 @@ def analyze_har(har_data: dict, auth_only: bool = False) -> dict:
         "anti_bot": anti_bot,
         "redirects": redirects,
         "cookies": cookies,
-        "js_files": [j for j in js_files if j["size"] > 10000],  # 只列大文件
+        "js_files": [j for j in js_files if j["size"] > 10000],  # 只列大文件 — Only list large files
         "entries": auth_entries,
     }
 
@@ -292,7 +292,7 @@ def format_report(report: dict, format: str = "text") -> str:
         parsed = urlparse(entry["url"])
         path = parsed.path
         if parsed.query:
-            # 只显示关键参数
+            # 只显示关键参数 — Only show key parameters
             params = parse_qs(parsed.query)
             key_params = {k: v[0][:30] for k, v in params.items()
                          if k in ("client_id", "redirect_uri", "response_type", "scope", "state", "code", "grant_type")}
@@ -302,7 +302,7 @@ def format_report(report: dict, format: str = "text") -> str:
         lines.append(f"\n### [{i}] {entry['method']} {entry['status']} {parsed.netloc}{path}")
 
         if entry["post_data"]:
-            # 尝试格式化 JSON
+            # 尝试格式化 JSON — Try to format as JSON
             try:
                 pd = json.loads(entry["post_data"])
                 lines.append(f"  Body: {json.dumps(pd, ensure_ascii=False, indent=2)[:300]}")
@@ -318,10 +318,10 @@ def format_report(report: dict, format: str = "text") -> str:
         if entry["resp_body_preview"]:
             try:
                 rb = json.loads(entry["resp_body_preview"])
-                # 只显示顶层 key
+                # 只显示顶层 key — Only show top-level keys
                 if isinstance(rb, dict):
                     lines.append(f"  Response keys: {list(rb.keys())[:10]}")
-                    # 如果有 page/type 字段，突出显示
+                    # 如果有 page/type 字段，突出显示 — If a page/type field exists, highlight it
                     if "page" in rb and isinstance(rb["page"], dict):
                         lines.append(f"  page.type: {rb['page'].get('type', '?')}")
                     if "url" in rb:
@@ -356,7 +356,7 @@ def main():
     report = analyze_har(har_data, auth_only=args.auth_only)
 
     if args.strict:
-        # 严格过滤：只保留核心认证请求
+        # 严格过滤：只保留核心认证请求 — Strict filter: keep only core auth requests
         NOISE_PATTERNS = {
             "/ces/", "/analytics", "/telemetry", "/track", "/rgstr",
             "/settings/", "/memories", "/onboarding", "/announcement",
@@ -376,20 +376,20 @@ def main():
         filtered = []
         for entry in report["entries"]:
             url_lower = entry["url"].lower()
-            # 跳过噪音
+            # 跳过噪音 — Skip noise
             if any(p in url_lower for p in NOISE_PATTERNS):
-                # 但如果匹配 KEEP_PATTERNS 则保留
+                # 但如果匹配 KEEP_PATTERNS 则保留 — But keep it if it matches KEEP_PATTERNS
                 if not any(p in url_lower for p in KEEP_PATTERNS):
                     continue
-            # 保留重定向
+            # 保留重定向 — Keep redirects
             if entry["status"] in (301, 302, 303, 307, 308):
                 filtered.append(entry)
                 continue
-            # 保留认证关键请求
+            # 保留认证关键请求 — Keep key auth requests
             if any(p in url_lower for p in KEEP_PATTERNS):
                 filtered.append(entry)
                 continue
-            # 保留 POST 到 auth 域名
+            # 保留 POST 到 auth 域名 — Keep POST requests to auth domains
             if entry["method"] == "POST" and any(d in url_lower for d in ("auth.", "sentinel.")):
                 filtered.append(entry)
                 continue

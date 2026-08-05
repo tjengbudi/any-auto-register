@@ -50,10 +50,12 @@ class AnythingProtocolMailboxWorker:
 
         self.log_key("anything.8c028503")
         # was: self.log("等待 anything 魔法链接...")
+        # was: self.log("waiting for anything magic link...")
         raw = link_callback()
         if not raw:
             _raise_keyed(RuntimeError, "anything.38cd595e")
             # was: raise RuntimeError("获取 anything 魔法链接超时")
+            # was: raise RuntimeError("timed out waiting for anything magic link")
 
         resolved = self._resolve_magic_link(raw)
         parsed = self._extract_magic_link(resolved)
@@ -85,6 +87,7 @@ class AnythingProtocolMailboxWorker:
             except Exception as exc:
                 self.log_key("anything.5e8b4b62", exc=str(exc))
                 # was: self.log(f"自动生成支付链接失败，忽略并继续: {exc}")
+                # was: self.log(f"failed to auto-generate payment link, ignoring and continuing: {exc}")
         summary = summarize_anything_account_state(state, fallback_email=resolved_email)
         overview = dict(summary.get("account_overview") or {})
         result = {
@@ -109,11 +112,13 @@ class AnythingProtocolMailboxWorker:
         )
         # was: self.log(
         #     f"anything 注册成功: {result['email']} "
+        #     f"anything signup succeeded: {result['email']} "
         #     f"org={result['organization_id']} plan={overview.get('plan', '') or 'UNKNOWN'}"
         # )
         if cashier_url:
             self.log_key("anything.50241905", cashier_url=cashier_url)
             # was: self.log(f"自动生成支付链接: {cashier_url}")
+            # was: self.log(f"auto-generated payment link: {cashier_url}")
         return result
 
     def _resolve_magic_link(self, raw: str) -> str:
@@ -121,10 +126,12 @@ class AnythingProtocolMailboxWorker:
         if not candidate:
             _raise_keyed(RuntimeError, "anything.989ea928")
             # was: raise RuntimeError("空 magic link")
+            # was: raise RuntimeError("empty magic link")
         if "/auth/magic-link" in candidate:
             return candidate
         self.log_key("anything.1fd0e345", candidate=candidate[:120])
         # was: self.log(f"收到邮件追踪链接，尝试解析跳转: {candidate[:120]}")
+        # was: self.log(f"received email tracking link, attempting to resolve redirect: {candidate[:120]}")
         return self.client.resolve_magic_link(candidate, referer="/")
 
     @staticmethod
@@ -133,6 +140,7 @@ class AnythingProtocolMailboxWorker:
         if not candidate:
             _raise_keyed(RuntimeError, "anything.989ea928")
             # was: raise RuntimeError("空 magic link")
+            # was: raise RuntimeError("empty magic link")
         candidate = unquote(candidate)
         if candidate.startswith("http://") or candidate.startswith("https://"):
             parsed = urlparse(candidate)
@@ -152,6 +160,7 @@ class AnythingProtocolMailboxWorker:
                 return {"code": code_only, "email": "", "referer": "/"}
             _raise_keyed(RuntimeError, "anything.e3f45d2d", candidate=candidate[:200])
             # was: raise RuntimeError(f"无法从 anything 魔法链接中提取 code: {candidate[:200]}")
+            # was: raise RuntimeError(f"failed to extract code from anything magic link: {candidate[:200]}")
         code = match.group(1).strip()
         email_match = re.search(r"[?&]email=([^&]+)", candidate)
         email = unquote(email_match.group(1).strip()) if email_match else ""

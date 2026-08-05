@@ -203,6 +203,7 @@ def _click_turnstile_in_iframe(
     if not cf_frame_obj:
         _emit_log_key(log_fn, log_key, "windsurf.529fc106")
         # was: log_fn("未找到 Windsurf Turnstile iframe，跳过直接点击")
+        # was: log_fn("Windsurf Turnstile iframe not found, skipping direct click")
         return False
     iframe_el = None
     for el in page.query_selector_all("iframe"):
@@ -236,6 +237,7 @@ def _click_turnstile_in_iframe(
                 page.mouse.up()
                 _emit_log_key(log_fn, log_key, "windsurf.e4da88b6", cx=f"{cx:.0f}", cy=f"{cy:.0f}")
                 # was: log_fn(f"✅ 点击 Windsurf Turnstile checkbox: ({cx:.0f}, {cy:.0f})")
+                # was: log_fn(f"✅ Clicked Windsurf Turnstile checkbox: ({cx:.0f}, {cy:.0f})")
                 time.sleep(2)
                 if _is_turnstile_modal_visible(page):
                     page.mouse.move(cx + 12, cy)
@@ -248,14 +250,17 @@ def _click_turnstile_in_iframe(
         except Exception as exc:
             _emit_log_key(log_fn, log_key, "windsurf.35c19ab6", exc=str(exc))
             # was: log_fn(f"Windsurf Turnstile 坐标点击失败: {exc}")
+            # was: log_fn(f"Windsurf Turnstile coordinate click failed: {exc}")
     try:
         cf_frame_obj.locator("body").click(position={"x": 24, "y": 32}, timeout=5000)
         _emit_log_key(log_fn, log_key, "windsurf.d59cec26")
         # was: log_fn("✅ Windsurf Turnstile frame 内点击成功")
+        # was: log_fn("✅ Click inside the Windsurf Turnstile frame succeeded")
         return True
     except Exception as exc:
         _emit_log_key(log_fn, log_key, "windsurf.596e3797", exc=str(exc))
         # was: log_fn(f"Windsurf Turnstile frame 内点击失败: {exc}")
+        # was: log_fn(f"Click inside the Windsurf Turnstile frame failed: {exc}")
     return False
 
 
@@ -298,6 +303,7 @@ def _click_start_trial(
                         locator.click(timeout=5000, force=True)
                         _emit_log_key(log_fn, log_key, "windsurf.9aec1878")
                         # was: log_fn("已点击 Windsurf pricing 页 Start Free Trial")
+                        # was: log_fn("Clicked Start Free Trial on the Windsurf pricing page")
                         return True
                 except Exception:
                     pass
@@ -321,12 +327,14 @@ def _click_start_trial(
             if clicked:
                 _emit_log_key(log_fn, log_key, "windsurf.5bb0baab", clicked=clicked)
                 # was: log_fn(f"已点击 Windsurf pricing 页按钮: {clicked}")
+                # was: log_fn(f"Clicked Windsurf pricing page button: {clicked}")
                 return True
         except Exception:
             pass
         page.wait_for_timeout(1000)
     _emit_log_key(log_fn, log_key, "windsurf.35d6bdd5", buttons=_visible_text_buttons(page))
     # was: log_fn(f"未找到 Windsurf pricing 页 Start Free Trial，可见按钮: {_visible_text_buttons(page)}")
+    # was: log_fn(f"Start Free Trial not found on the Windsurf pricing page, visible buttons: {_visible_text_buttons(page)}")
     return False
 
 
@@ -357,6 +365,7 @@ def _click_turnstile_continue(
                         locator.click(timeout=4000, force=True)
                         _emit_log_key(log_fn, log_key, "windsurf.d114f5b2")
                         # was: log_fn("已点击 Windsurf Turnstile 弹窗 Continue")
+                        # was: log_fn("Clicked Continue on the Windsurf Turnstile popup")
                         return True
                 except Exception:
                     pass
@@ -380,6 +389,7 @@ def _click_turnstile_continue(
             if clicked:
                 _emit_log_key(log_fn, log_key, "windsurf.e6be4f15", clicked=clicked)
                 # was: log_fn(f"已点击 Windsurf Turnstile 弹窗按钮: {clicked}")
+                # was: log_fn(f"Clicked Windsurf Turnstile popup button: {clicked}")
                 return True
         except Exception:
             pass
@@ -402,6 +412,7 @@ def _wait_cf_full_block_clear(
         if not warned:
             _emit_log_key(log_fn, log_key, "windsurf.2be17e66")
             # was: log_fn("检测到 Windsurf Cloudflare 全页拦截，尝试点击验证 checkbox...")
+            # was: log_fn("Detected a Windsurf Cloudflare full-page block, attempting to click the verification checkbox...")
             warned = True
         try:
             w = page.viewport_size or {"width": 1280, "height": 720}
@@ -443,12 +454,14 @@ def _handle_turnstile(
             return True
     _emit_log_key(log_fn, log_key, "windsurf.66ac08c0")
     # was: log_fn("检测到 Windsurf Turnstile，尝试直接点击 iframe checkbox...")
+    # was: log_fn("Detected Windsurf Turnstile, attempting to click the iframe checkbox directly...")
     solved = _click_turnstile_in_iframe(page, log_fn, log_key)
     if not solved and provided_token:
         token = str(provided_token or "").strip()
         if token:
             _emit_log_key(log_fn, log_key, "windsurf.24f70598", token_prefix=token[:40])
             # was: log_fn(f"注入 Windsurf Turnstile token ({token[:40]}...)")
+            # was: log_fn(f"Injecting Windsurf Turnstile token ({token[:40]}...)")
             _inject_turnstile(page, token)
             time.sleep(2)
             _click_start_trial(page, log_fn, log_key)
@@ -460,6 +473,7 @@ def _handle_turnstile(
         if _is_turnstile_modal_visible(page):
             _emit_log_key(log_fn, log_key, "windsurf.ef115270")
             # was: log_fn("Windsurf Turnstile 仍在显示，继续等待自动通过...")
+            # was: log_fn("Windsurf Turnstile still showing, continuing to wait for it to pass automatically...")
             time.sleep(5)
         if "checkout.stripe.com" not in str(page.url or ""):
             _click_start_trial(page, log_fn, log_key)
@@ -515,10 +529,12 @@ class WindsurfBrowserApi:
         if response.status >= 400:
             _raise_keyed(RuntimeError, "windsurf.16ed427f", path=path, status_code=response.status, text=response.text()[:200])
             # was: raise RuntimeError(f"{path} 失败: HTTP {response.status} {response.text()[:200]}")
+            # was: raise RuntimeError(f"{path} failed: HTTP {response.status} {response.text()[:200]}")
         data = response.json()
         if not isinstance(data, dict):
             _raise_keyed(RuntimeError, "windsurf.30a21954", path=path)
             # was: raise RuntimeError(f"{path} 返回格式异常")
+            # was: raise RuntimeError(f"{path} returned an unexpected format")
         return data
 
     def _proto_post(
@@ -543,6 +559,7 @@ class WindsurfBrowserApi:
         if response.status >= 400:
             _raise_keyed(RuntimeError, "windsurf.48de3cf3", method=method, status_code=response.status, text=response.text()[:200])
             # was: raise RuntimeError(f"{method} 失败: HTTP {response.status} {response.text()[:200]}")
+            # was: raise RuntimeError(f"{method} failed: HTTP {response.status} {response.text()[:200]}")
         return response.body()
 
     def fetch_connections(self, email: str) -> dict:
@@ -554,6 +571,7 @@ class WindsurfBrowserApi:
     def start_email_signup(self, email: str) -> str:
         self.log_key("windsurf.0cf7bbe1", email=email)
         # was: self.log(f"Step1: 发送 Windsurf 验证码到 {email}")
+        # was: self.log(f"Step1: send Windsurf verification code to {email}")
         data = self._json_post(
             "/_devin-auth/email/start",
             {"email": email, "mode": "signup", "product": "Windsurf"},
@@ -562,11 +580,13 @@ class WindsurfBrowserApi:
         if not token:
             _raise_keyed(RuntimeError, "windsurf.d965e09d")
             # was: raise RuntimeError("Windsurf 未返回 email_verification_token")
+            # was: raise RuntimeError("Windsurf did not return email_verification_token")
         return token
 
     def complete_email_signup(self, *, verification_token: str, code: str, password: str, name: str) -> dict:
         self.log_key("windsurf.a6ab7956")
         # was: self.log("Step2: 提交 Windsurf 邮箱验证码")
+        # was: self.log("Step2: submit Windsurf email verification code")
         data = self._json_post(
             "/_devin-auth/email/complete",
             {
@@ -580,16 +600,19 @@ class WindsurfBrowserApi:
         if not str(data.get("token") or "").strip():
             _raise_keyed(RuntimeError, "windsurf.6a81c8ef")
             # was: raise RuntimeError("Windsurf 未返回 auth token")
+            # was: raise RuntimeError("Windsurf did not return auth token")
         return data
 
     def post_auth(self, auth_token: str) -> dict[str, str]:
         self.log_key("windsurf.7a91e427")
         # was: self.log("Step3: 兑换 Windsurf session")
+        # was: self.log("Step3: exchange for Windsurf session")
         content = self._proto_post("WindsurfPostAuth", _field_string(1, auth_token), referer="/account/register")
         data = parse_post_auth_response(content)
         if not data.get("session_token"):
             _raise_keyed(RuntimeError, "windsurf.914d46da")
             # was: raise RuntimeError("Windsurf 未返回 session_token")
+            # was: raise RuntimeError("Windsurf did not return session_token")
         return data
 
     def load_account_state(self, *, session_token: str, account_id: str, org_id: str, fallback_email: str) -> dict:
@@ -648,6 +671,7 @@ class WindsurfBrowserApi:
         if not result.get("checkout_url"):
             _raise_keyed(RuntimeError, "windsurf.a88d587a")
             # was: raise RuntimeError("Windsurf SubscribeToPlan 未返回 checkout_url")
+            # was: raise RuntimeError("Windsurf SubscribeToPlan did not return checkout_url")
         return result
 
 
@@ -677,6 +701,7 @@ class WindsurfBrowserRegister:
             try:
                 self.log_key("windsurf.3b65bce7")
                 # was: self.log("Step0: 使用 Camoufox 打开 Windsurf 注册页")
+                # was: self.log("Step0: open the Windsurf registration page using Camoufox")
                 launch_opts = {"headless": self.headless}
                 proxy = _proxy_config(self.proxy)
                 if proxy:
@@ -689,6 +714,7 @@ class WindsurfBrowserRegister:
             except Exception as exc:
                 self.log_key("windsurf.038b495a", exc=str(exc))
                 # was: self.log(f"Camoufox 注册失败，回退到 Playwright: {exc}")
+                # was: self.log(f"Camoufox registration failed, falling back to Playwright: {exc}")
         with sync_playwright() as pw:
             launch_opts = {
                 "headless": self.headless,
@@ -711,12 +737,14 @@ class WindsurfBrowserRegister:
         first_name, last_name = self._split_name(name)
         self.log_key("windsurf.42ca2eab")
         # was: self.log("Step0: 打开 Windsurf 登录页并进入注册页")
+        # was: self.log("Step0: open the Windsurf login page and navigate to the registration page")
         page.goto(f"{WINDSURF_BASE}/account/login", wait_until="domcontentloaded", timeout=90000)
         page.get_by_role("link", name=re.compile(r"Sign up", re.I)).click()
         page.wait_for_url(re.compile(r"/account/register"), timeout=90000)
         page.wait_for_selector('input[autocomplete="given-name"]', state="visible", timeout=90000)
         self.log_key("windsurf.ca1b79e4")
         # was: self.log("Step1: 填写姓名、邮箱并同意条款")
+        # was: self.log("Step1: fill in name, email, and agree to the terms")
         page.locator('input[autocomplete="given-name"]').fill(first_name)
         page.locator('input[autocomplete="family-name"]').fill(last_name)
         page.locator('input[type="email"]').fill(email)
@@ -728,6 +756,7 @@ class WindsurfBrowserRegister:
 
         self.log_key("windsurf.5caa6786")
         # was: self.log("Step2: 填写 Windsurf 密码")
+        # was: self.log("Step2: fill in the Windsurf password")
         page.locator('input[name="password"]').fill(password)
         page.locator('input[name="confirmPassword"]').fill(password)
         page.locator('button[type="submit"]').click()
@@ -737,6 +766,7 @@ class WindsurfBrowserRegister:
         code = self._extract_code(raw_code)
         self.log_key("windsurf.3dfa2d66", code=code)
         # was: self.log(f"获取 Windsurf 验证码: {code}")
+        # was: self.log(f"Got Windsurf verification code: {code}")
 
         complete_data: dict = {}
         auth_data: dict[str, str] = {}
@@ -758,6 +788,7 @@ class WindsurfBrowserRegister:
         page.on("response", _capture_response)
         self.log_key("windsurf.fe30ac36")
         # was: self.log("Step3: 填写邮箱验证码并创建账号")
+        # was: self.log("Step3: fill in the email verification code and create the account")
         self._fill_otp(page, code)
         page.get_by_role("button", name=re.compile(r"Create account", re.I)).click()
 
@@ -771,6 +802,7 @@ class WindsurfBrowserRegister:
         if not auth_data and auth_token:
             self.log_key("windsurf.02656794")
             # was: self.log("页面未捕获 WindsurfPostAuth 响应，使用页面会话补充兑换 session")
+            # was: self.log("Page did not capture a WindsurfPostAuth response; using the page session to exchange for a session instead")
             auth_data = api.post_auth(auth_token)
         if not auth_data.get("session_token"):
             visible_text = ""
@@ -780,6 +812,7 @@ class WindsurfBrowserRegister:
                 pass
             _raise_keyed(RuntimeError, "windsurf.203566c4", visible_text=visible_text)
             # was: raise RuntimeError(f"Windsurf 页面注册未拿到 session_token，当前页面: {visible_text}")
+            # was: raise RuntimeError(f"Windsurf page registration did not obtain a session_token, current page: {visible_text}")
         auth = auth_data
         session_token = auth["session_token"]
         account_id = auth.get("account_id", "")
@@ -799,6 +832,7 @@ class WindsurfBrowserRegister:
             remaining_credits=str(overview.get("remaining_credits", "-")),
         )
         # was: self.log(f"Windsurf 浏览器注册成功: {email} " f"plan={overview.get('plan_name', 'unknown')} " f"quota={overview.get('remaining_credits', '-')}")
+        # was: self.log(f"Windsurf browser registration succeeded: {email} " f"plan={overview.get('plan_name', 'unknown')} " f"quota={overview.get('remaining_credits', '-')}")
         return {
             "email": str(complete.get("email") or email),
             "password": password,
@@ -819,6 +853,7 @@ class WindsurfBrowserRegister:
             return match.group(1)
         _raise_keyed(RuntimeError, "windsurf.fc3d5c97", snippet=str(raw or "")[:200])
         # was: raise RuntimeError(f"无法从邮件内容中提取 Windsurf 6 位验证码: {str(raw or '')[:200]}")
+        # was: raise RuntimeError(f"Could not extract Windsurf 6-digit verification code from email content: {str(raw or '')[:200]}")
 
     @staticmethod
     def _split_name(name: str) -> tuple[str, str]:
@@ -914,6 +949,7 @@ def solve_turnstile_in_headed_browser(
             )
             _emit_log_key(log_fn, log_key, "windsurf.2d66aa5c")
             # was: log_fn("请在打开的浏览器窗口中完成 Windsurf Turnstile 验证...")
+            # was: log_fn("Please complete the Windsurf Turnstile verification in the opened browser window...")
             deadline = time.time() + max(int(timeout or 180), 30)
             while time.time() < deadline:
                 token = str(page.evaluate("() => window.__windsurfTurnstileToken || ''") or "").strip()
@@ -922,6 +958,7 @@ def solve_turnstile_in_headed_browser(
                 time.sleep(1)
             _raise_keyed(TimeoutError, "windsurf.0232a042")
             # was: raise TimeoutError("等待浏览器 Turnstile token 超时")
+            # was: raise TimeoutError("Timed out waiting for the browser Turnstile token")
         finally:
             context.close()
             browser.close()
@@ -974,6 +1011,7 @@ class WindsurfStripeCheckoutBrowser:
                 confirm_payload: dict = {}
                 self.log_key("windsurf.8f768f5d")
                 # was: self.log("Step4: 打开 Stripe Checkout")
+                # was: self.log("Step4: open Stripe Checkout")
                 page.goto(checkout_url, wait_until="domcontentloaded", timeout=90000)
                 result = self._complete_alipay_checkout(
                     page,
@@ -994,6 +1032,7 @@ class WindsurfStripeCheckoutBrowser:
                     visible_text = self._page_text(page)[:500]
                     _raise_keyed(RuntimeError, "windsurf.92a4f0d6", visible_text=visible_text)
                     # was: raise RuntimeError(f"未获取到支付宝授权链接，当前页面: {visible_text}")
+                    # was: raise RuntimeError(f"Failed to obtain the Alipay authorization link, current page: {visible_text}")
 
                 return {
                     "checkout_url": checkout_url,
@@ -1027,6 +1066,7 @@ class WindsurfStripeCheckoutBrowser:
         if "Something went wrong" in page_text or "could not be found" in page_text:
             _raise_keyed(RuntimeError, "windsurf.fd6cffe3")
             # was: raise RuntimeError("Stripe Checkout 已失效，请重新生成 Windsurf 订阅链接")
+            # was: raise RuntimeError("Stripe Checkout has expired, please regenerate the Windsurf subscription link")
 
         confirm_payload: dict[str, Any] = {}
         redirect_url = ""
@@ -1059,6 +1099,7 @@ class WindsurfStripeCheckoutBrowser:
         try:
             self.log_key("windsurf.1dd146c8")
             # was: self.log("Step5: 尝试选择 Alipay 并补齐账单信息")
+            # was: self.log("Step5: attempt to select Alipay and fill in billing information")
             self._select_alipay(page)
             self._wait_for_billing_fields(page, timeout=12000)
             self._fill_checkout_form(
@@ -1077,6 +1118,7 @@ class WindsurfStripeCheckoutBrowser:
 
             self.log_key("windsurf.fed90269")
             # was: self.log("Step6: 提交 Stripe Checkout，获取支付宝授权链接")
+            # was: self.log("Step6: submit Stripe Checkout and obtain the Alipay authorization link")
             self._submit_checkout(page)
             deadline = time.time() + max(int(timeout or 120), 30)
             final_url = ""
@@ -1096,6 +1138,7 @@ class WindsurfStripeCheckoutBrowser:
                 if final_url:
                     self.log_key("windsurf.31235b66", url=final_url[:160])
                     # was: self.log(f"Step7: 已进入支付宝扫码/授权页面: {final_url[:160]}")
+                    # was: self.log(f"Step7: entered the Alipay QR-scan/authorization page: {final_url[:160]}")
                     break
                 if alipay_gateway_url:
                     fallback_url = alipay_gateway_url
@@ -1110,6 +1153,7 @@ class WindsurfStripeCheckoutBrowser:
                     followed_urls.add(redirect_candidate)
                     self.log_key("windsurf.373babd5", url=redirect_candidate[:160])
                     # was: self.log(f"Step6: 跟进支付宝中转页: {redirect_candidate[:160]}")
+                    # was: self.log(f"Step6: following the Alipay intermediate redirect page: {redirect_candidate[:160]}")
                     self._follow_intermediate_alipay_url(page, redirect_candidate)
                     page.wait_for_timeout(1500)
                     continue
@@ -1122,6 +1166,7 @@ class WindsurfStripeCheckoutBrowser:
                             final_url = current_url
                             self.log_key("windsurf.926d6634", url=final_url[:160])
                             # was: self.log(f"Step7: 当前页面已显示支付宝扫码/授权内容: {final_url[:160]}")
+                            # was: self.log(f"Step7: current page is now showing Alipay QR-scan/authorization content: {final_url[:160]}")
                             break
                 except Exception:
                     pass
@@ -1138,11 +1183,13 @@ class WindsurfStripeCheckoutBrowser:
                 if message:
                     _raise_keyed(RuntimeError, "windsurf.72e23d71", message=message)
                     # was: raise RuntimeError(f"Stripe Checkout confirm 失败: {message}")
+                    # was: raise RuntimeError(f"Stripe Checkout confirm failed: {message}")
             if not final_url:
                 submit_state = self._submit_button_state(page)
                 current_url = str(page.url or "").strip()
                 _raise_keyed(RuntimeError, "windsurf.e607359c", url=current_url[:160], state=submit_state)
                 # was: raise RuntimeError("未进入支付宝扫码/授权页，不能保存 Stripe Checkout 页面。" f"当前 URL: {current_url[:160]} " f"提交按钮状态: {submit_state}")
+                # was: raise RuntimeError("Did not reach the Alipay QR-scan/authorization page; cannot save the Stripe Checkout page. " f"Current URL: {current_url[:160]} " f"Submit button state: {submit_state}")
             return {
                 "confirm_payload": confirm_payload,
                 "final_url": final_url,
@@ -1192,6 +1239,7 @@ class WindsurfStripeCheckoutBrowser:
                 submit_text=state.get("submitText") or "-",
             )
             # was: self.log("Stripe 表单状态: " f"alipay={state.get('alipay')} " f"email={bool(state.get('email'))} " f"name={bool(state.get('name'))} " f"country={state.get('country') or '-'} " f"line1={bool(state.get('line1'))} " f"city={bool(state.get('city'))} " f"postal={bool(state.get('postal'))} " f"state={bool(state.get('state'))} " f"terms={state.get('terms')} " f"submitDisabled={state.get('submitDisabled')} " f"submitClass={state.get('submitClass') or '-'} " f"submitText={state.get('submitText') or '-'}")
+            # was: self.log("Stripe form state: " f"alipay={state.get('alipay')} " f"email={bool(state.get('email'))} " f"name={bool(state.get('name'))} " f"country={state.get('country') or '-'} " f"line1={bool(state.get('line1'))} " f"city={bool(state.get('city'))} " f"postal={bool(state.get('postal'))} " f"state={bool(state.get('state'))} " f"terms={state.get('terms')} " f"submitDisabled={state.get('submitDisabled')} " f"submitClass={state.get('submitClass') or '-'} " f"submitText={state.get('submitText') or '-'}")
         except Exception:
             pass
 
@@ -1328,6 +1376,7 @@ class WindsurfStripeCheckoutBrowser:
                 pass
         _raise_keyed(RuntimeError, "windsurf.2f8a7ff2", methods=self._visible_payment_methods(page))
         # was: raise RuntimeError(f"Stripe Checkout 中未找到或无法选中 Alipay 支付方式，可见支付方式: {self._visible_payment_methods(page)}")
+        # was: raise RuntimeError(f"Alipay payment method not found or could not be selected in Stripe Checkout, visible payment methods: {self._visible_payment_methods(page)}")
 
     @staticmethod
     def _has_billing_fields(page: Page) -> bool:
@@ -1377,6 +1426,7 @@ class WindsurfStripeCheckoutBrowser:
             page.wait_for_timeout(300)
         _raise_keyed(RuntimeError, "windsurf.de431de7")
         # was: raise RuntimeError("已选择支付宝但未出现账单信息表单")
+        # was: raise RuntimeError("Alipay was selected but the billing information form did not appear")
 
     def _submit_checkout(self, page: Page) -> None:
         selectors = (
@@ -1394,9 +1444,11 @@ class WindsurfStripeCheckoutBrowser:
                         if not ready and "SubmitButton--incomplete" in initial_state["class_name"]:
                             self.log_key("windsurf.826e7912", state=self._submit_button_state(page))
                             # was: self.log(f"Step6: Stripe 提交按钮仍标记 incomplete，但按钮可点击，继续提交: {self._submit_button_state(page)}")
+                            # was: self.log(f"Step6: Stripe submit button is still marked incomplete, but is clickable, proceeding with submit: {self._submit_button_state(page)}")
                         self._dom_click(button)
                         self.log_key("windsurf.4e5bbc2d")
                         # was: self.log("Step6: 已点击 Stripe Checkout 提交按钮")
+                        # was: self.log("Step6: clicked the Stripe Checkout submit button")
                         if "SubmitButton--incomplete" in initial_state["class_name"]:
                             try:
                                 page.wait_for_function(
@@ -1414,9 +1466,11 @@ class WindsurfStripeCheckoutBrowser:
                                     self._dom_click(refreshed)
                                     self.log_key("windsurf.68e2e16c")
                                     # was: self.log("Step6: Stripe 提交按钮完整后已二次点击")
+                                    # was: self.log("Step6: clicked the Stripe submit button a second time after it became complete")
                             except Exception:
                                 self.log_key("windsurf.5277c6d2", state=self._submit_button_state(page))
                                 # was: self.log(f"Step6: 等待 Stripe 提交按钮变完整超时: {self._submit_button_state(page)}")
+                                # was: self.log(f"Step6: timed out waiting for the Stripe submit button to become complete: {self._submit_button_state(page)}")
                         return
             except Exception:
                 pass
@@ -1444,6 +1498,7 @@ class WindsurfStripeCheckoutBrowser:
                 pass
         _raise_keyed(RuntimeError, "windsurf.dc6d6ccb")
         # was: raise RuntimeError("Stripe Checkout 中未找到可点击的提交按钮")
+        # was: raise RuntimeError("No clickable submit button found in Stripe Checkout")
 
     def _fill_if_empty(
         self,
@@ -1570,6 +1625,7 @@ class WindsurfStripeCheckoutBrowser:
         except Exception as exc:
             self.log_key("windsurf.8c6564d7", exc=str(exc))
             # was: self.log(f"支付宝中转页直接打开失败，尝试页面内跳转: {exc}")
+            # was: self.log(f"Direct navigation to the Alipay intermediate page failed, trying an in-page redirect instead: {exc}")
         try:
             page.evaluate(
                 """(targetUrl) => {
@@ -1599,6 +1655,7 @@ class WindsurfStripeCheckoutBrowser:
                         locator.click(timeout=3000, force=True)
                         self.log_key("windsurf.92b20ef9")
                         # was: self.log("Step6: 已点击支付宝中转页继续按钮")
+                        # was: self.log("Step6: clicked the continue button on the Alipay intermediate page")
                         return True
                 except Exception:
                     pass
@@ -1623,6 +1680,7 @@ class WindsurfStripeCheckoutBrowser:
             if submitted:
                 self.log_key("windsurf.71ad77e5")
                 # was: self.log("Step6: 已推进支付宝中转页表单")
+                # was: self.log("Step6: advanced the Alipay intermediate page form")
                 return True
         except Exception:
             pass
@@ -1662,6 +1720,7 @@ class WindsurfStripeCheckoutBrowser:
         if not selected:
             _raise_keyed(RuntimeError, "windsurf.3e334139", value=value)
             # was: raise RuntimeError(f"未找到下拉选项: {value}")
+            # was: raise RuntimeError(f"Dropdown option not found: {value}")
 
     @staticmethod
     def _dom_click(button) -> None:
@@ -1804,6 +1863,7 @@ class WindsurfBrowserPaymentFlow:
             try:
                 self.log_key("windsurf.62f2f951")
                 # was: self.log("Step0: 使用 Camoufox 生成 Windsurf Pro Trial Stripe 链接")
+                # was: self.log("Step0: generate the Windsurf Pro Trial Stripe link using Camoufox")
                 checkout_url = WindsurfCamoufoxCheckoutFlow(
                     headless=self.headless,
                     proxy=self.proxy,
@@ -1825,6 +1885,7 @@ class WindsurfBrowserPaymentFlow:
             except Exception as exc:
                 self.log_key("windsurf.5f1758aa", exc=str(exc))
                 # was: self.log(f"Camoufox 生成 Windsurf Pro Trial Stripe 链接失败，回退到 Playwright: {exc}")
+                # was: self.log(f"Camoufox failed to generate the Windsurf Pro Trial Stripe link, falling back to Playwright: {exc}")
         with sync_playwright() as pw:
             launch_opts = {
                 "headless": self.headless,
@@ -1864,6 +1925,7 @@ class WindsurfBrowserPaymentFlow:
             try:
                 self.log_key("windsurf.07717736")
                 # was: self.log("Step0: 使用 Camoufox 尝试通过 Windsurf Turnstile")
+                # was: self.log("Step0: attempt to pass Windsurf Turnstile using Camoufox")
                 checkout_url = WindsurfCamoufoxCheckoutFlow(
                     headless=self.headless,
                     proxy=self.proxy,
@@ -1878,6 +1940,7 @@ class WindsurfBrowserPaymentFlow:
                 billing_name = email.split("@", 1)[0] or "Windsurf User"
                 self.log_key("windsurf.5abe8d54")
                 # was: self.log("Step4: Camoufox 已进入 Stripe，继续生成支付宝授权链接")
+                # was: self.log("Step4: Camoufox has entered Stripe, proceeding to generate the Alipay authorization link")
                 return WindsurfStripeCheckoutBrowser(
                     headless=self.headless,
                     proxy=self.proxy,
@@ -1892,6 +1955,7 @@ class WindsurfBrowserPaymentFlow:
             except Exception as exc:
                 self.log_key("windsurf.feded01f", exc=str(exc))
                 # was: self.log(f"Camoufox 进入 Windsurf Pro 失败，回退到 Playwright 流程: {exc}")
+                # was: self.log(f"Camoufox failed to enter Windsurf Pro, falling back to the Playwright flow: {exc}")
         with sync_playwright() as pw:
             launch_opts = {
                 "headless": self.headless,
@@ -1924,6 +1988,7 @@ class WindsurfBrowserPaymentFlow:
                     visible_text = stripe_helper._page_text(page)[:500]
                     _raise_keyed(RuntimeError, "windsurf.92a4f0d6", visible_text=visible_text)
                     # was: raise RuntimeError(f"未获取到支付宝授权链接，当前页面: {visible_text}")
+                    # was: raise RuntimeError(f"Failed to obtain the Alipay authorization link, current page: {visible_text}")
                 return {
                     **checkout_data,
                     "url": final_url,
@@ -1941,6 +2006,7 @@ class WindsurfBrowserPaymentFlow:
     def _login(self, page: Page, *, email: str, password: str) -> None:
         self.log_key("windsurf.7ed8fd3b")
         # was: self.log("Step1: 打开 Windsurf 登录页")
+        # was: self.log("Step1: open the Windsurf login page")
         page.goto(f"{WINDSURF_BASE}/account/login", wait_until="networkidle", timeout=90000)
         self._accept_cookies_if_present(page)
         page.locator('input[type="email"]').fill(email)
@@ -1948,6 +2014,7 @@ class WindsurfBrowserPaymentFlow:
         page.wait_for_selector('input[name="password"]', state="visible", timeout=90000)
         self.log_key("windsurf.f2766580")
         # was: self.log("Step2: 输入 Windsurf 账号密码")
+        # was: self.log("Step2: enter the Windsurf account password")
         page.locator('input[name="password"]').fill(password)
         page.locator('button[type="submit"]').click()
         page.wait_for_url(re.compile(rf"{re.escape(WINDSURF_BASE)}/profile"), timeout=90000)
@@ -1955,6 +2022,7 @@ class WindsurfBrowserPaymentFlow:
     def _open_pro_checkout(self, page: Page, *, turnstile_token: str, timeout: int) -> str:
         self.log_key("windsurf.e0bf0a57")
         # was: self.log("Step3: 进入 Pro 升级页面")
+        # was: self.log("Step3: navigate to the Pro upgrade page")
         page.get_by_role("link", name=re.compile(r"Upgrade to Pro", re.I)).click()
         page.wait_for_url(re.compile(rf"{re.escape(WINDSURF_BASE)}/pricing"), timeout=90000)
         self._accept_cookies_if_present(page)
@@ -1963,6 +2031,7 @@ class WindsurfBrowserPaymentFlow:
                 page.wait_for_timeout(3000)
                 self.log_key("windsurf.109f5919", url=str(page.url or "")[:160])
                 # was: self.log(f"点击 Start Free Trial 后当前页面: {str(page.url or '')[:160]}")
+                # was: self.log(f"Current page after clicking Start Free Trial: {str(page.url or '')[:160]}")
         except Exception:
             pass
         _handle_turnstile(
@@ -1975,13 +2044,16 @@ class WindsurfBrowserPaymentFlow:
         if "checkout.stripe.com" in str(page.url or ""):
             self.log_key("windsurf.a7f2b3e7")
             # was: self.log("Step4: 已从 Windsurf 页面进入 Stripe Checkout")
+            # was: self.log("Step4: entered Stripe Checkout from the Windsurf page")
             return str(page.url or "").strip()
         token = str(turnstile_token or "").strip()
         if not token:
             _raise_keyed(RuntimeError, "windsurf.04042368")
             # was: raise RuntimeError("页面点击 Pro 后仍停留在 pricing，页面内 Turnstile 处理未进入 Stripe，且缺少 turnstile_token 兜底")
+            # was: raise RuntimeError("Still on the pricing page after clicking Pro; in-page Turnstile handling did not reach Stripe, and no turnstile_token fallback is available")
         self.log_key("windsurf.2feccfa6")
         # was: self.log("Step4: 使用 Turnstile token 继续进入 Pro Checkout")
+        # was: self.log("Step4: use the Turnstile token to continue into Pro Checkout")
         page.goto(f"{WINDSURF_BASE}/billing/individual?plan=9&turnstile_token={token}", wait_until="domcontentloaded", timeout=90000)
         deadline = time.time() + max(int(timeout or 180), 30)
         while time.time() < deadline:
@@ -1992,6 +2064,7 @@ class WindsurfBrowserPaymentFlow:
         visible_text = WindsurfStripeCheckoutBrowser._page_text(page)[:500]
         _raise_keyed(RuntimeError, "windsurf.51e10f3a", visible_text=visible_text)
         # was: raise RuntimeError(f"进入 Stripe Checkout 超时，当前页面: {visible_text}")
+        # was: raise RuntimeError(f"Timed out entering Stripe Checkout, current page: {visible_text}")
 
     @staticmethod
     def _accept_cookies_if_present(page: Page) -> None:
@@ -2046,6 +2119,7 @@ class WindsurfCamoufoxCheckoutFlow(WindsurfBrowserPaymentFlow):
         if Camoufox is None:
             _raise_keyed(RuntimeError, "windsurf.76dc384c")
             # was: raise RuntimeError("Camoufox 不可用")
+            # was: raise RuntimeError("Camoufox is not available")
         launch_opts = {"headless": self.headless}
         proxy = _proxy_config(self.proxy)
         if proxy:

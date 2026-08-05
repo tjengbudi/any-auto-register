@@ -1,6 +1,8 @@
 import type { Catalog } from './zh'
 
 /* 结构占位：本次发布不提供越南语翻译，所有值留空，由 LanguageContext 在构建期回退到中文。 */
+/* Structural placeholder: this release ships no Vietnamese translation. All values are
+   left blank, and LanguageContext falls back to Chinese for them at build time. */
 const catalogViRaw: Catalog = {
   nav: {
     total: '',

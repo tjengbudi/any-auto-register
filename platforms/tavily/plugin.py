@@ -14,6 +14,8 @@ class TavilyPlatform(BasePlatform):
     version = "1.0.0"
     # 平台能力：首次启动时写入 platform_capability_overrides 表；
     # 后续启动做增量合并，不会覆盖运维在 DB 中禁用的项。
+    # Platform capabilities: written to the platform_capability_overrides table on first startup;
+    # subsequent startups merge incrementally and never re-enable items ops has disabled in the DB.
     supported_executors = ["protocol", "headless", "headed"]
     supported_identity_modes = ["mailbox", "oauth_browser"]
     supported_oauth_providers = ["google", "github", "linkedin", "microsoft"]
@@ -93,6 +95,7 @@ class TavilyPlatform(BasePlatform):
         return ProtocolOAuthAdapter(
             oauth_runner=lambda ctx: _raise_keyed(RuntimeError, "tavily.de051424"),
             # was: oauth_runner=lambda ctx: (_ for _ in ()).throw(RuntimeError("Tavily 当前仅浏览器模式支持 oauth_browser，请使用 executor_type=headed"))
+            # was: oauth_runner=lambda ctx: (_ for _ in ()).throw(RuntimeError("Tavily currently only supports oauth_browser in browser mode; use executor_type=headed"))
             result_mapper=lambda ctx, result: self._map_tavily_result(result),
         )
 

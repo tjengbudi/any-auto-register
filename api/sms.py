@@ -20,7 +20,7 @@ class HeroSmsQueryRequest(BaseModel):
 
 def _saved_herosms_config() -> dict:
     repo = ProviderSettingsRepository()
-    # 兼容旧版 provider_key "herosms" 和新版 "herosms_api"
+    # 兼容旧版 provider_key "herosms" 和新版 "herosms_api" — Supports both the legacy provider_key "herosms" and the newer "herosms_api"
     config = repo.resolve_runtime_settings("sms", "herosms_api", {})
     if not config.get("herosms_api_key"):
         config = repo.resolve_runtime_settings("sms", "herosms", {})
@@ -110,7 +110,7 @@ def herosms_top_countries(body: HeroSmsBestCountryRequest | None = None, lang: s
     try:
         service = str(body.service or provider.default_service or HERO_SMS_DEFAULT_SERVICE)
         rows = provider.get_top_countries(service=service)
-        # 只返回有库存的
+        # 只返回有库存的 — Only return the ones with stock
         rows = [r for r in rows if (r.get("count") or 0) > 0]
         if body.top_n > 0:
             rows = rows[:body.top_n]
@@ -136,7 +136,7 @@ def herosms_best_country(body: HeroSmsBestCountryRequest | None = None, lang: st
             max_price=body.max_price,
         )
         if best:
-            # 获取详细信息
+            # 获取详细信息 — Fetch the details
             rows = provider.get_top_countries(service=service)
             detail = next((r for r in rows if str(r.get("country")) == str(best)), None)
             return {

@@ -43,7 +43,7 @@ class CerebrasRegister:
     def step1_send_otp(self, email: str) -> str:
         """发送 OTP 到邮箱，返回 method_id。"""
         self.log_key("cerebras.4959d22c", email=email)
-        # was: self.log(f"发送验证码到 {email}...")
+        # was: self.log(f"发送验证码到 {email}...") — was: self.log(f"Sending the verification code to {email}...")
         r = self.ex.post(
             f"{STYTCH_ENV}/sdk/v1/otps/email/login_or_create",
             headers={
@@ -62,21 +62,23 @@ class CerebrasRegister:
         except Exception:
             _raise_keyed(RuntimeError, "cerebras.80c84930", status_code=r.status_code)
             # was: raise RuntimeError(f"Stytch OTP 发送失败: HTTP {r.status_code}")
+            # was: raise RuntimeError(f"Stytch OTP send failed: HTTP {r.status_code}")
 
         if r.status_code != 200:
             error = data.get("error_message", "") or data.get("error_type", "")
             _raise_keyed(RuntimeError, "cerebras.df22fccf", error=error)
-            # was: raise RuntimeError(f"Stytch OTP 发送失败: {error}")
+            # was: raise RuntimeError(f"Stytch OTP 发送失败: {error}") — was: raise RuntimeError(f"Stytch OTP send failed: {error}")
 
         method_id = data.get("email_id", "")
         self.log_key("cerebras.c53d6313", method_id=method_id[:20])
         # was: self.log(f"验证码已发送 (method_id={method_id[:20]}...)")
+        # was: self.log(f"Verification code sent (method_id={method_id[:20]}...)")
         return method_id
 
     def step2_verify_otp(self, email: str, code: str, method_id: str) -> dict:
         """验证 OTP，返回 session 信息。"""
         self.log_key("cerebras.3508be33")
-        # was: self.log("验证 OTP...")
+        # was: self.log("验证 OTP...") — was: self.log("Verifying the OTP...")
         r = self.ex.post(
             f"{STYTCH_ENV}/sdk/v1/otps/authenticate",
             headers={
@@ -94,18 +96,19 @@ class CerebrasRegister:
         except Exception:
             _raise_keyed(RuntimeError, "cerebras.6e9a60f4", status_code=r.status_code)
             # was: raise RuntimeError(f"OTP 验证失败: HTTP {r.status_code}")
+            # was: raise RuntimeError(f"OTP verification failed: HTTP {r.status_code}")
 
         if r.status_code != 200:
             error = data.get("error_message", "") or data.get("error_type", "")
             _raise_keyed(RuntimeError, "cerebras.7f445322", error=error)
-            # was: raise RuntimeError(f"OTP 验证失败: {error}")
+            # was: raise RuntimeError(f"OTP 验证失败: {error}") — was: raise RuntimeError(f"OTP verification failed: {error}")
 
         self._session_token = data.get("session_token", "")
         self._session_jwt = data.get("session_jwt", "")
         user = data.get("user", {})
         user_id = user.get("user_id", "")
         self.log_key("cerebras.63da20cd", user_id=user_id)
-        # was: self.log(f"OTP 验证成功 (user_id={user_id})")
+        # was: self.log(f"OTP 验证成功 (user_id={user_id})") — was: self.log(f"OTP verification succeeded (user_id={user_id})")
         return {
             "session_token": self._session_token,
             "session_jwt": self._session_jwt,
@@ -117,7 +120,7 @@ class CerebrasRegister:
         """获取或创建 API Key。"""
         if not self._session_jwt:
             _raise_keyed(RuntimeError, "cerebras.a56b812f")
-            # was: raise RuntimeError("未登录，无法获取 API Key")
+            # was: raise RuntimeError("未登录，无法获取 API Key") — was: raise RuntimeError("Not logged in; unable to obtain the API Key")
 
         headers = {
             "authorization": f"Bearer {self._session_jwt}",
@@ -127,7 +130,7 @@ class CerebrasRegister:
 
         # Try to get existing keys
         self.log_key("cerebras.f4bc415b")
-        # was: self.log("获取 API Key...")
+        # was: self.log("获取 API Key...") — was: self.log("Fetching the API Key...")
         r = self.ex.get(f"{CLOUD_BASE}/api/api-keys", headers=headers)
         try:
             data = r.json()
@@ -135,7 +138,7 @@ class CerebrasRegister:
                 key = data[0].get("key", "") or data[0].get("api_key", "")
                 if key:
                     self.log_key("cerebras.dd2cf36c")
-                    # was: self.log(f"使用已有 API Key")
+                    # was: self.log(f"使用已有 API Key") — was: self.log(f"Using an existing API Key")
                     return key
             if isinstance(data, dict):
                 keys = data.get("keys", []) or data.get("api_keys", []) or data.get("data", [])
@@ -143,14 +146,14 @@ class CerebrasRegister:
                     key = keys[0].get("key", "") or keys[0].get("api_key", "")
                     if key:
                         self.log_key("cerebras.dd2cf36c")
-                        # was: self.log(f"使用已有 API Key")
+                        # was: self.log(f"使用已有 API Key") — was: self.log(f"Using an existing API Key")
                         return key
         except Exception:
             pass
 
         # Create a new key
         self.log_key("cerebras.95f1bde6")
-        # was: self.log("创建新 API Key...")
+        # was: self.log("创建新 API Key...") — was: self.log("Creating a new API Key...")
         r = self.ex.post(
             f"{CLOUD_BASE}/api/api-keys",
             headers=headers,
@@ -166,10 +169,11 @@ class CerebrasRegister:
             )
             if key:
                 self.log_key("cerebras.c0088f3b")
-                # was: self.log(f"API Key 创建成功")
+                # was: self.log(f"API Key 创建成功") — was: self.log(f"API Key created successfully")
                 return key
         except Exception:
             pass
 
         _raise_keyed(RuntimeError, "cerebras.48a7a9d6", status_code=r.status_code)
         # was: raise RuntimeError(f"创建 API Key 失败: HTTP {r.status_code}")
+        # was: raise RuntimeError(f"Failed to create the API Key: HTTP {r.status_code}")

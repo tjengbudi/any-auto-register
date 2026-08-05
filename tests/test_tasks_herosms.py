@@ -8,6 +8,9 @@ from infrastructure.provider_settings_repository import ProviderSettingsReposito
 def test_resolve_sms_provider_for_task_uses_saved_herosms_default():
     # 纯单元测试不经过 lifespan，_reset_db 只建表不 seed，
     # 因此要先播种 provider 定义，否则 save() 会拒绝未知 provider。
+    # A pure unit test doesn't go through the lifespan, and _reset_db only creates
+    # tables without seeding, so the provider definitions must be seeded first, or
+    # save() will reject the unknown provider.
     ProviderDefinitionsRepository().ensure_seeded()
     repo = ProviderSettingsRepository()
     repo.save(

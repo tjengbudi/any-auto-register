@@ -42,11 +42,11 @@ class WindsurfPlatform(BasePlatform):
     supported_identity_modes = ["mailbox"]
     protocol_captcha_order = ("2captcha", "capsolver", "auto")
     capabilities = [
-        "query_state",              # 查询账号状态/额度
-        "check_trial",              # 检查 Pro Trial 资格
-        "generate_link",            # 生成 Pro Trial Stripe 链接（自动打码）
-        "generate_link_browser",    # 生成 Pro Trial Stripe 链接（浏览器）
-        "switch_desktop",           # 切换到桌面应用
+        "query_state",              # 查询账号状态/额度 — Query account status/quota
+        "check_trial",              # 检查 Pro Trial 资格 — Check Pro Trial eligibility
+        "generate_link",            # 生成 Pro Trial Stripe 链接（自动打码）— Generate Pro Trial Stripe link (auto-masked)
+        "generate_link_browser",    # 生成 Pro Trial Stripe 链接（浏览器）— Generate Pro Trial Stripe link (browser)
+        "switch_desktop",           # 切换到桌面应用 — Switch to the desktop app
     ]
     capability_overrides = {
         "generate_link": {
@@ -202,6 +202,7 @@ class WindsurfPlatform(BasePlatform):
 
         self.log_key("windsurf.df723149", email=account.email)
         # was: self.log(f"正在切换到: {account.email}")
+        # was: self.log(f"Switching to: {account.email}")
         proxy = self.config.proxy if self.config else None
         ok, msg = switch_windsurf_account(session_token=session_token, proxy=proxy)
 
@@ -226,9 +227,11 @@ class WindsurfPlatform(BasePlatform):
         if turnstile_token:
             self.log_key("windsurf.1e41af50")
             # was: self.log("使用提供的 Turnstile token 作为浏览器流程回退")
+            # was: self.log("Using the provided Turnstile token as a fallback for the browser flow")
         else:
             self.log_key("windsurf.9957d67a")
             # was: self.log("未提供 Turnstile token，将在页面上自动过验证")
+            # was: self.log("No Turnstile token provided; verification will be solved automatically on the page")
         headless_param = params.get("headless")
         if headless_param in (None, ""):
             headless = self.config.executor_type == "headless"

@@ -13,6 +13,8 @@ class CerebrasPlatform(BasePlatform):
     version = "1.0.0"
     # 平台能力：首次启动时写入 platform_capability_overrides 表；
     # 后续启动做增量合并，不会覆盖运维在 DB 中禁用的项。
+    # Platform capabilities: written to the platform_capability_overrides table on first startup;
+    # subsequent startups merge incrementally and never re-enable items ops has disabled in the DB.
     supported_executors = ["protocol"]
     supported_identity_modes = ["mailbox"]
 
@@ -92,4 +94,4 @@ class CerebrasPlatform(BasePlatform):
                 },
             }
         _raise_keyed(NotImplementedError, "cerebras.701d383a", action_id=action_id)
-        # was: raise NotImplementedError(f"未知操作: {action_id}")
+        # was: raise NotImplementedError(f"未知操作: {action_id}") — was: raise NotImplementedError(f"Unknown action: {action_id}")

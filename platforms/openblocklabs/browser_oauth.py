@@ -45,9 +45,11 @@ def register_with_browser_oauth(
         else:
             _emit_log_key(log_fn, log_key, "openblocklabs.a45d8569", method_text=method_text, timeout=timeout)
             # was: log_fn(f"请在浏览器中完成登录，可使用 {method_text}，最长等待 {timeout} 秒")
+            # was: log_fn(f"Please complete login in the browser using {method_text}; waiting up to {timeout} seconds")
             if email_hint:
                 _emit_log_key(log_fn, log_key, "openblocklabs.18555deb", email_hint=email_hint)
                 # was: log_fn(f"请确认最终登录账号邮箱为: {email_hint}")
+                # was: log_fn(f"Please confirm the final login account email is: {email_hint}")
 
         session_token = browser.wait_for_cookie_value(
             ["wos-session"],
@@ -57,6 +59,7 @@ def register_with_browser_oauth(
         if not session_token:
             _raise_keyed(RuntimeError, "openblocklabs.65170936", timeout=timeout)
             # was: raise RuntimeError(f"OpenBlockLabs 浏览器登录未在 {timeout} 秒内拿到 Session")
+            # was: raise RuntimeError(f"OpenBlockLabs browser login did not obtain a session within {timeout} seconds")
 
         try:
             browser.goto(f"{DASHBOARD_BASE}/api/create-personal-org", wait_until="domcontentloaded", timeout=20000)

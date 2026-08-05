@@ -36,9 +36,9 @@ class TavilyProtocolMailboxWorker:
         otp = otp_callback() if otp_callback else input("OTP: ")
         if not otp:
             _raise_keyed(RuntimeError, "tavily.13939cce")
-            # was: raise RuntimeError("未获取到验证码")
+            # was: raise RuntimeError("未获取到验证码") — was: raise RuntimeError("Failed to obtain the verification code")
         self.log_key("tavily.8f3b2133", otp=otp)
-        # was: self.log(f"验证码: {otp}")
+        # was: self.log(f"验证码: {otp}") — was: self.log(f"Verification code: {otp}")
         pw_state = self.client.step4_submit_otp(otp, challenge_state)
         resume_state = self.client.step5_submit_password(email, password, pw_state)
         api_key = self.client.step6_resume_and_get_key(resume_state)
@@ -47,4 +47,5 @@ class TavilyProtocolMailboxWorker:
         else:
             self.log_key("tavily.bdfd8fe2")
             # was: self.log(f"API Key: {api_key[:20]}..." if api_key else "未获取到 API Key")
+            # was: self.log(f"API Key: {api_key[:20]}..." if api_key else "API Key not obtained")
         return {"email": email, "password": password, "api_key": api_key}

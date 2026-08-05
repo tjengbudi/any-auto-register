@@ -67,7 +67,7 @@ class GrokBrowserRegister:
         with Camoufox(**launch_opts) as browser:
             page = browser.new_page()
             self.log_key("grok.e3386d6c")
-            # was: self.log("打开 Grok 注册页")
+            # was: self.log("打开 Grok 注册页") — was: self.log("Opening the Grok registration page")
             page.goto(f"{ACCOUNTS_URL}/sign-up", wait_until="networkidle", timeout=30000)
             time.sleep(2)
 
@@ -99,16 +99,18 @@ class GrokBrowserRegister:
                         break
                 _raise_keyed(RuntimeError, "grok.ab0eedc2", fb_or_url=fb or page.url)
                 # was: raise RuntimeError(f"未进入验证码页面: {fb or page.url}")
+                # was: raise RuntimeError(f"Did not reach the verification code page: {fb or page.url}")
 
             if not self.otp_callback:
                 _raise_keyed(RuntimeError, "grok.d4a97c50")
                 # was: raise RuntimeError("Grok 注册需要邮箱验证码但未提供 otp_callback")
+                # was: raise RuntimeError("Grok registration requires an email verification code but otp_callback was not provided")
             self.log_key("grok.06a77300")
-            # was: self.log("等待 Grok 验证码")
+            # was: self.log("等待 Grok 验证码") — was: self.log("Waiting for the Grok verification code")
             code = self.otp_callback()
             if not code:
                 _raise_keyed(RuntimeError, "grok.13939cce")
-                # was: raise RuntimeError("未获取到验证码")
+                # was: raise RuntimeError("未获取到验证码") — was: raise RuntimeError("Failed to obtain the verification code")
 
             code_sel = 'input[name="code"], input[data-input-otp="true"]'
             if not page.query_selector(code_sel):
@@ -130,7 +132,7 @@ class GrokBrowserRegister:
 
             # May need name + password
             self.log_key("grok.cb6da5c4")
-            # was: self.log("等待姓名/密码填写步骤")
+            # was: self.log("等待姓名/密码填写步骤") — was: self.log("Waiting for the name/password step")
             for _ in range(15):
                 if page.query_selector('input[name="given_name"], input[placeholder*="First"], input[name="password"], input[type="password"]'):
                     break
@@ -138,6 +140,7 @@ class GrokBrowserRegister:
             else:
                 self.log_key("grok.28066ba7")
                 # was: self.log("未检测到姓名或密码输入框，保存截图到 /tmp/grok_debug.png")
+                # was: self.log("No name or password input detected; saving a screenshot to /tmp/grok_debug.png")
                 page.screenshot(path="/tmp/grok_debug.png")
                 with open("/tmp/grok_debug.html", "w") as f:
                     f.write(page.content())
@@ -186,18 +189,20 @@ class GrokBrowserRegister:
 
             # Wait for sso cookie
             self.log_key("grok.1e727e4f")
-            # was: self.log("等待 Grok sso cookie")
+            # was: self.log("等待 Grok sso cookie") — was: self.log("Waiting for the Grok sso cookie")
             cookies = _wait_for_cookies(page, ["sso"], timeout=60)
             sso = cookies.get("sso", "")
             if not sso:
                 self.log_key("grok.e19f0990")
                 # was: self.log("未获取到 sso cookie，保存截图到 /tmp/grok_fail_final.png")
+                # was: self.log("Failed to obtain the sso cookie; saving a screenshot to /tmp/grok_fail_final.png")
                 page.screenshot(path="/tmp/grok_fail_final.png")
                 with open("/tmp/grok_fail_final.html", "w") as f:
                     f.write(page.content())
                 _raise_keyed(RuntimeError, "grok.5e9195f8")
                 # was: raise RuntimeError("未获取到 Grok sso cookie")
+                # was: raise RuntimeError("Failed to obtain the Grok sso cookie")
             sso_rw = _get_cookies(page, ["sso-rw"]).get("sso-rw", "")
             self.log_key("grok.d9dbdf1a", email=email)
-            # was: self.log(f"注册成功: {email}")
+            # was: self.log(f"注册成功: {email}") — was: self.log(f"Registration succeeded: {email}")
             return {"email": email, "password": password, "sso": sso, "sso_rw": sso_rw}

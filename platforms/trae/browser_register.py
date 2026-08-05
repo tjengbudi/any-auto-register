@@ -79,10 +79,11 @@ def _get_trae_cloudide_token(page, log_fn=print, *, log_key: Optional[Callable[[
     user_id = ""
     region = ""
 
-    # step4: Trae Login（建立 IDE session）
+    # step4: Trae Login（建立 IDE session） — step4: Trae Login (establishes the IDE session)
     try:
         _emit_log_key(log_fn, log_key, "trae.8540e9d6")
         # was: log_fn("调用 Trae Login API...")
+        # was: log_fn("Calling Trae Login API...")
         page.evaluate(f"""
         async () => {{
             await fetch("{BASE_URL}/cloudide/api/v3/trae/Login?type=email", {{
@@ -101,11 +102,13 @@ def _get_trae_cloudide_token(page, log_fn=print, *, log_key: Optional[Callable[[
     except Exception as e:
         _emit_log_key(log_fn, log_key, "trae.840a8f81", exc=str(e))
         # was: log_fn(f"⚠️ Trae Login 失败: {e}")
+        # was: log_fn(f"⚠️ Trae Login failed: {e}")
 
     # step5: GetUserToken → Cloud-IDE JWT
     try:
         _emit_log_key(log_fn, log_key, "trae.25ab66d1")
         # was: log_fn("获取 Cloud-IDE JWT token...")
+        # was: log_fn("Fetching Cloud-IDE JWT token...")
         result = page.evaluate(f"""
         async () => {{
             const r = await fetch("{API_SG}/cloudide/api/v3/common/GetUserToken", {{
@@ -121,9 +124,11 @@ def _get_trae_cloudide_token(page, log_fn=print, *, log_key: Optional[Callable[[
         if token:
             _emit_log_key(log_fn, log_key, "trae.ea48c704", token_len=len(token))
             # was: log_fn(f"✅ 获取到 Cloud-IDE JWT (长度={len(token)})")
+            # was: log_fn(f"✅ Obtained Cloud-IDE JWT (length={len(token)})")
     except Exception as e:
         _emit_log_key(log_fn, log_key, "trae.51b21c4b", exc=str(e))
         # was: log_fn(f"⚠️ GetUserToken 失败: {e}")
+        # was: log_fn(f"⚠️ GetUserToken failed: {e}")
 
     # step6: CheckLogin → userId / Region
     if token:
@@ -148,8 +153,9 @@ def _get_trae_cloudide_token(page, log_fn=print, *, log_key: Optional[Callable[[
         except Exception as e:
             _emit_log_key(log_fn, log_key, "trae.d3842706", exc=str(e))
             # was: log_fn(f"⚠️ CheckLogin 失败: {e}")
+            # was: log_fn(f"⚠️ CheckLogin failed: {e}")
 
-    # 兜底：从 Cookie 提取 user_id
+    # 兜底：从 Cookie 提取 user_id — Fallback: extract user_id from the Cookie
     if not user_id:
         try:
             cookies = {c["name"]: c["value"] for c in page.context.cookies()}
@@ -157,7 +163,7 @@ def _get_trae_cloudide_token(page, log_fn=print, *, log_key: Optional[Callable[[
         except Exception:
             pass
 
-    # 终极兜底：从 JWT payload 解出 id
+    # 终极兜底：从 JWT payload 解出 id — Last-resort fallback: decode the id from the JWT payload
     if not user_id and token:
         try:
             import base64, json as _json
@@ -194,8 +200,9 @@ class TraeBrowserRegister:
         if not self.otp_callback:
             _raise_keyed(RuntimeError, "trae.bfa130fd")
             # was: raise RuntimeError("Trae 注册需要邮箱验证码但未提供 otp_callback")
+            # was: raise RuntimeError("Trae registration needs an email code but no otp_callback provided")
 
-        # 生成密码（如果未提供）
+        # 生成密码（如果未提供） — Generate a password (if none was provided)
         if not password:
             password = (
                 ''.join(random.choices(string.ascii_uppercase, k=2))
@@ -212,15 +219,17 @@ class TraeBrowserRegister:
         with Camoufox(**launch_opts) as browser:
             page = browser.new_page()
 
-            # 1. 打开注册页
+            # 1. 打开注册页 — 1. Open the sign-up page
             self.log_key("trae.7ac7c313")
             # was: self.log("打开 Trae 注册页")
+            # was: self.log("Opening Trae sign-up page")
             page.goto(f"{TRAE_URL}/sign-up", wait_until="domcontentloaded", timeout=30000)
             time.sleep(2)
 
-            # 2. 填写邮箱
+            # 2. 填写邮箱 — 2. Fill in the email
             self.log_key("trae.eaa92c19", email=email)
             # was: self.log(f"填写邮箱: {email}")
+            # was: self.log(f"Filling in email: {email}")
             email_selectors = [
                 'input[placeholder="Email"]',
                 'input[type="email"]',
@@ -245,30 +254,36 @@ class TraeBrowserRegister:
             if not email_el:
                 _raise_keyed(RuntimeError, "trae.aeaae40c", page_url=page.url)
                 # was: raise RuntimeError(f"未找到邮箱输入框: {page.url}")
+                # was: raise RuntimeError(f"Email input field not found: {page.url}")
 
             email_el.click()
             email_el.fill(email)
             time.sleep(0.5)
 
-            # 3. 点击 "Send Code" 按钮
+            # 3. 点击 "Send Code" 按钮 — 3. Click the "Send Code" button
             self.log_key("trae.8a956af4")
             # was: self.log("发送验证码...")
+            # was: self.log("Sending verification code...")
             # 使用 JS 找到包含精确文本的最小 leaf 元素并点击
+            # Use JS to find and click the smallest leaf element with the exact text
             send_clicked = False
             deadline_send = time.time() + 15
             while time.time() < deadline_send and not send_clicked:
                 try:
                     # Playwright text= 选择器比 CSS has-text 更精确
+                    # Playwright's text= selector is more precise than CSS has-text
                     el = page.locator('text="Send Code"').last
                     if el.is_visible():
                         el.click()
                         send_clicked = True
                         self.log_key("trae.0820a0f5")
                         # was: self.log("已点击 Send Code")
+                        # was: self.log("Clicked Send Code")
                         break
                 except Exception:
                     pass
                 # 备用：JS 遍历找到精确包含 Send Code 文字的元素
+                # Fallback: iterate via JS to find the element containing exactly "Send Code"
                 if not send_clicked:
                     try:
                         page.evaluate("""
@@ -285,6 +300,7 @@ class TraeBrowserRegister:
                         send_clicked = True
                         self.log_key("trae.a036f186")
                         # was: self.log("已点击 Send Code (JS)")
+                        # was: self.log("Clicked Send Code (JS)")
                     except Exception:
                         pass
                 time.sleep(1)
@@ -292,15 +308,17 @@ class TraeBrowserRegister:
             if not send_clicked:
                 self.log_key("trae.747ccfbe")
                 # was: self.log("⚠️ 未能点击 Send Code，尝试 Tab+Enter")
+                # was: self.log("⚠️ Failed to click Send Code, trying Tab+Enter")
                 page.keyboard.press("Tab")
                 time.sleep(0.3)
                 page.keyboard.press("Enter")
 
             time.sleep(2)
 
-            # 4. 等待 OTP 输入框
+            # 4. 等待 OTP 输入框 — 4. Wait for the OTP input field
             self.log_key("trae.9f1ca065")
             # was: self.log("等待邮箱验证码...")
+            # was: self.log("Waiting for email verification code...")
             otp_selectors = [
                 'input[placeholder="Verification code"]',
                 'input[placeholder*="verification" i]',
@@ -327,20 +345,24 @@ class TraeBrowserRegister:
             if not otp_el:
                 _raise_keyed(RuntimeError, "trae.93392185", page_url=page.url)
                 # was: raise RuntimeError(f"未出现验证码输入框: {page.url}")
+                # was: raise RuntimeError(f"Verification code input field did not appear: {page.url}")
 
             code = self.otp_callback()
             if not code:
                 _raise_keyed(RuntimeError, "trae.6d0d5d5f")
                 # was: raise RuntimeError("未获取到邮箱验证码")
+                # was: raise RuntimeError("Failed to obtain the email verification code")
             self.log_key("trae.905556a4", code=code)
             # was: self.log(f"填写验证码: {code}")
+            # was: self.log(f"Filling in verification code: {code}")
             otp_el.click()
             otp_el.fill(str(code).strip())
             time.sleep(0.5)
 
-            # 5. 填写密码
+            # 5. 填写密码 — 5. Fill in the password
             self.log_key("trae.4f30b5d0")
             # was: self.log("填写密码...")
+            # was: self.log("Filling in password...")
             pwd_selectors = [
                 'input[placeholder="Password"]',
                 'input[type="password"]',
@@ -357,9 +379,10 @@ class TraeBrowserRegister:
                 except Exception:
                     pass
 
-            # 6. 点击 "Sign Up"
+            # 6. 点击 "Sign Up" — 6. Click "Sign Up"
             self.log_key("trae.9707980e")
             # was: self.log("提交注册...")
+            # was: self.log("Submitting registration...")
             signup_clicked = False
             deadline_signup = time.time() + 10
             while time.time() < deadline_signup and not signup_clicked:
@@ -370,6 +393,7 @@ class TraeBrowserRegister:
                         signup_clicked = True
                         self.log_key("trae.101785a9")
                         # was: self.log("已点击 Sign Up")
+                        # was: self.log("Clicked Sign Up")
                         break
                 except Exception:
                     pass
@@ -390,6 +414,7 @@ class TraeBrowserRegister:
                         signup_clicked = True
                         self.log_key("trae.90e61a07")
                         # was: self.log("已点击 Sign Up (JS)")
+                        # was: self.log("Clicked Sign Up (JS)")
                     except Exception:
                         pass
                 time.sleep(0.5)
@@ -397,13 +422,15 @@ class TraeBrowserRegister:
             if not signup_clicked:
                 self.log_key("trae.dd2c6074")
                 # was: self.log("⚠️ 未能点击 Sign Up，尝试 Enter")
+                # was: self.log("⚠️ Failed to click Sign Up, trying Enter")
                 page.keyboard.press("Enter")
 
             time.sleep(3)
 
-            # 7. 等待跳转（离开 sign-up 页）
+            # 7. 等待跳转（离开 sign-up 页） — 7. Wait for redirect (leaving the sign-up page)
             self.log_key("trae.e01ea3d4")
             # was: self.log("等待注册完成...")
+            # was: self.log("Waiting for registration to complete...")
             deadline_done = time.time() + 30
             while time.time() < deadline_done:
                 if "sign-up" not in page.url and "trae.ai" in page.url:
@@ -412,19 +439,22 @@ class TraeBrowserRegister:
 
             time.sleep(2)
 
-            # 8. 提取 token
+            # 8. 提取 token — 8. Extract the token
             self.log_key("trae.c42b714b")
             # was: self.log("提取 Trae token...")
+            # was: self.log("Extracting Trae token...")
             token, user_id, region = _get_trae_cloudide_token(page, self.log, log_key=self._log_key_fn)
 
             if not token:
                 self.log_key("trae.b7ab0160")
                 # was: self.log("⚠️ 未从 Cookie 获取到 token，尝试等待...")
+                # was: self.log("⚠️ Token not found in Cookie, waiting and retrying...")
                 time.sleep(5)
                 token, user_id, region = _get_trae_cloudide_token(page, self.log, log_key=self._log_key_fn)
 
             self.log_key("trae.90bedbfd", email=email)
             # was: self.log(f"✓ 注册成功: {email}")
+            # was: self.log(f"✓ Registration successful: {email}")
             return {
                 "email": email,
                 "password": password,

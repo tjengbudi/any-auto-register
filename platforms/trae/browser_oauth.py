@@ -45,9 +45,11 @@ def register_with_browser_oauth(
         else:
             _emit_log_key(log_fn, log_key, "trae.a45d8569", method_text=method_text, timeout=timeout)
             # was: log_fn(f"请在浏览器中完成登录，可使用 {method_text}，最长等待 {timeout} 秒")
+            # was: log_fn(f"Please complete login in the browser using {method_text}; waiting up to {timeout} seconds")
             if email_hint:
                 _emit_log_key(log_fn, log_key, "trae.18555deb", email_hint=email_hint)
                 # was: log_fn(f"请确认最终登录账号邮箱为: {email_hint}")
+                # was: log_fn(f"Please confirm the final login account email is: {email_hint}")
 
         final_url = browser.wait_for_url(
             lambda url: "trae.ai" in url and ("account-setting" in url or "workspace" in url or "ide" in url),
@@ -56,6 +58,7 @@ def register_with_browser_oauth(
         if not final_url:
             _raise_keyed(RuntimeError, "trae.3cf17fea", timeout=timeout)
             # was: raise RuntimeError(f"Trae 浏览器登录未在 {timeout} 秒内完成")
+            # was: raise RuntimeError(f"Trae browser login did not complete within {timeout} seconds")
 
         browser_cookies = browser.cookie_dict(domain_substrings=("trae.ai",))
 
@@ -67,6 +70,7 @@ def register_with_browser_oauth(
         if not token:
             _raise_keyed(RuntimeError, "trae.92d61184")
             # was: raise RuntimeError("Trae OAuth 登录后未获取到平台 token")
+            # was: raise RuntimeError("No platform token obtained after Trae OAuth login")
         result = reg.step6_check_login()
         cashier_url = reg.step7_create_order(token)
 

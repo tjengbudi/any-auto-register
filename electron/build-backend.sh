@@ -1,5 +1,5 @@
 #!/bin/bash
-# 将 Python 后端打包为单文件可执行程序，输出到 electron/backend/
+# 将 Python 后端打包为单文件可执行程序，输出到 electron/backend/ — Package the Python backend as a single-file executable, output to electron/backend/
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -7,7 +7,7 @@ BACKEND_DIR="$SCRIPT_DIR/../"
 
 cd "$BACKEND_DIR"
 
-# 定位 patchright driver（含 node 二进制 + cli.js）
+# 定位 patchright driver（含 node 二进制 + cli.js） — Locate the patchright driver (includes the node binary + cli.js)
 DRIVER_DIR="$(.venv/bin/python -c "import pathlib, patchright; print(pathlib.Path(patchright.__file__).parent / 'driver')")"
 echo "[info] patchright driver: $DRIVER_DIR"
 

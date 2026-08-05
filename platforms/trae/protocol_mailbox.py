@@ -36,8 +36,10 @@ class TraeProtocolMailboxWorker:
         if not otp:
             _raise_keyed(RuntimeError, "trae.13939cce")
             # was: raise RuntimeError("未获取到验证码")
+            # was: raise RuntimeError("Failed to obtain the verification code")
         self.log_key("trae.8f3b2133", otp=otp)
         # was: self.log(f"验证码: {otp}")
+        # was: self.log(f"Verification code: {otp}")
         user_id = self.client.step3_register(email, use_password, otp)
         self.client.step4_trae_login()
         token = self.client.step5_get_token()

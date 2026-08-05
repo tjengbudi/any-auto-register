@@ -42,6 +42,7 @@ class TraeRegister:
     def step2_send_code(self, email: str):
         self.log_key("trae.8a956af4")
         # was: self.log("发送验证码...")
+        # was: self.log("Sending verification code...")
         r = self.ex.post(f"{BASE_URL}/passport/web/email/send_code/",
                          params=_base_params(),
                          data={"type": "1", "email": email,
@@ -49,12 +50,15 @@ class TraeRegister:
         if r.json().get("message") != "success":
             _raise_keyed(RuntimeError, "trae.b368b478", resp_text=r.text)
             # was: raise RuntimeError(f"send_code 失败: {r.text}")
+            # was: raise RuntimeError(f"send_code failed: {r.text}")
         self.log_key("trae.4fa2624b")
         # was: self.log("验证码已发送，等待邮件...")
+        # was: self.log("Verification code sent, waiting for the email...")
 
     def step3_register(self, email: str, password: str, otp: str):
         self.log_key("trae.ba3806bf", otp=otp)
         # was: self.log(f"提交注册... otp={otp}")
+        # was: self.log(f"Submitting registration... otp={otp}")
         r = self.ex.post(f"{BASE_URL}/passport/web/email/register_verify_login/",
                          params=_base_params(),
                          data={"type": "1", "email": email, "password": password,
@@ -63,6 +67,7 @@ class TraeRegister:
         if j.get("message") != "success" and not j.get("data", {}).get("user_id_str"):
             _raise_keyed(RuntimeError, "trae.7f43c16d", resp_text=r.text)
             # was: raise RuntimeError(f"register 失败: {r.text}")
+            # was: raise RuntimeError(f"register failed: {r.text}")
         return j["data"]["user_id_str"]
 
     def step4_trae_login(self):
@@ -93,4 +98,5 @@ class TraeRegister:
         except Exception as e:
             self.log_key("trae.d87a47e4", exc=str(e))
             # was: self.log(f"  create_order 失败: {e}")
+            # was: self.log(f"  create_order failed: {e}")
             return ""

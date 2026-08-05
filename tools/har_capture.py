@@ -49,9 +49,9 @@ def capture_har(url: str, name: str, proxy: str = None, headless: bool = False):
         page = context.new_page()
         page.goto(url, wait_until="domcontentloaded")
 
-        # 等待用户关闭浏览器
+        # 等待用户关闭浏览器 — Wait for the user to close the browser
         try:
-            page.wait_for_event("close", timeout=600_000)  # 10 分钟超时
+            page.wait_for_event("close", timeout=600_000)  # 10 分钟超时 — 10-minute timeout
         except Exception:
             pass
 

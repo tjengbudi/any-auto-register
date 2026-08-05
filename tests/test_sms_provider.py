@@ -336,7 +336,7 @@ class TestHeroSmsProvider:
 
         assert activation.activation_id == "act_1"
         assert activation.phone_number == "+15551234"
-        # 取号前会先查价（智能选国），只断言取号调用本身的顺序
+        # 取号前会先查价（智能选国），只断言取号调用本身的顺序 — Pricing is queried before the number (smart country selection); only assert the order of the number-fetch calls themselves
         number_calls = [c["action"] for c in calls if c["action"].startswith("getNumber")]
         assert number_calls[0] == "getNumberV2"
 

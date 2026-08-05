@@ -46,9 +46,9 @@ let splashWindow = null
 
 function getBackendPath() {
   if (isDev) {
-    return null // 开发模式：手动启动 uvicorn
+    return null // 开发模式：手动启动 uvicorn — Dev mode: start uvicorn manually
   }
-  // 生产模式：PyInstaller 打包的可执行文件放在 resources/backend/
+  // 生产模式：PyInstaller 打包的可执行文件放在 resources/backend/ — Production mode: the PyInstaller-packaged executable lives at resources/backend/
   const ext = process.platform === 'win32' ? '.exe' : ''
   return path.join(process.resourcesPath, 'backend', 'backend', `backend${ext}`)
 }
@@ -177,7 +177,7 @@ function createWindow() {
   })
   mainWindow.on('closed', () => { mainWindow = null })
 
-  // 外部链接在系统浏览器中打开
+  // 外部链接在系统浏览器中打开 — Open external links in the system browser
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('http://') || url.startsWith('https://')) {
       shell.openExternal(url)
@@ -213,7 +213,7 @@ app.whenReady().then(async () => {
 
   createWindow()
 
-  // ── 自动更新（仅 Windows，macOS 未签名不支持） ──
+  // ── 自动更新（仅 Windows，macOS 未签名不支持） — Auto-update (Windows only; unsigned macOS builds aren't supported) ──
   if (process.platform === 'win32' && !isDev) {
     autoUpdater.autoDownload = false
     autoUpdater.autoInstallOnAppQuit = true
@@ -250,7 +250,7 @@ app.whenReady().then(async () => {
       console.error('[updater] 检查更新失败:', err.message)
     })
 
-    // 启动后 10 秒检查更新
+    // 启动后 10 秒检查更新 — Check for updates 10 seconds after startup
     setTimeout(() => autoUpdater.checkForUpdates(), 10000)
   }
 

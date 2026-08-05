@@ -16,12 +16,13 @@ ANYTHING_BASE = "https://www.anything.com"
 ANYTHING_GRAPHQL = f"{ANYTHING_BASE}/api/graphql"
 ANYTHING_REFRESH_TOKEN_URL = f"{ANYTHING_BASE}/api/refresh_token"
 
-# 来自 HAR 的默认 lookup，可通过 action 参数覆盖。
+# 来自 HAR 的默认 lookup，可通过 action 参数覆盖。 — Default lookup captured from HAR; overridable via the action parameter.
 ANYTHING_CHECKOUT_LOOKUPS = {
     "pro_20_monthly": "usage_pro_price_20_monthly",
 }
 
 # 来自 HAR 的默认 referral code，可通过注册额外参数覆盖或置空。
+# Default referral code captured from HAR; overridable or clearable via extra signup parameters.
 ANYTHING_DEFAULT_REFERRAL_CODE = "y6xx8d3a"
 
 QUERY_ME = """
@@ -351,11 +352,13 @@ class AnythingClient:
         if response.status_code != 200:
             _raise_keyed(RuntimeError, "anything.4b2e1922", status_code=response.status_code, body=response.text[:200])
             # was: raise RuntimeError(f"anything graphql 请求失败: {response.status_code} {response.text[:200]}")
+            # was: raise RuntimeError(f"anything graphql request failed: {response.status_code} {response.text[:200]}")
         try:
             return response.json()
         except Exception as exc:
             _raise_keyed(RuntimeError, "anything.580ad1a6", exc=str(exc))
             # was: raise RuntimeError(f"anything graphql 响应不是 JSON: {exc}") from exc
+            # was: raise RuntimeError(f"anything graphql response is not JSON: {exc}") from exc
 
     def _fetch_state_once(
         self,
@@ -382,6 +385,7 @@ class AnythingClient:
         if not isinstance(batch_result, list) or len(batch_result) < 2:
             _raise_keyed(RuntimeError, "anything.76a0eb31", body=json.dumps(batch_result, ensure_ascii=False)[:300])
             # was: raise RuntimeError(f"anything 账号状态返回异常: {json.dumps(batch_result, ensure_ascii=False)[:300]}")
+            # was: raise RuntimeError(f"anything account state returned unexpected data: {json.dumps(batch_result, ensure_ascii=False)[:300]}")
         me = (((batch_result[0] or {}).get("data") or {}).get("me") or {})
         organizations_payload = ((batch_result[1] or {}).get("data") or {})
         return {
@@ -414,6 +418,7 @@ class AnythingClient:
         referral = str(referral_code).strip()
         self.log_key("anything.8495c215", email=email)
         # was: self.log(f"Step1: 发起注册 {email}")
+        # was: self.log(f"Step1: initiate signup {email}")
         payload = {
             "operationName": "SignUpWithAppPrompt",
             "variables": {
@@ -432,11 +437,13 @@ class AnythingClient:
         if not result or not result.get("success"):
             _raise_keyed(RuntimeError, "anything.54300d8f", body=json.dumps(result, ensure_ascii=False)[:300])
             # was: raise RuntimeError(f"anything 注册失败: {json.dumps(result, ensure_ascii=False)[:300]}")
+            # was: raise RuntimeError(f"anything signup failed: {json.dumps(result, ensure_ascii=False)[:300]}")
         return dict(result)
 
     def sign_in_with_magic_link_code(self, *, email: str, code: str, referer: str | None = None) -> dict[str, Any]:
         self.log_key("anything.80d47974", email=email)
         # was: self.log(f"Step2: 使用 magic link code 登录 {email}")
+        # was: self.log(f"Step2: sign in using magic link code {email}")
         payload = {
             "operationName": "SignInWithMagicLinkCode",
             "variables": {"input": {"email": email, "codeAttempt": code}},
@@ -454,6 +461,7 @@ class AnythingClient:
         if response.status_code != 200:
             _raise_keyed(RuntimeError, "anything.8b8028c9", status_code=response.status_code, body=response.text[:200])
             # was: raise RuntimeError(f"anything magic link 登录失败: {response.status_code} {response.text[:200]}")
+            # was: raise RuntimeError(f"anything magic link login failed: {response.status_code} {response.text[:200]}")
         body = response.json()
         data = ((body or {}).get("data") or {}).get("signInWithMagicLinkCode") or {}
         access_token = str(data.get("accessToken") or "").strip()
@@ -461,6 +469,7 @@ class AnythingClient:
         if not access_token:
             _raise_keyed(RuntimeError, "anything.0fe3767f", detail=json.dumps(body, ensure_ascii=False)[:300])
             # was: raise RuntimeError(f"anything 未返回 accessToken: {json.dumps(body, ensure_ascii=False)[:300]}")
+            # was: raise RuntimeError(f"anything did not return accessToken: {json.dumps(body, ensure_ascii=False)[:300]}")
         if refresh_token:
             self._bind_refresh_token(refresh_token)
         self.log(f"  access_token={_clip(access_token)} refresh_token={_clip(refresh_token)}")
@@ -475,6 +484,7 @@ class AnythingClient:
         if not candidate:
             _raise_keyed(RuntimeError, "anything.989ea928")
             # was: raise RuntimeError("空 magic link")
+            # was: raise RuntimeError("empty magic link")
         if "/auth/magic-link" in candidate:
             return candidate
 
@@ -503,6 +513,7 @@ class AnythingClient:
                 return tail
         _raise_keyed(RuntimeError, "anything.6d3d9039", candidate=candidate[:200])
         # was: raise RuntimeError(f"无法解析 anything 魔法链接跳转: {candidate[:200]}")
+        # was: raise RuntimeError(f"failed to resolve anything magic link redirect: {candidate[:200]}")
 
     def refresh_access_token(self, refresh_token: str, *, referer: str | None = None) -> dict[str, Any]:
         self._bind_refresh_token(refresh_token)
@@ -516,15 +527,18 @@ class AnythingClient:
         if response.status_code != 200:
             _raise_keyed(RuntimeError, "anything.ad3e1dc6", status_code=response.status_code, body=response.text[:200])
             # was: raise RuntimeError(f"anything refresh_token 请求失败: {response.status_code} {response.text[:200]}")
+            # was: raise RuntimeError(f"anything refresh_token request failed: {response.status_code} {response.text[:200]}")
         payload = response.json()
         if not payload.get("ok"):
             _raise_keyed(RuntimeError, "anything.799dd56d", detail=json.dumps(payload, ensure_ascii=False)[:200])
             # was: raise RuntimeError(f"anything refresh_token 失败: {json.dumps(payload, ensure_ascii=False)[:200]}")
+            # was: raise RuntimeError(f"anything refresh_token failed: {json.dumps(payload, ensure_ascii=False)[:200]}")
         new_access = str(payload.get("accessToken") or "").strip()
         new_refresh = str(payload.get("refreshToken") or refresh_token or "").strip()
         if not new_access:
             _raise_keyed(RuntimeError, "anything.596574ad")
             # was: raise RuntimeError("anything refresh_token 成功但未返回 accessToken")
+            # was: raise RuntimeError("anything refresh_token succeeded but did not return accessToken")
         if new_refresh:
             self._bind_refresh_token(new_refresh)
         return {
@@ -556,6 +570,7 @@ class AnythingClient:
         if not current_access:
             _raise_keyed(RuntimeError, "anything.4babf0f3")
             # was: raise RuntimeError("缺少 anything access_token")
+            # was: raise RuntimeError("missing anything access_token")
         try:
             state = self._fetch_state_once(
                 access_token=current_access,
@@ -587,6 +602,7 @@ class AnythingClient:
                 except Exception as exc:
                     self.log_key("anything.0942a8d9", exc=str(exc))
                     # was: self.log(f"获取 usage 摘要失败，忽略并继续: {exc}")
+                    # was: self.log(f"failed to fetch usage summary, ignoring and continuing: {exc}")
         return state
 
     def fetch_aggregated_usage_by_organization(
@@ -656,6 +672,7 @@ class AnythingClient:
         if not url:
             _raise_keyed(RuntimeError, "anything.d35805bf", detail=json.dumps(body, ensure_ascii=False)[:300])
             # was: raise RuntimeError(f"anything 未返回 checkout url: {json.dumps(body, ensure_ascii=False)[:300]}")
+            # was: raise RuntimeError(f"anything did not return checkout url: {json.dumps(body, ensure_ascii=False)[:300]}")
         return {
             "url": url,
             "lookup": lookup,

@@ -12,7 +12,7 @@ SOLVER_URL = f"http://localhost:{SOLVER_PORT}"
 _proc: subprocess.Popen = None
 _lock = threading.Lock()
 
-# 连续启动失败计数，防止无限重试循环
+# 连续启动失败计数，防止无限重试循环 — Consecutive start-failure counter; prevents an infinite retry loop
 _consecutive_failures = 0
 _MAX_CONSECUTIVE_FAILURES = 3
 _last_failure_reason = ""
@@ -79,12 +79,12 @@ def start():
             _last_failure_reason = ""
             return
 
-        # 连续失败过多，拒绝再试（手动 restart 会重置计数器）
+        # 连续失败过多，拒绝再试（手动 restart 会重置计数器） — Too many consecutive failures; refuse to retry (a manual restart resets the counter)
         if _consecutive_failures >= _MAX_CONSECUTIVE_FAILURES:
             print(f"[Solver] 连续 {_consecutive_failures} 次启动失败，停止重试。请手动排查后重启。")
             return
 
-        # 启动 Solver 子进程之前先确保 Camoufox 浏览器二进制可用
+        # 启动 Solver 子进程之前先确保 Camoufox 浏览器二进制可用 — Before starting the Solver subprocess, first make sure the Camoufox browser binary is available
         if not _ensure_camoufox_browser():
             _consecutive_failures += 1
             _last_failure_reason = "Camoufox 浏览器不可用"
@@ -93,6 +93,8 @@ def start():
 
         # PyInstaller 打包后 sys.executable 指向 backend 可执行文件，
         # 用 --solver 参数让它走 solver 入口；源码模式下走 python + start.py
+        # After PyInstaller packaging, sys.executable points to the backend executable;
+        # the --solver flag routes it to the solver entry point. In source mode, it runs via python + start.py.
         if getattr(sys, "frozen", False):
             cmd = [sys.executable, "--solver",
                    "--browser_type", "camoufox",
@@ -112,11 +114,11 @@ def start():
             stderr=subprocess.PIPE,
             env={**os.environ, "PYTHONUTF8": "1"},
         )
-        # 等待服务就绪（最多30s）
+        # 等待服务就绪（最多30s） — Wait for the service to become ready (up to 30s)
         for _ in range(30):
             time.sleep(1)
             if _proc.poll() is not None:
-                # 子进程已退出，读取 stderr
+                # 子进程已退出，读取 stderr — Subprocess has exited; read stderr
                 stderr_msg = ""
                 try:
                     stderr_msg = _proc.stderr.read().decode("utf-8", errors="replace")[:500]
@@ -133,13 +135,13 @@ def start():
                 print(f"[Solver] 已启动 PID={_proc.pid}")
                 _consecutive_failures = 0
                 _last_failure_reason = ""
-                # 关闭 stderr pipe 避免缓冲区满导致子进程阻塞
+                # 关闭 stderr pipe 避免缓冲区满导致子进程阻塞 — Close the stderr pipe to avoid the buffer filling up and blocking the subprocess
                 try:
                     _proc.stderr.close()
                 except Exception:
                     pass
                 return
-        # 启动超时
+        # 启动超时 — Startup timed out
         _consecutive_failures += 1
         stderr_msg = ""
         if _proc and _proc.stderr:
@@ -158,7 +160,7 @@ def start():
 def stop():
     global _proc
     with _lock:
-        # 1. 先终止我们自己 spawn 的子进程
+        # 1. 先终止我们自己 spawn 的子进程 — First terminate the subprocess we spawned ourselves
         if _proc and _proc.poll() is None:
             _proc.terminate()
             try:
@@ -169,7 +171,7 @@ def stop():
             print("[Solver] 子进程已停止")
         _proc = None
 
-        # 2. 即使 _proc 为空（Docker / 外部启动），也尝试通过端口查找残留进程并杀掉
+        # 2. 即使 _proc 为空（Docker / 外部启动），也尝试通过端口查找残留进程并杀掉 — Even if _proc is empty (Docker / externally started), still try to find and kill any leftover process via its port
         if is_running():
             _kill_by_port(SOLVER_PORT)
             for _ in range(10):
@@ -214,7 +216,7 @@ def restart():
     _consecutive_failures = 0
     _last_failure_reason = ""
     stop()
-    # 等端口完全释放，最多 5 秒
+    # 等端口完全释放，最多 5 秒 — Wait for the port to be fully released, up to 5 seconds
     for _ in range(10):
         if not is_running():
             break

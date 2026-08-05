@@ -1,4 +1,6 @@
 /* 源语言目录（中文）。其余目录以此为基准类型，缺键或多键在 tsc -b 阶段报错。 */
+/* Source-language catalog (Chinese). Other catalogs are typed against this one;
+   a missing or extra key fails at the tsc -b stage. */
 const catalogZh = {
   nav: {
     total: '总览',

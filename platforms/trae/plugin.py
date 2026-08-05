@@ -23,6 +23,9 @@ class TraePlatform(BasePlatform):
     version = "1.0.0"
     # 平台能力：首次启动时写入 platform_capability_overrides 表；
     # 后续启动做增量合并，不会覆盖运维在 DB 中禁用的项。
+    # Platform capabilities: written to the platform_capability_overrides table
+    # on first startup; later startups merge incrementally and never re-enable
+    # entries that ops has disabled in the DB.
     supported_executors = ["protocol", "headless", "headed"]
     supported_identity_modes = ["mailbox", "oauth_browser"]
     supported_oauth_providers = ["google", "github"]
@@ -170,7 +173,7 @@ class TraePlatform(BasePlatform):
             from platforms.trae.core import TraeRegister
             with self._make_executor() as ex:
                 reg = TraeRegister(executor=ex)
-                # 重新登录刷新 session，再获取新 token 和 cashier_url
+                # 重新登录刷新 session，再获取新 token 和 cashier_url — Re-login to refresh the session, then fetch a new token and cashier_url
                 reg.step4_trae_login()
                 token = reg.step5_get_token()
                 if not token:
@@ -182,3 +185,4 @@ class TraePlatform(BasePlatform):
 
         _raise_keyed(NotImplementedError, "trae.701d383a", action_id=action_id)
         # was: raise NotImplementedError(f"未知操作: {action_id}")
+        # was: raise NotImplementedError(f"Unknown action: {action_id}")

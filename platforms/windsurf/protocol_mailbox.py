@@ -40,12 +40,14 @@ class WindsurfProtocolMailboxWorker:
         except Exception as exc:
             self.log_key("windsurf.98c50992", exc=str(exc))
             # was: self.log(f"Windsurf 注册预检失败，继续尝试邮箱验证码流程: {exc}")
+            # was: self.log(f"Windsurf registration pre-check failed, continuing with the email verification flow: {exc}")
 
         verification_token = self.client.start_email_signup(email)
         raw_code = otp_callback()
         code = self._extract_code(raw_code)
         self.log_key("windsurf.3dfa2d66", code=code)
         # was: self.log(f"获取 Windsurf 验证码: {code}")
+        # was: self.log(f"Got Windsurf verification code: {code}")
 
         complete = self.client.complete_email_signup(
             email=email,
@@ -74,6 +76,7 @@ class WindsurfProtocolMailboxWorker:
             remaining_credits=str(overview.get("remaining_credits", "-")),
         )
         # was: self.log(f"Windsurf 注册成功: {email} " f"plan={overview.get('plan_name', 'unknown')} " f"quota={overview.get('remaining_credits', '-')}")
+        # was: self.log(f"Windsurf registration succeeded: {email} " f"plan={overview.get('plan_name', 'unknown')} " f"quota={overview.get('remaining_credits', '-')}")
         return {
             "email": str(complete.get("email") or email),
             "password": password,
@@ -95,4 +98,5 @@ class WindsurfProtocolMailboxWorker:
             return match.group(1)
         _raise_keyed(RuntimeError, "windsurf.fc3d5c97", snippet=text[:200])
         # was: raise RuntimeError(f"无法从邮件内容中提取 Windsurf 6 位验证码: {text[:200]}")
+        # was: raise RuntimeError(f"Could not extract Windsurf 6-digit verification code from email content: {text[:200]}")
 

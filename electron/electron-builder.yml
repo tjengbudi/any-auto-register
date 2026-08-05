@@ -6,13 +6,13 @@ directories:
   output: dist
   buildResources: build
 
-# 自动更新：从 GitHub Releases 检查
+# 自动更新：从 GitHub Releases 检查 — Auto-update: checked from GitHub Releases
 publish:
   provider: github
   owner: lxf746
   repo: any-auto-register
 
-# 将 PyInstaller 产物和前端静态文件打包进 resources/
+# 将 PyInstaller 产物和前端静态文件打包进 resources/ — Package the PyInstaller output and frontend static files into resources/
 extraResources:
   - from: backend
     to: backend

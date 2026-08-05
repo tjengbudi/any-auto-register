@@ -16,7 +16,7 @@ class LocalSolverCaptcha(BaseCaptcha):
 
     def solve_turnstile(self, page_url: str, site_key: str) -> str:
         import requests, time
-        # 提交任务
+        # 提交任务 — Submit the task
         r = requests.get(
             f"{self.solver_url}/turnstile",
             params={"url": page_url, "sitekey": site_key},
@@ -30,7 +30,7 @@ class LocalSolverCaptcha(BaseCaptcha):
             exc.i18n_key = "providers.4ea7683b"
             exc.i18n_params = {"text": text}
             raise exc
-        # 轮询结果
+        # 轮询结果 — Poll for the result
         for _ in range(60):
             time.sleep(2)
             res = requests.get(
@@ -80,7 +80,7 @@ class LocalSolverCaptcha(BaseCaptcha):
         if not headless:
             cmd.append("--no-headless")
         subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        # 等待服务启动
+        # 等待服务启动 — Wait for the service to start
         import time, requests
         for _ in range(20):
             time.sleep(1)

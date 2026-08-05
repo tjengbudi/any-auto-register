@@ -407,12 +407,12 @@ class TavilyBrowserRegister:
             return self.captcha.solve_turnstile(url, sitekey or TURNSTILE_SITEKEY)
         except Exception as exc:
             self.log_key("tavily.7747fa49", exc=str(exc))
-            # was: self.log(f"Turnstile 求解失败: {exc}")
+            # was: self.log(f"Turnstile 求解失败: {exc}") — was: self.log(f"Turnstile solving failed: {exc}")
             return None
 
     def _finalize_api_key(self, page) -> str:
         self.log_key("tavily.75567364")
-        # was: self.log("提取并验证 Tavily API Key")
+        # was: self.log("提取并验证 Tavily API Key") — was: self.log("Extracting and verifying the Tavily API Key")
         close_marketing_dialog(page)
         api_key = wait_for_api_key(page, timeout=self.api_key_timeout)
         if not api_key:
@@ -424,15 +424,16 @@ class TavilyBrowserRegister:
             api_key = wait_for_api_key(page, timeout=self.api_key_timeout)
         if not api_key:
             _raise_keyed(RuntimeError, "tavily.465ac145")
-            # was: raise RuntimeError("未找到 Tavily API Key")
+            # was: raise RuntimeError("未找到 Tavily API Key") — was: raise RuntimeError("Tavily API Key not found")
         if not verify_api_key(api_key):
             _raise_keyed(RuntimeError, "tavily.005c0ad6")
-            # was: raise RuntimeError("Tavily API Key 校验失败")
+            # was: raise RuntimeError("Tavily API Key 校验失败") — was: raise RuntimeError("Tavily API Key verification failed")
         return api_key
 
     def _recover_password_challenge(self, page, password: str, max_attempts: int = 3) -> bool:
         self.log_key("tavily.a6f16c2f")
         # was: self.log("密码页未完成跳转，开始恢复安全挑战")
+        # was: self.log("Password page did not redirect; starting security-challenge recovery")
 
         for attempt in range(1, max_attempts + 1):
             if wait_for_post_signup_target(page, timeout_ms=5000):
@@ -444,10 +445,11 @@ class TavilyBrowserRegister:
 
             self.log_key("tavily.8eeede3c", attempt=attempt, max_attempts=max_attempts)
             # was: self.log(f"密码页恢复尝试 {attempt}/{max_attempts}")
+            # was: self.log(f"Password page recovery attempt {attempt}/{max_attempts}")
             self.log(f"  DOM: {format_turnstile_state(state)}")
             if feedback:
                 self.log_key("tavily.50267345", feedback=feedback)
-                # was: self.log(f"  页面提示: {feedback}")
+                # was: self.log(f"  页面提示: {feedback}") — was: self.log(f"  Page feedback: {feedback}")
 
             if wait_for_post_signup_target(page, timeout_ms=2000):
                 return True
@@ -463,7 +465,7 @@ class TavilyBrowserRegister:
                 token = self._solve_turnstile(page.url, sitekey)
                 if token and inject_turnstile_token(page, token):
                     self.log_key("tavily.9f78e0dc")
-                    # was: self.log("已注入密码页 Turnstile token")
+                    # was: self.log("已注入密码页 Turnstile token") — was: self.log("Injected the Turnstile token on the password page")
             if not refill_password(page, password):
                 if wait_for_post_signup_target(page, timeout_ms=5000):
                     return True
@@ -503,10 +505,10 @@ class TavilyBrowserRegister:
             signup_url = extract_signup_url(page.content())
             if not signup_url:
                 _raise_keyed(RuntimeError, "tavily.7d00428e")
-                # was: raise RuntimeError("未找到 Tavily 注册入口")
+                # was: raise RuntimeError("未找到 Tavily 注册入口") — was: raise RuntimeError("Tavily registration entry not found")
 
             self.log_key("tavily.9bb51ac8")
-            # was: self.log("进入 Tavily 注册页")
+            # was: self.log("进入 Tavily 注册页") — was: self.log("Entering the Tavily registration page")
             page.goto(signup_url, wait_until="networkidle", timeout=30000)
             time.sleep(2)
 
@@ -514,13 +516,15 @@ class TavilyBrowserRegister:
             if not email_selector:
                 _raise_keyed(RuntimeError, "tavily.b650634b")
                 # was: raise RuntimeError("注册页未找到邮箱输入框")
+                # was: raise RuntimeError("Email input field not found on the registration page")
 
             self.log_key("tavily.2b0ab675")
-            # was: self.log("处理注册页 Turnstile")
+            # was: self.log("处理注册页 Turnstile") — was: self.log("Handling Turnstile on the registration page")
             token = self._solve_turnstile(page.url, get_turnstile_sitekey(page))
             if not token:
                 _raise_keyed(RuntimeError, "tavily.c711289a")
                 # was: raise RuntimeError("注册页 Turnstile 求解失败")
+                # was: raise RuntimeError("Turnstile solving failed on the registration page")
             inject_turnstile_token(page, token)
 
             submit_primary_action(page, email_selector)
@@ -533,6 +537,7 @@ class TavilyBrowserRegister:
                 if org_only_message:
                     _raise_keyed(RuntimeError, "tavily.77259f1e")
                     # was: raise RuntimeError("Tavily 当前已禁用普通邮箱密码注册，仅允许特定组织使用 Email/password，" "普通账号需要改走 Google/GitHub/LinkedIn/Microsoft OAuth。")
+                    # was: raise RuntimeError("Tavily currently disables regular email/password signup; only specific organizations may use Email/password, " "regular accounts must switch to Google/GitHub/LinkedIn/Microsoft OAuth.")
                 submit_primary_action(page)
                 time.sleep(3)
                 try:
@@ -542,20 +547,23 @@ class TavilyBrowserRegister:
                     if org_only_message:
                         _raise_keyed(RuntimeError, "tavily.77259f1e")
                         # was: raise RuntimeError("Tavily 当前已禁用普通邮箱密码注册，仅允许特定组织使用 Email/password，" "普通账号需要改走 Google/GitHub/LinkedIn/Microsoft OAuth。")
+                        # was: raise RuntimeError("Tavily currently disables regular email/password signup; only specific organizations may use Email/password, " "regular accounts must switch to Google/GitHub/LinkedIn/Microsoft OAuth.")
                     feedback = extract_page_feedback(page)
                     _raise_keyed(RuntimeError, "tavily.bfd6ec00", feedback_or_url=feedback or page.url)
                     # was: raise RuntimeError(f"未进入验证码/密码页面: {feedback or page.url}")
+                    # was: raise RuntimeError(f"Did not reach the verification-code/password page: {feedback or page.url}")
 
             if page.query_selector('input[name="code"]'):
                 if not self.otp_callback:
                     _raise_keyed(RuntimeError, "tavily.fec94744")
                     # was: raise RuntimeError("当前流程需要邮箱验证码，但未提供 otp_callback")
+                    # was: raise RuntimeError("This flow requires an email verification code, but otp_callback was not provided")
                 self.log_key("tavily.c1aefad5")
-                # was: self.log("等待邮箱验证码")
+                # was: self.log("等待邮箱验证码") — was: self.log("Waiting for the email verification code")
                 code = self.otp_callback()
                 if not code:
                     _raise_keyed(RuntimeError, "tavily.6d0d5d5f")
-                    # was: raise RuntimeError("未获取到邮箱验证码")
+                    # was: raise RuntimeError("未获取到邮箱验证码") — was: raise RuntimeError("Failed to obtain the email verification code")
                 page.fill('input[name="code"]', code)
                 submit_primary_action(page, 'input[name="code"]')
                 time.sleep(3)
@@ -565,25 +573,28 @@ class TavilyBrowserRegister:
             except Exception:
                 _raise_keyed(RuntimeError, "tavily.a25f60c2", page_url=page.url)
                 # was: raise RuntimeError(f"未到达注册密码页: {page.url}")
+                # was: raise RuntimeError(f"Did not reach the registration password page: {page.url}")
 
             self.log_key("tavily.fb1e7eaf")
-            # was: self.log("设置 Tavily 密码")
+            # was: self.log("设置 Tavily 密码") — was: self.log("Setting the Tavily password")
             if not self._submit_password_with_recovery(page, password):
                 feedback = extract_page_feedback(page)
                 _raise_keyed(RuntimeError, "tavily.0ba8aee4", feedback_or_url=feedback or page.url)
                 # was: raise RuntimeError(f"密码提交失败: {feedback or page.url}")
+                # was: raise RuntimeError(f"Password submission failed: {feedback or page.url}")
 
             time.sleep(3)
             if "verify" in page.url.lower():
                 if not self.verification_link_callback:
                     _raise_keyed(RuntimeError, "tavily.3dd914a8")
                     # was: raise RuntimeError("当前流程需要邮件验证链接，但未提供 verification_link_callback")
+                    # was: raise RuntimeError("This flow requires an email verification link, but verification_link_callback was not provided")
                 self.log_key("tavily.0289b847")
-                # was: self.log("等待 Tavily 验证链接")
+                # was: self.log("等待 Tavily 验证链接") — was: self.log("Waiting for the Tavily verification link")
                 verify_url = self.verification_link_callback()
                 if not verify_url:
                     _raise_keyed(RuntimeError, "tavily.11fc01f6")
-                    # was: raise RuntimeError("未获取到 Tavily 验证链接")
+                    # was: raise RuntimeError("未获取到 Tavily 验证链接") — was: raise RuntimeError("Failed to obtain the Tavily verification link")
                 page.goto(verify_url, wait_until="networkidle", timeout=60000)
                 page.wait_for_url("**/app.tavily.com/**", timeout=60000)
                 time.sleep(3)

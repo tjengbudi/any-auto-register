@@ -22,7 +22,7 @@ import requests as std_requests
 
 from platforms.openblocklabs._i18n_helpers import _emit_log_key
 
-# ─── 配置 ───────────────────────────────────────────────────────────────────
+# ─── 配置 — Configuration ────────────────────────────────────────────────
 
 AUTH_BASE           = "https://auth.openblocklabs.com"
 DASHBOARD_BASE      = "https://dashboard.openblocklabs.com"
@@ -155,6 +155,7 @@ class OpenBlockLabsRegister:
                 break
             self.log_key("openblocklabs.a26ce2a1", status_code=r.status_code, attempt=attempt + 1)
             # was: self.log(f"  CF拦截 (status={r.status_code}), 重试 {attempt+1}/5...")
+            # was: self.log(f"  Cloudflare blocked (status={r.status_code}), retrying {attempt+1}/5...")
             time.sleep(2)
         final_url = str(r.url)
         parsed = urlparse(final_url)

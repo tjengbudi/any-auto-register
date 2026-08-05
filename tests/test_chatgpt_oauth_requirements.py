@@ -23,7 +23,7 @@ def test_assert_complete_oauth_callback_accepts_complete_payload():
 
 
 def test_assert_complete_oauth_callback_accepts_nextauth_payload():
-    # NextAuth 流程只返回 account_id + access_token，refresh_token/id_token 可空
+    # NextAuth 流程只返回 account_id + access_token，refresh_token/id_token 可空 — The NextAuth flow returns only account_id + access_token; refresh_token/id_token may be empty
     _assert_complete_oauth_callback({
         "account_id": "acct_123",
         "access_token": "at_123",

@@ -2,11 +2,11 @@
 import sys
 import os
 
-# 兼容直接以脚本方式运行（python services/turnstile_solver/start.py）
+# 兼容直接以脚本方式运行（python services/turnstile_solver/start.py） — Supports running directly as a script (python services/turnstile_solver/start.py)
 sys.path.insert(0, os.path.dirname(__file__))
 
 try:
-    # 优先走绝对 import — 让 PyInstaller 能跟踪到 api_solver
+    # 优先走绝对 import — 让 PyInstaller 能跟踪到 api_solver — Prefer an absolute import, so PyInstaller can trace api_solver
     from services.turnstile_solver.api_solver import create_app, parse_args
 except ImportError:
     from api_solver import create_app, parse_args

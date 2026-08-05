@@ -78,4 +78,5 @@ class OpenBlockLabsProtocolMailboxWorker:
         }
         self.log_key("openblocklabs.d9dbdf1a", email=email)
         # was: self.log(f"注册成功: {email}")
+        # was: self.log(f"signup succeeded: {email}")
         return result

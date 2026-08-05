@@ -38,7 +38,7 @@ class GrokProtocolMailboxWorker:
         code = otp_callback() if otp_callback else input("验证码: ")
         if not code:
             _raise_keyed(RuntimeError, "grok.13939cce")
-            # was: raise RuntimeError("未获取到验证码")
+            # was: raise RuntimeError("未获取到验证码") — was: raise RuntimeError("Failed to obtain the verification code")
 
         self.client.step2_verify_otp(email, code)
         signup_body = self.client.step3_signup(email, use_password, code, given_name, family_name)
@@ -50,7 +50,7 @@ class GrokProtocolMailboxWorker:
             self.log(f"  ✅ sso={sso[:40]}...")
         else:
             self.log_key("grok.a991998c")
-            # was: self.log("  ⚠️ 未获取到 sso cookie")
+            # was: self.log("  ⚠️ 未获取到 sso cookie") — was: self.log("  ⚠️ Failed to obtain the sso cookie")
 
         return {
             "email": email,

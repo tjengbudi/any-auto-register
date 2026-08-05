@@ -44,14 +44,14 @@ class TavilyRegister:
 
     def step2_solve_captcha(self) -> str:
         self.log_key("tavily.f6167694")
-        # was: self.log("获取 Turnstile token...")
+        # was: self.log("获取 Turnstile token...") — was: self.log("Getting the Turnstile token...")
         token = self.captcha.solve_turnstile(AUTH0_BASE, TURNSTILE_SITEKEY)
         self.log("Turnstile OK")
         return token
 
     def step3_submit_email(self, email: str, state: str, captcha_token: str) -> str:
         self.log_key("tavily.32bd72ad", email=email)
-        # was: self.log(f"提交邮箱: {email}")
+        # was: self.log(f"提交邮箱: {email}") — was: self.log(f"Submitting email: {email}")
         r = self.ex.post(
             f"{AUTH0_BASE}/u/signup/identifier",
             params={"state": state},
@@ -63,7 +63,7 @@ class TavilyRegister:
 
     def step4_submit_otp(self, otp: str, challenge_state: str) -> str:
         self.log_key("tavily.0ce46d45")
-        # was: self.log("提交验证码...")
+        # was: self.log("提交验证码...") — was: self.log("Submitting the verification code...")
         r = self.ex.post(
             f"{AUTH0_BASE}/u/email-identifier/challenge",
             params={"state": challenge_state},
@@ -75,7 +75,7 @@ class TavilyRegister:
 
     def step5_submit_password(self, email: str, password: str, pw_state: str) -> str:
         self.log_key("tavily.5edf0bbd")
-        # was: self.log("设置密码...")
+        # was: self.log("设置密码...") — was: self.log("Setting the password...")
         r = self.ex.post(
             f"{AUTH0_BASE}/u/signup/password",
             params={"state": pw_state},
@@ -89,7 +89,7 @@ class TavilyRegister:
 
     def step6_resume_and_get_key(self, resume_state: str) -> str:
         self.log_key("tavily.1622d5ee")
-        # was: self.log("完成授权流程...")
+        # was: self.log("完成授权流程...") — was: self.log("Completing the authorization flow...")
         self.ex.get(f"{AUTH0_BASE}/authorize/resume", params={"state": resume_state})
         r = self.ex.get(f"{APP_BASE}/api/keys", headers={"accept": "application/json"})
         try:

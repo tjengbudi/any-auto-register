@@ -11,6 +11,8 @@ from infrastructure.provider_definitions_repository import ProviderDefinitionsRe
 def test_ensure_seeded_warns_and_reverts_edited_builtin_label(caplog):
     # 纯单元测试不经过 lifespan，_reset_db 只建表不 seed，
     # 因此要先播种 provider 定义。
+    # A pure unit test doesn't go through the lifespan, and _reset_db only creates
+    # tables without seeding, so the provider definitions must be seeded first.
     repository = ProviderDefinitionsRepository()
     repository.ensure_seeded()
 

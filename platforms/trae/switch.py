@@ -80,7 +80,7 @@ def switch_trae_account(
     try:
         storage_path = _get_trae_storage_path()
         
-        # 读取现有配置
+        # 读取现有配置 — Read the existing config
         storage_data = {}
         if os.path.exists(storage_path):
             try:
@@ -89,7 +89,7 @@ def switch_trae_account(
             except Exception as e:
                 logger.warning(f"读取现有配置失败，将创建新配置: {e}")
         
-        # 更新 token 和用户信息
+        # 更新 token 和用户信息 — Update the token and user info
         storage_data["trae.token"] = token
         if user_id:
             storage_data["trae.userId"] = user_id
@@ -98,7 +98,7 @@ def switch_trae_account(
         if region:
             storage_data["trae.region"] = region
         
-        # 原子写入
+        # 原子写入 — Atomic write
         content = json.dumps(storage_data, indent=2, ensure_ascii=False)
         _atomic_write(storage_path, content)
         
@@ -124,7 +124,7 @@ def restart_trae_ide() -> Tuple[bool, str]:
 
     try:
         if system == "Darwin":  # macOS
-            # 关闭 Trae
+            # 关闭 Trae — Quit Trae
             subprocess.run(
                 ["osascript", "-e", 'quit app "Trae"'],
                 capture_output=True,
@@ -132,7 +132,7 @@ def restart_trae_ide() -> Tuple[bool, str]:
             )
             time.sleep(2.0)
 
-            # 启动 Trae
+            # 启动 Trae — Launch Trae
             trae_app = "/Applications/Trae.app"
             if os.path.exists(trae_app):
                 subprocess.Popen(["open", "-a", "Trae"])
@@ -140,7 +140,7 @@ def restart_trae_ide() -> Tuple[bool, str]:
             return True, closed_marker
 
         elif system == "Windows":
-            # 关闭 Trae
+            # 关闭 Trae — Quit Trae
             subprocess.run(
                 ["taskkill", "/IM", "Trae.exe", "/F"],
                 capture_output=True,
@@ -149,7 +149,7 @@ def restart_trae_ide() -> Tuple[bool, str]:
             )
             time.sleep(1.5)
 
-            # 启动 Trae
+            # 启动 Trae — Launch Trae
             localappdata = os.environ.get("LOCALAPPDATA", "")
             trae_exe = os.path.join(localappdata, "Programs", "Trae", "Trae.exe")
             if os.path.exists(trae_exe):
@@ -158,11 +158,11 @@ def restart_trae_ide() -> Tuple[bool, str]:
             return True, closed_marker
 
         else:  # Linux
-            # 关闭 Trae
+            # 关闭 Trae — Quit Trae
             subprocess.run(["pkill", "-f", "trae"], capture_output=True, timeout=5)
             time.sleep(1.5)
 
-            # 启动 Trae
+            # 启动 Trae — Launch Trae
             for path in ["/usr/bin/trae", os.path.expanduser("~/.local/bin/trae")]:
                 if os.path.exists(path):
                     subprocess.Popen([path])

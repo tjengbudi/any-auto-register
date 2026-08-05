@@ -124,6 +124,13 @@ def _clear_old_auth_keys(db_path: str):
     # - codeium.windsurf-windsurf_auth-     (session UUID)
     # - windsurf_auth-*                     (用户 session 引用)
     # - windsurf.settings.cachedPlanInfo    (缓存的套餐信息)
+    # Key patterns to delete:
+    # - secret://...windsurf_auth.sessions  (Electron safeStorage-encrypted session)
+    # - secret://...windsurf_auth.apiServerUrl
+    # - codeium.windsurf-windsurf_auth      (current username)
+    # - codeium.windsurf-windsurf_auth-     (session UUID)
+    # - windsurf_auth-*                     (user session reference)
+    # - windsurf.settings.cachedPlanInfo    (cached plan info)
     try:
         conn = sqlite3.connect(db_path, timeout=10)
         try:
@@ -281,7 +288,7 @@ def read_current_windsurf_account() -> dict | None:
     if not api_key:
         return None
 
-    # apiKey 格式: "devin-session-token$<JWT>"
+    # apiKey 格式: "devin-session-token$<JWT>" — apiKey format: "devin-session-token$<JWT>"
     session_token = api_key
     if api_key.startswith("devin-session-token$"):
         session_token = api_key[len("devin-session-token$"):]

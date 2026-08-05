@@ -6,6 +6,11 @@ from contextlib import asynccontextmanager
 # 非 GBK 字符会抛 UnicodeEncodeError 让进程崩溃）。errors="replace" 双保险，
 # 任何编码失败的字符替换成 ? 而不是抛错。
 # 同时设置 PYTHONUTF8 环境变量，确保子进程也使用 UTF-8。
+# Force stdout/stderr to utf-8 (Windows' Chinese locale defaults to gbk, and
+# non-GBK characters like ✗ ✓ raise UnicodeEncodeError, crashing the process).
+# errors="replace" is a second safety net, substituting ? for any character
+# that fails to encode instead of raising. Also set the PYTHONUTF8 environment
+# variable so subprocesses use UTF-8 too.
 os.environ.setdefault("PYTHONUTF8", "1")
 for _stream in (sys.stdout, sys.stderr):
     if _stream is not None and hasattr(_stream, "reconfigure"):
@@ -13,7 +18,7 @@ for _stream in (sys.stdout, sys.stderr):
             _stream.reconfigure(encoding="utf-8", errors="replace")
         except Exception:
             pass
-# 兜底：如果 reconfigure 不可用（PyInstaller 某些版本），用 wrapper 包一层
+# 兜底：如果 reconfigure 不可用（PyInstaller 某些版本），用 wrapper 包一层 — Fallback: if reconfigure is unavailable (some PyInstaller versions), wrap the stream instead
 if sys.stdout is not None and getattr(sys.stdout, "encoding", "").lower() not in ("utf-8", "utf8"):
     try:
         import io
@@ -34,6 +39,8 @@ from fastapi.staticfiles import StaticFiles
 
 # PyInstaller 静态分析钩子 — 让 modulefinder 跟踪到 Solver 子进程依赖（quart 等）
 # 不会在运行时执行，只是给 PyInstaller 看
+# PyInstaller static-analysis hook — lets modulefinder trace the Solver subprocess's
+# dependencies (quart, etc.). Never executes at runtime; it exists only for PyInstaller to see.
 if False:  # pragma: no cover
     import services.turnstile_solver.api_solver  # noqa: F401
     import quart  # noqa: F401
@@ -179,6 +186,9 @@ app.include_router(sms_router, prefix="/api")
 app.include_router(stats_router, prefix="/api")
 # task_logs_router 必须在 tasks_router 之前挂载：Starlette 按注册顺序匹配，
 # 若 /tasks/{task_id} 先注册，它会以 task_id="logs" 捕获 /tasks/logs 并返回 404。
+# task_logs_router must be mounted before tasks_router: Starlette matches routes in
+# registration order. If /tasks/{task_id} were registered first, it would capture
+# /tasks/logs as task_id="logs" and return a 404.
 app.include_router(task_logs_router, prefix="/api")
 app.include_router(tasks_router, prefix="/api")
 app.include_router(task_commands_router, prefix="/api")
@@ -200,8 +210,10 @@ if __name__ == "__main__":
 
     # 当 backend 被自己以 --solver 参数 spawn 时（PyInstaller 打包模式），
     # 不启动 FastAPI 主服务，而是作为 Turnstile Solver 子进程运行
+    # When the backend spawns itself with the --solver argument (PyInstaller packaged mode),
+    # it doesn't start the main FastAPI service; instead it runs as the Turnstile Solver subprocess.
     if len(sys.argv) > 1 and sys.argv[1] == "--solver":
-        sys.argv = [sys.argv[0]] + sys.argv[2:]  # 把 --solver 摘掉，让 argparse 看到剩余参数
+        sys.argv = [sys.argv[0]] + sys.argv[2:]  # 把 --solver 摘掉，让 argparse 看到剩余参数 — Strip out --solver so argparse sees the remaining arguments
         from services.turnstile_solver.start import main as solver_main
         solver_main()
         sys.exit(0)
