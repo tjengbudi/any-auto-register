@@ -89,7 +89,7 @@ class CursorRegister:
         captcha_token = ""
         if captcha_solver:
             self.log_key("cursor.f6167694")
-            # was: self.log("获取 Turnstile token...")
+            # was: self.log("获取 Turnstile token...") — was: self.log("Getting Turnstile token...")
             captcha_token = captcha_solver.solve_turnstile(AUTH, TURNSTILE_SITEKEY)
         bd = _boundary()
         referer = f"{AUTH}/sign-up?state={state_encoded}"
@@ -124,5 +124,5 @@ class CursorRegister:
                 return urllib.parse.unquote(cookie.value)
         return ""
 
-# CursorBrowserRegister 统一从 browser_register.py 导入，避免代码重复
+# CursorBrowserRegister 统一从 browser_register.py 导入，避免代码重复 — CursorBrowserRegister is imported from browser_register.py to avoid duplicating code
 from platforms.cursor.browser_register import CursorBrowserRegister  # noqa: F401

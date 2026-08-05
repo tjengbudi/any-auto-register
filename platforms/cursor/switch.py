@@ -109,7 +109,7 @@ def switch_cursor_account(token: str) -> Tuple[bool, str]:
     try:
         storage_path = _get_cursor_storage_path()
         
-        # 读取现有配置
+        # 读取现有配置 — Read the existing config
         storage_data = {}
         if os.path.exists(storage_path):
             try:
@@ -118,10 +118,10 @@ def switch_cursor_account(token: str) -> Tuple[bool, str]:
             except Exception as e:
                 logger.warning(f"读取现有配置失败，将创建新配置: {e}")
         
-        # 更新 token
+        # 更新 token — Update the token
         storage_data["workos.sessionToken"] = token
         
-        # 原子写入
+        # 原子写入 — Atomic write
         content = json.dumps(storage_data, indent=2, ensure_ascii=False)
         _atomic_write(storage_path, content)
         
@@ -147,7 +147,7 @@ def restart_cursor_ide() -> Tuple[bool, str]:
 
     try:
         if system == "Darwin":  # macOS
-            # 关闭 Cursor
+            # 关闭 Cursor — Quit Cursor
             subprocess.run(
                 ["osascript", "-e", 'quit app "Cursor"'],
                 capture_output=True,
@@ -155,7 +155,7 @@ def restart_cursor_ide() -> Tuple[bool, str]:
             )
             time.sleep(2.0)
             
-            # 启动 Cursor
+            # 启动 Cursor — Launch Cursor
             cursor_app = "/Applications/Cursor.app"
             if os.path.exists(cursor_app):
                 subprocess.Popen(["open", "-a", "Cursor"])
@@ -163,7 +163,7 @@ def restart_cursor_ide() -> Tuple[bool, str]:
             return True, closed_marker
         
         elif system == "Windows":
-            # 关闭 Cursor
+            # 关闭 Cursor — Quit Cursor
             subprocess.run(
                 ["taskkill", "/IM", "Cursor.exe", "/F"],
                 capture_output=True,
@@ -172,7 +172,7 @@ def restart_cursor_ide() -> Tuple[bool, str]:
             )
             time.sleep(1.5)
             
-            # 启动 Cursor
+            # 启动 Cursor — Launch Cursor
             localappdata = os.environ.get("LOCALAPPDATA", "")
             cursor_exe = os.path.join(localappdata, "Programs", "Cursor", "Cursor.exe")
             if os.path.exists(cursor_exe):
@@ -181,11 +181,11 @@ def restart_cursor_ide() -> Tuple[bool, str]:
             return True, closed_marker
         
         else:  # Linux
-            # 关闭 Cursor
+            # 关闭 Cursor — Quit Cursor
             subprocess.run(["pkill", "-f", "cursor"], capture_output=True, timeout=5)
             time.sleep(1.5)
             
-            # 启动 Cursor
+            # 启动 Cursor — Launch Cursor
             for path in ["/usr/bin/cursor", os.path.expanduser("~/.local/bin/cursor")]:
                 if os.path.exists(path):
                     subprocess.Popen([path])

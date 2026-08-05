@@ -45,10 +45,12 @@ def register_with_browser_oauth(
             browser.auto_select_google_account()
         else:
             _emit_log_key(log_fn, log_key, "cursor.a45d8569", method_text=method_text, timeout=timeout)
-            # was: log_fn(f"请在浏览器中完成登录，可使用 {method_text}，最长等待 {timeout} 秒")
+            # was: log_fn(f"请在浏览器中完成登录，可使用 {method_text}，最长等待 {timeout} 秒") —
+            # was: log_fn(f"Please complete login in the browser, using {method_text}, waiting up to {timeout}s")
             if email_hint:
                 _emit_log_key(log_fn, log_key, "cursor.18555deb", email_hint=email_hint)
-                # was: log_fn(f"请确认最终登录账号邮箱为: {email_hint}")
+                # was: log_fn(f"请确认最终登录账号邮箱为: {email_hint}") —
+                # was: log_fn(f"Please confirm the final login account email is: {email_hint}")
 
         token = browser.wait_for_cookie_value(
             ["WorkosCursorSessionToken"],
@@ -57,7 +59,8 @@ def register_with_browser_oauth(
         )
         if not token:
             _raise_keyed(RuntimeError, "cursor.4499e803", timeout=timeout)
-            # was: raise RuntimeError(f"Cursor 浏览器登录未在 {timeout} 秒内拿到 Session Token")
+            # was: raise RuntimeError(f"Cursor 浏览器登录未在 {timeout} 秒内拿到 Session Token") —
+            # was: raise RuntimeError(f"Cursor browser login did not get a session token within {timeout}s")
 
         user_info = get_cursor_user_info(token) or {}
         resolved_email = finalize_oauth_email(user_info.get("email", ""), email_hint, "Cursor")

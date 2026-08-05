@@ -345,4 +345,4 @@ class KiroPlatform(BasePlatform):
             }
 
         _raise_keyed(NotImplementedError, "kiro.701d383a", action_id=action_id)
-        # was: raise NotImplementedError(f"未知操作: {action_id}")
+        # was: raise NotImplementedError(f"未知操作: {action_id}") — was: raise NotImplementedError(f"Unknown action: {action_id}")
