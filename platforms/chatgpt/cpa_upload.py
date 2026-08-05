@@ -103,21 +103,21 @@ def generate_token_json(account) -> dict:
         _extract_credential(account, "chatgpt_account_id"),
     )
 
-    # 1) 从 id_token 解析 account_id (参考项目的做法)
+    # 1) 从 id_token 解析 account_id (参考项目的做法) — Parse account_id from id_token (per the reference project)
     if not account_id and id_token:
         payload = _decode_jwt_payload(id_token)
         auth_info = payload.get("https://api.openai.com/auth", {})
         account_id = auth_info.get("chatgpt_account_id", "")
         logger.info(f"[CPA] id_token chatgpt_account_id={account_id or '(空)'}")
 
-    # 2) fallback: 从 access_token 解析
+    # 2) fallback: 从 access_token 解析 — fallback: parse it from access_token
     if not account_id and access_token:
         payload = _decode_jwt_payload(access_token)
         auth_info = payload.get("https://api.openai.com/auth", {})
         account_id = auth_info.get("chatgpt_account_id", "")
         logger.info(f"[CPA] access_token chatgpt_account_id={account_id or '(空)'}, "
                      f"auth_keys={list(auth_info.keys())}")
-    # expired 从 access_token 的 exp 计算
+    # expired 从 access_token 的 exp 计算 — expired is computed from access_token's exp claim
     if not expired_str and access_token:
         payload = _decode_jwt_payload(access_token)
         exp_timestamp = payload.get("exp")
@@ -126,7 +126,7 @@ def generate_token_json(account) -> dict:
                 exp_timestamp, tz=CPA_TIMEZONE)
             expired_str = exp_dt.strftime("%Y-%m-%dT%H:%M:%S+08:00")
 
-    # 3) fallback: /backend-api/me (用 access_token 调)
+    # 3) fallback: /backend-api/me (用 access_token 调) — fallback: call /backend-api/me with access_token
     if not account_id and access_token:
         logger.info("[CPA] account_id 仍为空，尝试 /backend-api/me")
         try:
@@ -151,7 +151,7 @@ def generate_token_json(account) -> dict:
         except Exception as e:
             logger.error(f"[CPA] /backend-api/me 失败: {e}")
 
-    # 4) fallback: session_token 刷新拿新 access_token
+    # 4) fallback: session_token 刷新拿新 access_token — refresh session_token for a new access_token
     if not account_id:
         if session_token:
             logger.info("[CPA] 尝试 session_token 刷新获取 account_id")
@@ -170,7 +170,7 @@ def generate_token_json(account) -> dict:
                         ai2 = p2.get("https://api.openai.com/auth", {})
                         account_id = ai2.get("chatgpt_account_id", "")
                         if account_id:
-                            access_token = new_at  # 用新 token
+                            access_token = new_at  # 用新 token — use the new token
                             logger.info(f"[CPA] session 刷新成功: {account_id}")
                             exp2 = p2.get("exp")
                             if isinstance(exp2, int) and exp2 > 0:
@@ -218,7 +218,7 @@ def upload_to_cpa(
     if not api_url:
         return False, "CPA API URL 未配置"
 
-    # 上传前检查 account_id
+    # 上传前检查 account_id — Check account_id before uploading
     if not token_data.get("account_id"):
         return False, "account_id 为空，无法上传 CPA（JWT 和所有 fallback 均未获取到）"
 

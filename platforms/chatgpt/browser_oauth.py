@@ -74,10 +74,11 @@ def register_with_browser_oauth(
             browser.auto_select_google_account()
         else:
             _emit_log_key(log_fn, log_key, "chatgpt.2f5ee887", method_text=method_text, timeout=timeout)
-            # was: log_fn(f"请在浏览器中完成登录/授权，可使用 {method_text}，最长等待 {timeout} 秒")
+            # was: log_fn(f"请在浏览器中完成登录/授权，可使用 {method_text}，最长等待 {timeout} 秒") —
+            # Prompt to finish login/auth in browser, showing method and timeout
             if email_hint:
                 _emit_log_key(log_fn, log_key, "chatgpt.18555deb", email_hint=email_hint)
-                # was: log_fn(f"请确认最终登录账号邮箱为: {email_hint}")
+                # was: log_fn(f"请确认最终登录账号邮箱为: {email_hint}") — Confirm the final logged-in account email
 
         callback_url = browser.wait_for_url(
             lambda url: url.startswith(oauth_start.redirect_uri) and "code=" in url,
@@ -85,7 +86,7 @@ def register_with_browser_oauth(
         )
         if not callback_url:
             _raise_keyed(RuntimeError, "chatgpt.7ea58cfc", timeout=timeout)
-            # was: raise RuntimeError(f"ChatGPT 浏览器登录未在 {timeout} 秒内完成")
+            # was: raise RuntimeError(f"ChatGPT 浏览器登录未在 {timeout} 秒内完成") — Browser login did not finish within the timeout
 
         token_info = manager.handle_callback(
             callback_url=callback_url,

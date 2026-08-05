@@ -140,7 +140,7 @@ def _post_form(
     Returns:
         响应 JSON 数据
     """
-    # 构建代理配置
+    # 构建代理配置 — Build the proxy configuration
     proxies = None
     if proxy_url:
         proxies = {
@@ -156,7 +156,8 @@ def _post_form(
     }
 
     try:
-        # 使用 curl_cffi 发送请求，支持代理和浏览器指纹
+        # 使用 curl_cffi 发送请求，支持代理和浏览器指纹 —
+        # Send via curl_cffi, with proxy and browser-fingerprint support
         response = cffi_requests.post(
             url,
             data=data,
@@ -218,7 +219,8 @@ def generate_oauth_url(
         "code_challenge_method": "S256",
         "prompt": "login",
     }
-    # Codex CLI 使用 Hydra endpoint (/oauth/authorize)
+    # Codex CLI 使用 Hydra endpoint (/oauth/authorize) —
+    # Codex CLI uses the Hydra endpoint (/oauth/authorize)
     from .constants import CODEX_CLIENT_ID, OPENAI_AUTH
     if client_id == CODEX_CLIENT_ID:
         params["id_token_add_organizations"] = "true"

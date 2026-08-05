@@ -42,7 +42,7 @@ class TokenRefreshManager:
     2. OAuth Refresh Token 刷新
     """
 
-    # OpenAI OAuth 端点
+    # OpenAI OAuth 端点 — OpenAI OAuth endpoints
     SESSION_URL = "https://chatgpt.com/api/auth/session"
     TOKEN_URL = "https://auth.openai.com/oauth/token"
 
@@ -78,7 +78,7 @@ class TokenRefreshManager:
         try:
             session = self._create_session()
 
-            # 设置会话 Cookie
+            # 设置会话 Cookie — Set the session cookie
             session.cookies.set(
                 "__Secure-next-auth.session-token",
                 session_token,
@@ -86,7 +86,7 @@ class TokenRefreshManager:
                 path="/"
             )
 
-            # 请求会话端点
+            # 请求会话端点 — Request the session endpoint
             response = session.get(
                 self.SESSION_URL,
                 headers={
@@ -103,14 +103,14 @@ class TokenRefreshManager:
 
             data = response.json()
 
-            # 提取 access_token
+            # 提取 access_token — Extract access_token
             access_token = data.get("accessToken")
             if not access_token:
                 result.error_message = "Session token 刷新失败: 未找到 accessToken"
                 logger.warning(result.error_message)
                 return result
 
-            # 提取过期时间
+            # 提取过期时间 — Extract the expiration time
             expires_at = None
             expires_str = data.get("expires")
             if expires_str:
@@ -151,10 +151,10 @@ class TokenRefreshManager:
         try:
             session = self._create_session()
 
-            # 使用配置的 client_id 或默认值
+            # 使用配置的 client_id 或默认值 — Use the configured client_id, falling back to the default
             client_id = client_id or self._oauth_client_id
 
-            # 构建请求体
+            # 构建请求体 — Build the request body
             token_data = {
                 "client_id": client_id,
                 "grant_type": "refresh_token",
@@ -179,7 +179,7 @@ class TokenRefreshManager:
 
             data = response.json()
 
-            # 提取令牌
+            # 提取令牌 — Extract the tokens
             access_token = data.get("access_token")
             new_refresh_token = data.get("refresh_token", refresh_token)
             expires_in = data.get("expires_in", 3600)
@@ -189,7 +189,7 @@ class TokenRefreshManager:
                 logger.warning(result.error_message)
                 return result
 
-            # 计算过期时间
+            # 计算过期时间 — Compute the expiration time
             expires_at = _utcnow() + timedelta(seconds=expires_in)
 
             result.success = True
@@ -219,7 +219,7 @@ class TokenRefreshManager:
         Returns:
             TokenRefreshResult: 刷新结果
         """
-        # 优先尝试 Session Token
+        # 优先尝试 Session Token — Prefer Session Token first
         if account.session_token:
             logger.info(f"尝试使用 Session Token 刷新账号 {account.email}")
             result = self.refresh_by_session_token(account.session_token)
@@ -227,7 +227,7 @@ class TokenRefreshManager:
                 return result
             logger.warning(f"Session Token 刷新失败，尝试 OAuth 刷新")
 
-        # 尝试 OAuth Refresh Token
+        # 尝试 OAuth Refresh Token — Fall back to OAuth Refresh Token
         if account.refresh_token:
             logger.info(f"尝试使用 OAuth Refresh Token 刷新账号 {account.email}")
             result = self.refresh_by_oauth_token(
@@ -236,7 +236,7 @@ class TokenRefreshManager:
             )
             return result
 
-        # 无可用刷新方式
+        # 无可用刷新方式 — No refresh method available
         return TokenRefreshResult(
             success=False,
             error_message="账号没有可用的刷新方式（缺少 session_token 和 refresh_token）"
@@ -255,7 +255,7 @@ class TokenRefreshManager:
         try:
             session = self._create_session()
 
-            # 调用 OpenAI API 验证 token
+            # 调用 OpenAI API 验证 token — Call the OpenAI API to validate the token
             response = session.get(
                 "https://chatgpt.com/backend-api/me",
                 headers={
@@ -298,7 +298,7 @@ def refresh_account_token(account_id: int, proxy_url: Optional[str] = None) -> T
         result = manager.refresh_account(account)
 
         if result.success:
-            # 更新数据库
+            # 更新数据库 — Update the database
             update_data = {
                 "access_token": result.access_token,
                 "last_refresh": _utcnow()

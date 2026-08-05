@@ -47,7 +47,8 @@ class ChatGPTProtocolMailboxWorker:
     ):
         if not mailbox or not mailbox_account:
             _raise_keyed(ValueError, "chatgpt.03663c62")
-            # was: raise ValueError("ChatGPT 注册流程依赖 mailbox provider，当前未获取到邮箱账号")
+            # was: raise ValueError("ChatGPT 注册流程依赖 mailbox provider，当前未获取到邮箱账号") —
+            # Registration requires a mailbox provider, but no mailbox account was obtained
         email_service = _MailboxEmailService(
             mailbox=mailbox,
             mailbox_account=mailbox_account,
@@ -67,5 +68,5 @@ class ChatGPTProtocolMailboxWorker:
         if not result or not result.success:
             if result and result.error_message:
                 raise RuntimeError(result.error_message)
-            _raise_keyed(RuntimeError, "chatgpt.6d57824e")  # "注册失败"
+            _raise_keyed(RuntimeError, "chatgpt.6d57824e")  # "注册失败" — "Registration failed"
         return result

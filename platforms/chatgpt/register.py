@@ -49,17 +49,18 @@ class RegistrationResult:
     """注册结果"""
     success: bool
     email: str = ""
-    password: str = ""  # 注册密码
+    password: str = ""  # 注册密码 — Registration password
     account_id: str = ""
     workspace_id: str = ""
     access_token: str = ""
     refresh_token: str = ""
     id_token: str = ""
-    session_token: str = ""  # 会话令牌
+    session_token: str = ""  # 会话令牌 — Session token
     error_message: str = ""
     logs: list = None
     metadata: dict = None
-    source: str = "register"  # 'register' 或 'login'，区分账号来源
+    source: str = "register"  # 'register' 或 'login'，区分账号来源 —
+    # 'register' or 'login', distinguishing the account's origin
 
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""
@@ -84,9 +85,9 @@ class RegistrationResult:
 class SignupFormResult:
     """提交注册表单的结果"""
     success: bool
-    page_type: str = ""  # 响应中的 page.type 字段
-    is_existing_account: bool = False  # 是否为已注册账号
-    response_data: Dict[str, Any] = None  # 完整的响应数据
+    page_type: str = ""  # 响应中的 page.type 字段 — The page.type field from the response
+    is_existing_account: bool = False  # 是否为已注册账号 — Whether the account is already registered
+    response_data: Dict[str, Any] = None  # 完整的响应数据 — The full response payload
     error_message: str = ""
 
 
@@ -216,10 +217,10 @@ class RegistrationEngine:
         self._log_key_fn = log_key_fn
         self.task_uuid = task_uuid
 
-        # 创建 HTTP 客户端
+        # 创建 HTTP 客户端 — Create the HTTP client
         self.http_client = OpenAIHTTPClient(proxy_url=proxy_url)
 
-        # 创建 OAuth 管理器
+        # 创建 OAuth 管理器 — Create the OAuth manager
         from .constants import OAUTH_CLIENT_ID, OAUTH_AUTH_URL, OAUTH_TOKEN_URL, OAUTH_REDIRECT_URI, OAUTH_SCOPE
         self.oauth_manager = OAuthManager(
             client_id=OAUTH_CLIENT_ID,
@@ -227,19 +228,20 @@ class RegistrationEngine:
             token_url=OAUTH_TOKEN_URL,
             redirect_uri=OAUTH_REDIRECT_URI,
             scope=OAUTH_SCOPE,
-            proxy_url=proxy_url  # 传递代理配置
+            proxy_url=proxy_url  # 传递代理配置 — Pass through the proxy config
         )
 
-        # 状态变量
+        # 状态变量 — State variables
         self.email: Optional[str] = None
-        self.password: Optional[str] = None  # 注册密码
+        self.password: Optional[str] = None  # 注册密码 — Registration password
         self.email_info: Optional[Dict[str, Any]] = None
         self.oauth_start: Optional[OAuthStart] = None
         self.session: Optional[cffi_requests.Session] = None
-        self.session_token: Optional[str] = None  # 会话令牌
+        self.session_token: Optional[str] = None  # 会话令牌 — Session token
         self.logs: list = []
-        self._otp_sent_at: Optional[float] = None  # OTP 发送时间戳
-        self._is_existing_account: bool = False  # 是否为已注册账号（用于自动登录）
+        self._otp_sent_at: Optional[float] = None  # OTP 发送时间戳 — OTP send timestamp
+        self._is_existing_account: bool = False  # 是否为已注册账号（用于自动登录） —
+        # Whether the account already exists (used for auto-login)
         self._device_id: Optional[str] = None
         self._sentinel_token: Optional[str] = None
         self._signup_sentinel: Optional[SentinelPayload] = None
@@ -253,14 +255,14 @@ class RegistrationEngine:
         timestamp = datetime.now(timezone.utc).astimezone().strftime("%H:%M:%S")
         log_message = f"[{timestamp}] {message}"
 
-        # 添加到日志列表
+        # 添加到日志列表 — Append to the in-memory log list
         self.logs.append(log_message)
 
-        # 调用回调函数
+        # 调用回调函数 — Invoke the callback function
         if self.callback_logger:
             self.callback_logger(message)
 
-        # 记录到数据库（如果有关联任务）
+        # 记录到数据库（如果有关联任务） — Persist to the database (if a task is associated)
         if self.task_uuid:
             try:
                 with get_db() as db:
@@ -268,7 +270,7 @@ class RegistrationEngine:
             except Exception as e:
                 logger.warning(f"记录任务日志失败: {e}")
 
-        # 根据级别记录到日志系统
+        # 根据级别记录到日志系统 — Log to the logging system according to the level
         if level == "error":
             logger.error(message)
         elif level == "warning":
@@ -284,7 +286,8 @@ class RegistrationEngine:
 
     def _generate_password(self, length: int = DEFAULT_PASSWORD_LENGTH) -> str:
         """生成随机密码"""
-        # OpenAI 注册页对纯字母数字密码存在更高概率拒绝，补一个符号位更稳。
+        # OpenAI 注册页对纯字母数字密码存在更高概率拒绝，补一个符号位更稳。 —
+        # OpenAI's signup page rejects alphanumeric-only passwords more often; adding a symbol is safer.
         specials = ",._!@#"
         if length < 10:
             length = 10
@@ -308,11 +311,11 @@ class RegistrationEngine:
                 timeout=20,
             )
             self._log_key("chatgpt.3576aeea", status_code=response.status_code)
-            # was: self._log(f"加载密码页状态: {response.status_code}")
+            # was: self._log(f"加载密码页状态: {response.status_code}") — Password page load status
             return response.status_code == 200
         except Exception as e:
             self._log_key("chatgpt.251a9b13", level="warning", error=e)
-            # was: self._log(f"加载密码页失败: {e}", "warning")
+            # was: self._log(f"加载密码页失败: {e}", "warning") — Failed to load password page
             return False
 
     def _check_ip_location(self) -> Tuple[bool, Optional[str]]:
@@ -321,29 +324,29 @@ class RegistrationEngine:
             return self.http_client.check_ip_location()
         except Exception as e:
             self._log_key("chatgpt.ba1d5948", level="error", error=e)
-            # was: self._log(f"检查 IP 地理位置失败: {e}", "error")
+            # was: self._log(f"检查 IP 地理位置失败: {e}", "error") — Failed to check IP geolocation
             return False, None
 
     def _create_email(self) -> bool:
         """创建邮箱"""
         try:
             self._log_key("chatgpt.c2b68bf9", service_type=self.email_service.service_type.value)
-            # was: self._log(f"正在创建 {self.email_service.service_type.value} 邮箱...")
+            # was: self._log(f"正在创建 {self.email_service.service_type.value} 邮箱...") — Creating mailbox
             self.email_info = self.email_service.create_email()
 
             if not self.email_info or "email" not in self.email_info:
                 self._log_key("chatgpt.766ec9e7", level="error")
-                # was: self._log("创建邮箱失败: 返回信息不完整", "error")
+                # was: self._log("创建邮箱失败: 返回信息不完整", "error") — Failed to create mailbox: incomplete response
                 return False
 
             self.email = self.email_info["email"]
             self._log_key("chatgpt.28b86f51", email=self.email)
-            # was: self._log(f"成功创建邮箱: {self.email}")
+            # was: self._log(f"成功创建邮箱: {self.email}") — Successfully created mailbox
             return True
 
         except Exception as e:
             self._log_key("chatgpt.ab9fdde7", level="error", error=e)
-            # was: self._log(f"创建邮箱失败: {e}", "error")
+            # was: self._log(f"创建邮箱失败: {e}", "error") — Failed to create mailbox
             return False
 
     def _start_oauth(self) -> bool:
@@ -351,24 +354,24 @@ class RegistrationEngine:
         try:
             from .constants import CHATGPT_APP
             self._log_key("chatgpt.044b62c2")
-            # was: self._log("通过 chatgpt.com NextAuth 发起 OAuth...")
+            # was: self._log("通过 chatgpt.com NextAuth 发起 OAuth...") — Starting OAuth via chatgpt.com NextAuth
 
-            # 1. 访问 chatgpt.com 获取基础 cookie
+            # 1. 访问 chatgpt.com 获取基础 cookie — Visit chatgpt.com to obtain the base cookie
             self.session.get(f"{CHATGPT_APP}/", timeout=15)
             oai_did = self.session.cookies.get("oai-did", "")
             self._log(f"chatgpt.com oai-did: {oai_did[:20]}...")
 
-            # 2. 获取 CSRF token
+            # 2. 获取 CSRF token — Obtain the CSRF token
             csrf_resp = self.session.get(f"{CHATGPT_APP}/api/auth/csrf", timeout=15)
             csrf_data = csrf_resp.json()
             csrf_token = csrf_data.get("csrfToken", "")
             if not csrf_token:
-                # 从 cookie 中提取
+                # 从 cookie 中提取 — Extract it from the cookie
                 csrf_cookie = self.session.cookies.get("__Host-next-auth.csrf-token", "")
                 csrf_token = csrf_cookie.split("%7C")[0] if "%7C" in csrf_cookie else csrf_cookie.split("|")[0]
             self._log(f"CSRF token: {csrf_token[:20]}...")
 
-            # 3. 调用 signin/openai 获取 authorize URL
+            # 3. 调用 signin/openai 获取 authorize URL — Call signin/openai to obtain the authorize URL
             signin_url = f"{CHATGPT_APP}/api/auth/signin/openai"
             if oai_did:
                 signin_url += f"?prompt=login&ext-oai-did={oai_did}"
@@ -384,34 +387,35 @@ class RegistrationEngine:
                 timeout=15,
             )
             self._log_key("chatgpt.edfd005d", status_code=signin_resp.status_code)
-            # was: self._log(f"signin/openai 状态: {signin_resp.status_code}")
+            # was: self._log(f"signin/openai 状态: {signin_resp.status_code}") — signin/openai status
 
             if signin_resp.status_code != 200:
                 self._log_key("chatgpt.6953dff9", level="error", text=signin_resp.text[:200])
-                # was: self._log(f"signin/openai 失败: {signin_resp.text[:200]}", "error")
+                # was: self._log(f"signin/openai 失败: {signin_resp.text[:200]}", "error") — signin/openai failed
                 return False
 
             signin_data = signin_resp.json()
             auth_url = signin_data.get("url", "")
             if not auth_url:
                 self._log_key("chatgpt.c7d97921", level="error")
-                # was: self._log("signin/openai 未返回 authorize URL", "error")
+                # was: self._log("signin/openai 未返回 authorize URL", "error") — no authorize URL returned
                 return False
 
             self._log(f"OAuth URL: {auth_url[:80]}...")
 
-            # 存储为 OAuthStart (不需要 code_verifier，由 chatgpt.com 后端处理)
+            # 存储为 OAuthStart (不需要 code_verifier，由 chatgpt.com 后端处理) —
+            # Store as OAuthStart (code_verifier not needed; handled by the chatgpt.com backend)
             self.oauth_start = OAuthStart(
                 auth_url=auth_url,
-                state="",  # state 由 NextAuth 管理
-                code_verifier="",  # 不需要
-                redirect_uri="",  # 不需要
+                state="",  # state 由 NextAuth 管理 — state is managed by NextAuth
+                code_verifier="",  # 不需要 — Not needed
+                redirect_uri="",  # 不需要 — Not needed
             )
             return True
 
         except Exception as e:
             self._log_key("chatgpt.bbf93fa1", level="error", error=e)
-            # was: self._log(f"NextAuth OAuth 流程失败: {e}", "error")
+            # was: self._log(f"NextAuth OAuth 流程失败: {e}", "error") — NextAuth OAuth flow failed
             return False
 
     def _init_session(self) -> bool:
@@ -421,7 +425,7 @@ class RegistrationEngine:
             return True
         except Exception as e:
             self._log_key("chatgpt.a5146980", level="error", error=e)
-            # was: self._log(f"初始化会话失败: {e}", "error")
+            # was: self._log(f"初始化会话失败: {e}", "error") — Failed to initialize session
             return False
 
     def _get_device_id(self) -> Optional[str]:
@@ -440,7 +444,7 @@ class RegistrationEngine:
 
         except Exception as e:
             self._log_key("chatgpt.7e05a951", level="error", error=e)
-            # was: self._log(f"获取 Device ID 失败: {e}", "error")
+            # was: self._log(f"获取 Device ID 失败: {e}", "error") — Failed to obtain Device ID
             return None
 
     def _check_sentinel(self, did: str, *, flow: str = "authorize_continue") -> Optional[SentinelPayload]:
@@ -496,16 +500,17 @@ class RegistrationEngine:
                     t=t_value,
                 )
                 self._log_key("chatgpt.8f6d576c", flow=flow)
-                # was: self._log(f"Sentinel token 获取成功: flow={flow}")
+                # was: self._log(f"Sentinel token 获取成功: flow={flow}") — Sentinel token obtained successfully
                 return payload
             else:
                 self._log_key("chatgpt.6f51aeb7", level="warning", flow=flow, status_code=response.status_code)
-                # was: self._log(f"Sentinel 检查失败: flow={flow} status={response.status_code}", "warning")
+                # was: self._log(f"Sentinel 检查失败: flow={flow} status={response.status_code}", "warning") —
+                # Sentinel check failed
                 return None
 
         except Exception as e:
             self._log_key("chatgpt.c1c770c5", level="warning", flow=flow, error=e)
-            # was: self._log(f"Sentinel 检查异常: flow={flow} {e}", "warning")
+            # was: self._log(f"Sentinel 检查异常: flow={flow} {e}", "warning") — Sentinel check raised an exception
             return None
 
     def _submit_signup_form(self, did: str, sen_payload: Optional[SentinelPayload]) -> SignupFormResult:
@@ -544,7 +549,7 @@ class RegistrationEngine:
             )
 
             self._log_key("chatgpt.871b33c4", status_code=response.status_code)
-            # was: self._log(f"提交注册表单状态: {response.status_code}")
+            # was: self._log(f"提交注册表单状态: {response.status_code}") — Signup form submission status
 
             if response.status_code != 200:
                 return SignupFormResult(
@@ -556,12 +561,13 @@ class RegistrationEngine:
                 response_data = response.json()
                 page_type = response_data.get("page", {}).get("type", "")
                 self._log_key("chatgpt.87a9e184", page_type=page_type)
-                # was: self._log(f"响应页面类型: {page_type}")
+                # was: self._log(f"响应页面类型: {page_type}") — Response page type
 
                 is_existing = page_type == OPENAI_PAGE_TYPES["EMAIL_OTP_VERIFICATION"]
                 if is_existing:
                     self._log_key("chatgpt.cd108603")
-                    # was: self._log(f"检测到已注册账号，将自动切换到登录流程")
+                    # was: self._log(f"检测到已注册账号，将自动切换到登录流程") —
+                    # Detected an already-registered account; switching to login flow
                     self._is_existing_account = True
 
                 return SignupFormResult(
@@ -573,12 +579,12 @@ class RegistrationEngine:
 
             except Exception as parse_error:
                 self._log_key("chatgpt.5977f871", level="warning", error=parse_error)
-                # was: self._log(f"解析响应失败: {parse_error}", "warning")
+                # was: self._log(f"解析响应失败: {parse_error}", "warning") — Failed to parse response
                 return SignupFormResult(success=True)
 
         except Exception as e:
             self._log_key("chatgpt.e42d4896", level="error", error=e)
-            # was: self._log(f"提交注册表单失败: {e}", "error")
+            # was: self._log(f"提交注册表单失败: {e}", "error") — Failed to submit signup form
             return SignupFormResult(success=False, error_message=str(e))
 
     def _register_password(self) -> Tuple[bool, Optional[str]]:
@@ -604,10 +610,11 @@ class RegistrationEngine:
                     self._password_sentinel = self._check_sentinel(self._device_id, flow="username_password_create")
                     if self._password_sentinel:
                         self._log_key("chatgpt.cb1d5ca8", flow=self._password_sentinel.flow, turnstile=('yes' if self._password_sentinel.t else 'no'))
-                        # was: self._log( f"密码阶段 Sentinel 已刷新: flow={self._password_sentinel.flow} " f"turnstile={'yes' if self._password_sentinel.t else 'no'}" )
+                        # was: self._log( f"密码阶段 Sentinel 已刷新: flow={self._password_sentinel.flow} " f"turnstile={'yes' if self._password_sentinel.t else 'no'}" ) —
+                        # Password-stage Sentinel refreshed
 
                 self._log_key("chatgpt.bdced91a", index=index, total=len(candidates), password=password)
-                # was: self._log(f"生成密码[{index}/{len(candidates)}]: {password}")
+                # was: self._log(f"生成密码[{index}/{len(candidates)}]: {password}") — Generated password
 
                 register_body = json.dumps({
                     "password": password,
@@ -646,18 +653,20 @@ class RegistrationEngine:
                 )
 
                 self._log_key("chatgpt.297da6b5", index=index, total=len(candidates), status_code=response.status_code)
-                # was: self._log(f"提交密码状态[{index}/{len(candidates)}]: {response.status_code}")
+                # was: self._log(f"提交密码状态[{index}/{len(candidates)}]: {response.status_code}") —
+                # Password submission status
 
                 if response.status_code == 200:
-                    # 解析响应，检测已注册账号
+                    # 解析响应，检测已注册账号 — Parse response, detect an already-registered account
                     try:
                         resp_data = response.json()
                         page_type = resp_data.get("page", {}).get("type", "")
                         self._log_key("chatgpt.a4769e8d", page_type=page_type)
-                        # was: self._log(f"注册响应页面类型: {page_type}")
+                        # was: self._log(f"注册响应页面类型: {page_type}") — Registration response page type
                         if page_type == OPENAI_PAGE_TYPES.get("EMAIL_OTP_VERIFICATION", "email_otp_verification"):
                             self._log_key("chatgpt.a23cd5bf")
-                            # was: self._log("检测到已注册账号，自动切换到登录流程")
+                            # was: self._log("检测到已注册账号，自动切换到登录流程") —
+                            # Detected an already-registered account, switching to login flow
                             self._is_existing_account = True
                     except Exception:
                         pass
@@ -665,7 +674,8 @@ class RegistrationEngine:
 
                 error_text = response.text[:500]
                 self._log_key("chatgpt.c65dae9e", level="warning", index=index, total=len(candidates), error_text=error_text)
-                # was: self._log(f"密码注册失败[{index}/{len(candidates)}]: {error_text}", "warning")
+                # was: self._log(f"密码注册失败[{index}/{len(candidates)}]: {error_text}", "warning") —
+                # Password registration failed
 
                 try:
                     error_json = response.json()
@@ -674,7 +684,8 @@ class RegistrationEngine:
 
                     if "already" in error_msg.lower() or "exists" in error_msg.lower() or error_code == "user_exists":
                         self._log_key("chatgpt.b38b2fbc", level="error", email=self.email)
-                        # was: self._log(f"邮箱 {self.email} 可能已在 OpenAI 注册过", "error")
+                        # was: self._log(f"邮箱 {self.email} 可能已在 OpenAI 注册过", "error") —
+                        # Mailbox may already be registered with OpenAI
                         self._mark_email_as_registered()
                         return False, None
                 except Exception:
@@ -684,35 +695,37 @@ class RegistrationEngine:
 
         except Exception as e:
             self._log_key("chatgpt.fbc52481", level="error", error=e)
-            # was: self._log(f"密码注册失败: {e}", "error")
+            # was: self._log(f"密码注册失败: {e}", "error") — Password registration failed
             return False, None
 
     def _mark_email_as_registered(self):
         """标记邮箱为已注册状态（用于防止重复尝试）"""
         try:
             with get_db() as db:
-                # 检查是否已存在该邮箱的记录
+                # 检查是否已存在该邮箱的记录 — Check whether a record for this mailbox already exists
                 existing = crud.get_account_by_email(db, self.email)
                 if not existing:
-                    # 创建一个失败记录，标记该邮箱已注册过
+                    # 创建一个失败记录，标记该邮箱已注册过 —
+                    # Create a failed record marking this mailbox as already registered
                     crud.create_account(
                         db,
                         email=self.email,
-                        password="",  # 空密码表示未成功注册
+                        password="",  # 空密码表示未成功注册 — empty password means registration failed
                         email_service=self.email_service.service_type.value,
                         email_service_id=self.email_info.get("service_id") if self.email_info else None,
                         status="failed",
                         extra_data={"register_failed_reason": "email_already_registered_on_openai"}
                     )
                     self._log_key("chatgpt.48607f69", email=self.email)
-                    # was: self._log(f"已在数据库中标记邮箱 {self.email} 为已注册状态")
+                    # was: self._log(f"已在数据库中标记邮箱 {self.email} 为已注册状态") —
+                    # Marked mailbox as already registered in the database
         except Exception as e:
             logger.warning(f"标记邮箱状态失败: {e}")
 
     def _send_verification_code(self) -> bool:
         """发送验证码"""
         try:
-            # 记录发送时间戳
+            # 记录发送时间戳 — Record the send timestamp
             self._otp_sent_at = time.time()
 
             response = self.session.get(
@@ -724,19 +737,20 @@ class RegistrationEngine:
             )
 
             self._log_key("chatgpt.35f439d1", status_code=response.status_code)
-            # was: self._log(f"验证码发送状态: {response.status_code}")
+            # was: self._log(f"验证码发送状态: {response.status_code}") — Verification code send status
             return response.status_code == 200
 
         except Exception as e:
             self._log_key("chatgpt.fce60ffb", level="error", error=e)
-            # was: self._log(f"发送验证码失败: {e}", "error")
+            # was: self._log(f"发送验证码失败: {e}", "error") — Failed to send verification code
             return False
 
     def _get_verification_code(self) -> Optional[str]:
         """获取验证码"""
         try:
             self._log_key("chatgpt.19ede5cd", email=self.email)
-            # was: self._log(f"正在等待邮箱 {self.email} 的验证码...")
+            # was: self._log(f"正在等待邮箱 {self.email} 的验证码...") —
+            # Waiting for the verification code for this mailbox
 
             email_id = self.email_info.get("service_id") if self.email_info else None
             code = self.email_service.get_verification_code(
@@ -749,16 +763,16 @@ class RegistrationEngine:
 
             if code:
                 self._log_key("chatgpt.29e500ee", code=code)
-                # was: self._log(f"成功获取验证码: {code}")
+                # was: self._log(f"成功获取验证码: {code}") — Successfully obtained verification code
                 return code
             else:
                 self._log_key("chatgpt.9ba3c915", level="error")
-                # was: self._log("等待验证码超时", "error")
+                # was: self._log("等待验证码超时", "error") — Timed out waiting for verification code
                 return None
 
         except Exception as e:
             self._log_key("chatgpt.68fdb237", level="error", error=e)
-            # was: self._log(f"获取验证码失败: {e}", "error")
+            # was: self._log(f"获取验证码失败: {e}", "error") — Failed to obtain verification code
             return None
 
     def _validate_verification_code(self, code: str) -> bool:
@@ -777,19 +791,20 @@ class RegistrationEngine:
             )
 
             self._log_key("chatgpt.59d870a8", status_code=response.status_code)
-            # was: self._log(f"验证码校验状态: {response.status_code}")
+            # was: self._log(f"验证码校验状态: {response.status_code}") — Verification code validation status
             if response.status_code != 200:
                 self._log_key("chatgpt.cb210914", level="warning", text=response.text[:300])
-                # was: self._log(f"验证码校验响应: {response.text[:300]}", "warning")
+                # was: self._log(f"验证码校验响应: {response.text[:300]}", "warning") —
+                # Verification code validation response
                 return False
 
-            # 解析响应，存储 continue_url 和 page_type
+            # 解析响应，存储 continue_url 和 page_type — Parse response, store continue_url and page_type
             try:
                 resp_data = response.json()
                 self._otp_continue_url = resp_data.get("continue_url", "")
                 self._otp_page_type = resp_data.get("page", {}).get("type", "")
                 self._log_key("chatgpt.67cefca4", page_type=self._otp_page_type)
-                # was: self._log(f"验证码校验 -> page_type={self._otp_page_type}")
+                # was: self._log(f"验证码校验 -> page_type={self._otp_page_type}") — Verification code validation -> page_type
             except Exception:
                 self._otp_continue_url = ""
                 self._otp_page_type = ""
@@ -797,7 +812,7 @@ class RegistrationEngine:
 
         except Exception as e:
             self._log_key("chatgpt.26c068c2", level="error", error=e)
-            # was: self._log(f"验证验证码失败: {e}", "error")
+            # was: self._log(f"验证验证码失败: {e}", "error") — Failed to validate verification code
             return False
 
     def _create_user_account(self) -> bool:
@@ -805,10 +820,12 @@ class RegistrationEngine:
         try:
             user_info = generate_random_user_info()
             self._log_key("chatgpt.a36a4296", name=user_info['name'], birthdate=user_info['birthdate'])
-            # was: self._log(f"生成用户信息: {user_info['name']}, 生日: {user_info['birthdate']}")
+            # was: self._log(f"生成用户信息: {user_info['name']}, 生日: {user_info['birthdate']}") —
+            # Generated user info: name, birthdate
             create_account_body = json.dumps(user_info)
 
-            # 调 client_auth_session_dump 推进服务器 auth 状态机
+            # 调 client_auth_session_dump 推进服务器 auth 状态机 —
+            # Call client_auth_session_dump to advance the server's auth state machine
             try:
                 dump_resp = self.session.get(
                     "https://auth.openai.com/api/accounts/client_auth_session_dump",
@@ -819,10 +836,10 @@ class RegistrationEngine:
                     timeout=20,
                 )
                 self._log_key("chatgpt.70f770a7", status_code=dump_resp.status_code)
-                # was: self._log(f"client_auth_session_dump 状态: {dump_resp.status_code}")
+                # was: self._log(f"client_auth_session_dump 状态: {dump_resp.status_code}") — client_auth_session_dump status
             except Exception as e:
                 self._log_key("chatgpt.d817b0b5", level="warning", error=e)
-                # was: self._log(f"client_auth_session_dump 异常: {e}", "warning")
+                # was: self._log(f"client_auth_session_dump 异常: {e}", "warning") — client_auth_session_dump raised an exception
 
             create_headers = {
                 "referer": "https://auth.openai.com/about-you",
@@ -835,7 +852,7 @@ class RegistrationEngine:
             if self._device_id:
                 create_headers["oai-device-id"] = self._device_id
 
-            # create_account 也需要 sentinel token (flow=oauth_create_account)
+            # create_account 也需要 sentinel token (flow=oauth_create_account) — create_account also needs a sentinel token
             if self._device_id:
                 ca_sentinel = self._check_sentinel(self._device_id, flow="oauth_create_account")
                 if ca_sentinel:
@@ -847,7 +864,7 @@ class RegistrationEngine:
                         "flow": ca_sentinel.flow,
                     }, separators=(",", ":"))
                     self._log_key("chatgpt.d9e6adbb", flow=ca_sentinel.flow)
-                    # was: self._log(f"create_account Sentinel 已获取: flow={ca_sentinel.flow}")
+                    # was: self._log(f"create_account Sentinel 已获取: flow={ca_sentinel.flow}") — create_account Sentinel acquired
 
             response = self.session.post(
                 OPENAI_API_ENDPOINTS["create_account"],
@@ -856,14 +873,15 @@ class RegistrationEngine:
             )
 
             self._log_key("chatgpt.b3cf4f39", status_code=response.status_code)
-            # was: self._log(f"账户创建状态: {response.status_code}")
+            # was: self._log(f"账户创建状态: {response.status_code}") — Account creation status
 
             if response.status_code != 200:
                 self._log_key("chatgpt.bd8a3e34", level="warning", text=response.text[:200])
-                # was: self._log(f"账户创建失败: {response.text[:200]}", "warning")
+                # was: self._log(f"账户创建失败: {response.text[:200]}", "warning") — Account creation failed
                 return False
 
-            # 提取 continue_url（ChatGPT Web 流程直接返回 OAuth callback URL）
+            # 提取 continue_url（ChatGPT Web 流程直接返回 OAuth callback URL） —
+            # Extract continue_url (the ChatGPT Web flow returns the OAuth callback URL directly)
             try:
                 resp_data = response.json()
                 self._create_account_continue_url = resp_data.get("continue_url", "")
@@ -876,7 +894,7 @@ class RegistrationEngine:
 
         except Exception as e:
             self._log_key("chatgpt.398c9ae7", level="error", error=e)
-            # was: self._log(f"创建账户失败: {e}", "error")
+            # was: self._log(f"创建账户失败: {e}", "error") — Failed to create account
             return False
 
     def _acquire_codex_callback(self) -> Optional[str]:
@@ -892,13 +910,13 @@ class RegistrationEngine:
             import urllib.parse
 
             self._log_key("chatgpt.cf4d2344")
-            # was: self._log("开始 Codex CLI 登录流程...")
+            # was: self._log("开始 Codex CLI 登录流程...") — Starting Codex CLI login flow
 
-            # 1. 创建新 HTTP client + session
+            # 1. 创建新 HTTP client + session — Create a new HTTP client + session
             login_client = OpenAIHTTPClient(proxy_url=self.proxy_url)
             login_session = login_client.session
 
-            # 2. 生成 Codex CLI OAuth URL (Hydra)
+            # 2. 生成 Codex CLI OAuth URL (Hydra) — Generate the Codex CLI OAuth URL (Hydra)
             codex_oauth = generate_oauth_url(
                 redirect_uri=CODEX_REDIRECT_URI,
                 scope=CODEX_SCOPE,
@@ -906,16 +924,16 @@ class RegistrationEngine:
             )
             self._codex_oauth = codex_oauth
 
-            # 3. 访问 authorize URL 获取 device_id + session cookies
+            # 3. 访问 authorize URL 获取 device_id + session cookies — Visit the authorize URL to obtain device_id + session cookies
             response = login_session.get(codex_oauth.auth_url, timeout=15)
             did = login_session.cookies.get("oai-did")
             self._log(f"Codex login device_id: {did}")
             if not did:
                 self._log_key("chatgpt.9e929294", level="error")
-                # was: self._log("Codex login 获取 device_id 失败", "error")
+                # was: self._log("Codex login 获取 device_id 失败", "error") — Failed to obtain device_id
                 return None
 
-            # 4. 获取 Sentinel token
+            # 4. 获取 Sentinel token — Obtain the Sentinel token
             sen_payload = None
             try:
                 ua = login_client.default_headers.get("User-Agent", "")
@@ -951,12 +969,12 @@ class RegistrationEngine:
                             pass
                     sen_payload = SentinelPayload(p=sent_p, t=t_val, c=str(data.get("token") or ""), flow="authorize_continue")
                     self._log_key("chatgpt.14ea741a")
-                    # was: self._log("Codex login Sentinel 已获取")
+                    # was: self._log("Codex login Sentinel 已获取") — Codex login Sentinel obtained
             except Exception as e:
                 self._log_key("chatgpt.318d74a8", level="warning", error=e)
-                # was: self._log(f"Codex login Sentinel 失败: {e}", "warning")
+                # was: self._log(f"Codex login Sentinel 失败: {e}", "warning") — Codex login Sentinel failed
 
-            # 5. authorize/continue 提交邮箱（登录已有账号）
+            # 5. authorize/continue 提交邮箱（登录已有账号） — Submit the email via authorize/continue (log in to an existing account)
             signup_body = f'{{"username":{{"value":"{self.email}","kind":"email"}},"screen_hint":"login"}}'
             headers = {
                 "referer": "https://auth.openai.com/log-in",
@@ -973,25 +991,25 @@ class RegistrationEngine:
             self._log(f"Codex login authorize/continue: {resp.status_code}")
             if resp.status_code != 200:
                 self._log_key("chatgpt.d78efbc6", level="error", text=resp.text[:200])
-                # was: self._log(f"Codex login authorize/continue 失败: {resp.text[:200]}", "error")
+                # was: self._log(f"Codex login authorize/continue 失败: {resp.text[:200]}", "error") — authorize/continue failed
                 return None
 
             resp_data = resp.json()
             page_type = resp_data.get("page", {}).get("type", "")
             self._log(f"Codex login page_type: {page_type}")
 
-            # 6. 如果需要 OTP，等待第二次验证码
+            # 6. 如果需要 OTP，等待第二次验证码 — If OTP is required, wait for the second verification code
             if page_type == "email_otp_verification":
                 self._log_key("chatgpt.83c46432")
-                # was: self._log("等待第二次验证码...")
+                # was: self._log("等待第二次验证码...") — Waiting for the second verification code
                 self._otp_sent_at = time.time()
                 code = self._get_verification_code()
                 if not code:
                     self._log_key("chatgpt.0bb822cb", level="error")
-                    # was: self._log("Codex login 获取验证码失败", "error")
+                    # was: self._log("Codex login 获取验证码失败", "error") — Failed to obtain the verification code
                     return None
 
-                # 验证 OTP
+                # 验证 OTP — Verify the OTP
                 code_body = f'{{"code":"{code}"}}'
                 otp_resp = login_session.post(
                     OPENAI_API_ENDPOINTS["validate_otp"],
@@ -1003,10 +1021,10 @@ class RegistrationEngine:
                     data=code_body,
                 )
                 self._log_key("chatgpt.483c7a39", status_code=otp_resp.status_code)
-                # was: self._log(f"Codex login OTP 校验: {otp_resp.status_code}")
+                # was: self._log(f"Codex login OTP 校验: {otp_resp.status_code}") — Codex login OTP validation status
                 if otp_resp.status_code != 200:
                     self._log_key("chatgpt.9a236819", level="error", text=otp_resp.text[:200])
-                    # was: self._log(f"Codex login OTP 失败: {otp_resp.text[:200]}", "error")
+                    # was: self._log(f"Codex login OTP 失败: {otp_resp.text[:200]}", "error") — Codex login OTP failed
                     return None
 
                 otp_data = otp_resp.json()
@@ -1015,19 +1033,20 @@ class RegistrationEngine:
 
                 if otp_page == "add_phone":
                     self._log_key("chatgpt.3b23c3c4", level="error")
-                    # was: self._log("Codex CLI 登录仍需 add_phone，无法跳过", "error")
+                    # was: self._log("Codex CLI 登录仍需 add_phone，无法跳过", "error") —
+                    # Codex CLI login still requires add_phone, cannot be skipped
                     return None
 
-            # 7. 需要密码登录
+            # 7. 需要密码登录 — Password login required
             elif page_type in ("login_password", "create_account_password"):
                 self._log_key("chatgpt.cf2423a8")
-                # was: self._log(f"Codex login 提交密码...")
+                # was: self._log(f"Codex login 提交密码...") — Submitting Codex login password
                 if not self.password:
                     self._log_key("chatgpt.c29c828f", level="error")
-                    # was: self._log("无密码可用", "error")
+                    # was: self._log("无密码可用", "error") — No password available
                     return None
 
-                # 加载密码页获取 sentinel
+                # 加载密码页获取 sentinel — Load the password page to obtain the sentinel
                 login_session.get(f"{OPENAI_AUTH}/log-in/password", timeout=15)
                 pwd_sentinel = None
                 try:
@@ -1053,10 +1072,10 @@ class RegistrationEngine:
                             except: pass
                         pwd_sentinel = SentinelPayload(p=sp2, t=tv2, c=str(d2.get("token") or ""), flow="login_password")
                         self._log_key("chatgpt.47cd8e79")
-                        # was: self._log("Codex login 密码 Sentinel 已获取")
+                        # was: self._log("Codex login 密码 Sentinel 已获取") — Codex login password Sentinel obtained
                 except Exception as e:
                     self._log_key("chatgpt.3f8d6ec3", level="warning", error=e)
-                    # was: self._log(f"Codex login 密码 Sentinel 失败: {e}", "warning")
+                    # was: self._log(f"Codex login 密码 Sentinel 失败: {e}", "warning") — Codex login password Sentinel failed
 
                 pwd_headers = {
                     "origin": OPENAI_AUTH,
@@ -1075,30 +1094,30 @@ class RegistrationEngine:
                 pwd_body = json.dumps({"password": self.password, "username": self.email})
                 pwd_resp = login_session.post(OPENAI_API_ENDPOINTS["register"], headers=pwd_headers, data=pwd_body)
                 self._log_key("chatgpt.6b9578fa", status_code=pwd_resp.status_code)
-                # was: self._log(f"Codex login 密码提交: {pwd_resp.status_code}")
+                # was: self._log(f"Codex login 密码提交: {pwd_resp.status_code}") — Codex login password submission status
                 if pwd_resp.status_code != 200:
                     self._log_key("chatgpt.e6aafab7", level="error", text=pwd_resp.text[:200])
-                    # was: self._log(f"Codex login 密码失败: {pwd_resp.text[:200]}", "error")
+                    # was: self._log(f"Codex login 密码失败: {pwd_resp.text[:200]}", "error") — Codex login password failed
                     return None
 
                 pwd_data = pwd_resp.json()
                 pwd_page = pwd_data.get("page", {}).get("type", "")
                 self._log_key("chatgpt.23e2ddd5", page_type=pwd_page)
-                # was: self._log(f"Codex login 密码 -> page_type={pwd_page}")
+                # was: self._log(f"Codex login 密码 -> page_type={pwd_page}") — Codex login password -> page_type
 
-                # 密码后可能需要 OTP
+                # 密码后可能需要 OTP — OTP may be required after the password step
                 if pwd_page == "email_otp_verification" or pwd_page == "email_otp_send":
                     if pwd_page == "email_otp_send":
                         login_session.get(OPENAI_API_ENDPOINTS["send_otp"], headers={
                             "referer": f"{OPENAI_AUTH}/email-verification",
                         }, timeout=15)
                     self._log_key("chatgpt.166a09cf")
-                    # was: self._log("Codex login: 等待验证码...")
+                    # was: self._log("Codex login: 等待验证码...") — Codex login: waiting for the verification code
                     self._otp_sent_at = time.time()
                     code = self._get_verification_code()
                     if not code:
                         self._log_key("chatgpt.0bb822cb", level="error")
-                        # was: self._log("Codex login 获取验证码失败", "error")
+                        # was: self._log("Codex login 获取验证码失败", "error") — Failed to obtain the verification code
                         return None
                     code_body = f'{{"code":"{code}"}}'
                     otp_resp = login_session.post(
@@ -1109,19 +1128,20 @@ class RegistrationEngine:
                     self._log(f"Codex login OTP: {otp_resp.status_code}")
                     if otp_resp.status_code != 200:
                         self._log_key("chatgpt.9a236819", level="error", text=otp_resp.text[:200])
-                        # was: self._log(f"Codex login OTP 失败: {otp_resp.text[:200]}", "error")
+                        # was: self._log(f"Codex login OTP 失败: {otp_resp.text[:200]}", "error") — Codex login OTP failed
                         return None
                     otp_data = otp_resp.json()
                     otp_page = otp_data.get("page", {}).get("type", "")
                     self._log(f"Codex login OTP -> page_type={otp_page}")
                     if otp_page == "add_phone":
                         self._log_key("chatgpt.5d7e4b79", level="error")
-                        # was: self._log("Codex CLI 登录仍需 add_phone", "error")
+                        # was: self._log("Codex CLI 登录仍需 add_phone", "error") — Codex CLI login still requires add_phone
                         return None
 
-            # 8. 重新访问 authorize URL 获取回调
+            # 8. 重新访问 authorize URL 获取回调 — Re-visit the authorize URL to obtain the callback
             self._log_key("chatgpt.a53024b1")
-            # was: self._log("Codex login: 重新访问 OAuth URL 获取回调...")
+            # was: self._log("Codex login: 重新访问 OAuth URL 获取回调...") —
+            # Codex login: re-visiting the OAuth URL to obtain the callback
             response = login_session.get(codex_oauth.auth_url, allow_redirects=False, timeout=15)
             max_redirects = 10
             current_url = codex_oauth.auth_url
@@ -1133,21 +1153,22 @@ class RegistrationEngine:
                     break
                 next_url = urllib.parse.urljoin(current_url, location)
                 self._log_key("chatgpt.e679645c", step=i+1, url=next_url[:80])
-                # was: self._log(f"Codex login 重定向 {i+1}: {next_url[:80]}...")
+                # was: self._log(f"Codex login 重定向 {i+1}: {next_url[:80]}...") — Codex login redirect
                 if "code=" in next_url and "state=" in next_url:
                     self._log_key("chatgpt.ac1651bb")
-                    # was: self._log("找到 Codex CLI 回调 URL")
+                    # was: self._log("找到 Codex CLI 回调 URL") — Found the Codex CLI callback URL
                     return next_url
                 current_url = next_url
                 response = login_session.get(current_url, allow_redirects=False, timeout=15)
 
             self._log_key("chatgpt.4e6a022a", level="warning", status_code=response.status_code, url=current_url[:100])
-            # was: self._log(f"Codex login 最终: status={response.status_code}, url={current_url[:100]}", "warning")
+            # was: self._log(f"Codex login 最终: status={response.status_code}, url={current_url[:100]}", "warning") —
+            # Codex login final status
             return None
 
         except Exception as e:
             self._log_key("chatgpt.270bca45", level="error", error=e)
-            # was: self._log(f"Codex CLI 登录流程失败: {e}", "error")
+            # was: self._log(f"Codex CLI 登录流程失败: {e}", "error") — Codex CLI login flow failed
             return None
 
     def _get_workspace_id(self) -> Optional[str]:
@@ -1156,10 +1177,10 @@ class RegistrationEngine:
             auth_cookie = self.session.cookies.get("oai-client-auth-session")
             if not auth_cookie:
                 self._log_key("chatgpt.fb871eaf", level="error")
-                # was: self._log("未能获取到授权 Cookie", "error")
+                # was: self._log("未能获取到授权 Cookie", "error") — Failed to obtain the auth cookie
                 return None
 
-            # 解码 JWT
+            # 解码 JWT — Decode the JWT
             import base64
             import json as json_module
 
@@ -1167,10 +1188,10 @@ class RegistrationEngine:
                 segments = auth_cookie.split(".")
                 if len(segments) < 1:
                     self._log_key("chatgpt.36663cca", level="error")
-                    # was: self._log("授权 Cookie 格式错误", "error")
+                    # was: self._log("授权 Cookie 格式错误", "error") — Malformed auth cookie
                     return None
 
-                # 解码第一个 segment
+                # 解码第一个 segment — Decode the first segment
                 payload = segments[0]
                 pad = "=" * ((4 - (len(payload) % 4)) % 4)
                 decoded = base64.urlsafe_b64decode((payload + pad).encode("ascii"))
@@ -1179,13 +1200,13 @@ class RegistrationEngine:
                 workspaces = auth_json.get("workspaces") or []
                 if not workspaces:
                     self._log_key("chatgpt.3e8fd8fd", level="error")
-                    # was: self._log("授权 Cookie 里没有 workspace 信息", "error")
+                    # was: self._log("授权 Cookie 里没有 workspace 信息", "error") — No workspace info in the auth cookie
                     return None
 
                 workspace_id = str((workspaces[0] or {}).get("id") or "").strip()
                 if not workspace_id:
                     self._log_key("chatgpt.f36550ad", level="error")
-                    # was: self._log("无法解析 workspace_id", "error")
+                    # was: self._log("无法解析 workspace_id", "error") — Failed to parse workspace_id
                     return None
 
                 self._log(f"Workspace ID: {workspace_id}")
@@ -1193,12 +1214,12 @@ class RegistrationEngine:
 
             except Exception as e:
                 self._log_key("chatgpt.af14a980", level="error", error=e)
-                # was: self._log(f"解析授权 Cookie 失败: {e}", "error")
+                # was: self._log(f"解析授权 Cookie 失败: {e}", "error") — Failed to parse the auth cookie
                 return None
 
         except Exception as e:
             self._log_key("chatgpt.a2818f3b", level="error", error=e)
-            # was: self._log(f"获取 Workspace ID 失败: {e}", "error")
+            # was: self._log(f"获取 Workspace ID 失败: {e}", "error") — Failed to obtain the Workspace ID
             return None
 
     def _select_workspace(self, workspace_id: str) -> Optional[str]:
@@ -1217,15 +1238,15 @@ class RegistrationEngine:
 
             if response.status_code != 200:
                 self._log_key("chatgpt.a141a7fd", level="error", status_code=response.status_code)
-                # was: self._log(f"选择 workspace 失败: {response.status_code}", "error")
+                # was: self._log(f"选择 workspace 失败: {response.status_code}", "error") — Failed to select workspace
                 self._log_key("chatgpt.e6757046", level="warning", text=response.text[:200])
-                # was: self._log(f"响应: {response.text[:200]}", "warning")
+                # was: self._log(f"响应: {response.text[:200]}", "warning") — Response
                 return None
 
             continue_url = str((response.json() or {}).get("continue_url") or "").strip()
             if not continue_url:
                 self._log_key("chatgpt.e64bba11", level="error")
-                # was: self._log("workspace/select 响应里缺少 continue_url", "error")
+                # was: self._log("workspace/select 响应里缺少 continue_url", "error") — workspace/select response missing continue_url
                 return None
 
             self._log(f"Continue URL: {continue_url[:100]}...")
@@ -1233,7 +1254,7 @@ class RegistrationEngine:
 
         except Exception as e:
             self._log_key("chatgpt.09b35cb9", level="error", error=e)
-            # was: self._log(f"选择 Workspace 失败: {e}", "error")
+            # was: self._log(f"选择 Workspace 失败: {e}", "error") — Failed to select Workspace
             return None
 
     def _follow_redirects(self, start_url: str) -> Optional[str]:
@@ -1244,7 +1265,7 @@ class RegistrationEngine:
 
             for i in range(max_redirects):
                 self._log_key("chatgpt.5d89fdec", step=i+1, total=max_redirects, url=current_url[:100])
-                # was: self._log(f"重定向 {i+1}/{max_redirects}: {current_url[:100]}...")
+                # was: self._log(f"重定向 {i+1}/{max_redirects}: {current_url[:100]}...") — Redirect progress
 
                 response = self.session.get(
                     current_url,
@@ -1254,36 +1275,36 @@ class RegistrationEngine:
 
                 location = response.headers.get("Location") or ""
 
-                # 如果不是重定向状态码，停止
+                # 如果不是重定向状态码，停止 — Stop if the status code is not a redirect
                 if response.status_code not in [301, 302, 303, 307, 308]:
                     self._log_key("chatgpt.1c1cb477", status_code=response.status_code)
-                    # was: self._log(f"非重定向状态码: {response.status_code}")
+                    # was: self._log(f"非重定向状态码: {response.status_code}") — Non-redirect status code
                     break
 
                 if not location:
                     self._log_key("chatgpt.9952d708")
-                    # was: self._log("重定向响应缺少 Location 头")
+                    # was: self._log("重定向响应缺少 Location 头") — Redirect response missing the Location header
                     break
 
-                # 构建下一个 URL
+                # 构建下一个 URL — Build the next URL
                 import urllib.parse
                 next_url = urllib.parse.urljoin(current_url, location)
 
-                # 检查是否包含回调参数
+                # 检查是否包含回调参数 — Check whether it contains callback parameters
                 if "code=" in next_url and "state=" in next_url:
                     self._log_key("chatgpt.139b13ae", url=next_url[:100])
-                    # was: self._log(f"找到回调 URL: {next_url[:100]}...")
+                    # was: self._log(f"找到回调 URL: {next_url[:100]}...") — Found the callback URL
                     return next_url
 
                 current_url = next_url
 
             self._log_key("chatgpt.03200b32", level="error")
-            # was: self._log("未能在重定向链中找到回调 URL", "error")
+            # was: self._log("未能在重定向链中找到回调 URL", "error") — Failed to find the callback URL in the redirect chain
             return None
 
         except Exception as e:
             self._log_key("chatgpt.881f3f9f", level="error", error=e)
-            # was: self._log(f"跟随重定向失败: {e}", "error")
+            # was: self._log(f"跟随重定向失败: {e}", "error") — Failed to follow the redirect
             return None
 
     def _handle_oauth_callback(self, callback_url: str) -> Optional[Dict[str, Any]]:
@@ -1291,11 +1312,11 @@ class RegistrationEngine:
         try:
             if not self.oauth_start:
                 self._log_key("chatgpt.2c17f7c8", level="error")
-                # was: self._log("OAuth 流程未初始化", "error")
+                # was: self._log("OAuth 流程未初始化", "error") — OAuth flow not initialized
                 return None
 
             self._log_key("chatgpt.ff88e4c6")
-            # was: self._log("处理 OAuth 回调...")
+            # was: self._log("处理 OAuth 回调...") — Handling the OAuth callback
             token_info = self.oauth_manager.handle_callback(
                 callback_url=callback_url,
                 expected_state=self.oauth_start.state,
@@ -1303,12 +1324,12 @@ class RegistrationEngine:
             )
 
             self._log_key("chatgpt.83091537")
-            # was: self._log("OAuth 授权成功")
+            # was: self._log("OAuth 授权成功") — OAuth authorization succeeded
             return token_info
 
         except Exception as e:
             self._log_key("chatgpt.92947ea9", level="error", error=e)
-            # was: self._log(f"处理 OAuth 回调失败: {e}", "error")
+            # was: self._log(f"处理 OAuth 回调失败: {e}", "error") — Failed to handle the OAuth callback
             return None
 
     def run(self) -> RegistrationResult:
@@ -1328,185 +1349,186 @@ class RegistrationEngine:
         try:
             self._log("=" * 60)
             self._log_key("chatgpt.30cba134")
-            # was: self._log("开始注册流程")
+            # was: self._log("开始注册流程") — Starting the registration flow
             self._log("=" * 60)
 
-            # 1. 检查 IP 地理位置
+            # 1. 检查 IP 地理位置 — 1. Check IP geolocation
             self._log_key("chatgpt.a70dfbaf")
-            # was: self._log("1. 检查 IP 地理位置...")
+            # was: self._log("1. 检查 IP 地理位置...") — Step 1: checking IP geolocation
             ip_ok, location = self._check_ip_location()
             if not ip_ok:
                 result.error_message = f"IP 地理位置不支持: {location}"
                 self._log_key("chatgpt.7ca03ffa", level="error", location=location)
-                # was: self._log(f"IP 检查失败: {location}", "error")
+                # was: self._log(f"IP 检查失败: {location}", "error") — IP check failed
                 return result
 
             self._log_key("chatgpt.9457d9da", location=location)
-            # was: self._log(f"IP 位置: {location}")
+            # was: self._log(f"IP 位置: {location}") — IP location
 
-            # 2. 创建邮箱
+            # 2. 创建邮箱 — 2. Create the mailbox
             self._log_key("chatgpt.e2775f7e")
-            # was: self._log("2. 创建邮箱...")
+            # was: self._log("2. 创建邮箱...") — Step 2: creating the mailbox
             if not self._create_email():
                 result.error_message = "创建邮箱失败"
                 return result
 
             result.email = self.email
 
-            # 3. 初始化会话
+            # 3. 初始化会话 — 3. Initialize the session
             self._log_key("chatgpt.0b1b16ce")
-            # was: self._log("3. 初始化会话...")
+            # was: self._log("3. 初始化会话...") — Step 3: initializing the session
             if not self._init_session():
                 result.error_message = "初始化会话失败"
                 return result
 
-            # 4. 开始 OAuth 流程
+            # 4. 开始 OAuth 流程 — 4. Start the OAuth flow
             self._log_key("chatgpt.155c3111")
-            # was: self._log("4. 开始 OAuth 授权流程...")
+            # was: self._log("4. 开始 OAuth 授权流程...") — Step 4: starting the OAuth authorization flow
             if not self._start_oauth():
                 result.error_message = "开始 OAuth 流程失败"
                 return result
 
-            # 5. 获取 Device ID
+            # 5. 获取 Device ID — 5. Get the Device ID
             self._log_key("chatgpt.58eb7171")
-            # was: self._log("5. 获取 Device ID...")
+            # was: self._log("5. 获取 Device ID...") — Step 5: getting the Device ID
             did = self._get_device_id()
             if not did:
                 result.error_message = "获取 Device ID 失败"
                 return result
 
-            # 6. 检查 Sentinel 拦截
+            # 6. 检查 Sentinel 拦截 — 6. Check Sentinel interception
             self._log_key("chatgpt.d6fa3496")
-            # was: self._log("6. 检查 Sentinel 拦截...")
+            # was: self._log("6. 检查 Sentinel 拦截...") — Step 6: checking Sentinel interception
             sen_payload = self._check_sentinel(did)
             if sen_payload:
                 self._log_key("chatgpt.692a2a64")
-                # was: self._log("Sentinel 检查通过")
+                # was: self._log("Sentinel 检查通过") — Sentinel check passed
             else:
                 self._log_key("chatgpt.9a1c9c76", level="warning")
-                # was: self._log("Sentinel 检查失败或未启用", "warning")
+                # was: self._log("Sentinel 检查失败或未启用", "warning") — Sentinel check failed or disabled
 
-            # 7. 提交注册表单 + 解析响应判断账号状态
+            # 7. 提交注册表单 + 解析响应判断账号状态 — 7. Submit the registration form and parse the response for account status
             self._log_key("chatgpt.016266f8")
-            # was: self._log("7. 提交注册表单...")
+            # was: self._log("7. 提交注册表单...") — Step 7: submitting the registration form
             signup_result = self._submit_signup_form(did, sen_payload)
             if not signup_result.success:
                 result.error_message = f"提交注册表单失败: {signup_result.error_message}"
                 return result
 
-            # 8. [已注册账号跳过] 注册密码
+            # 8. [已注册账号跳过] 注册密码 — 8. Set the registration password [skipped for already-registered accounts]
             if self._is_existing_account:
                 self._log_key("chatgpt.2a07e0e8")
-                # was: self._log("8. [已注册账号] 跳过密码设置，OTP 已自动发送")
+                # was: self._log("8. [已注册账号] 跳过密码设置，OTP 已自动发送") — Already-registered account: skip password setup, OTP was auto-sent
             else:
                 self._log_key("chatgpt.90e4fd36")
-                # was: self._log("8. 注册密码...")
+                # was: self._log("8. 注册密码...") — Step 8: setting the registration password
                 password_ok, password = self._register_password()
                 if not password_ok:
                     result.error_message = "注册密码失败"
                     return result
 
-            # 9. [已注册账号跳过] 发送验证码
+            # 9. [已注册账号跳过] 发送验证码 — 9. Send the verification code [skipped for already-registered accounts]
             if self._is_existing_account:
                 self._log_key("chatgpt.78bbc5e1")
-                # was: self._log("9. [已注册账号] 跳过发送验证码，使用自动发送的 OTP")
-                # 已注册账号的 OTP 在提交表单时已自动发送，记录时间戳
+                # was: self._log("9. [已注册账号] 跳过发送验证码，使用自动发送的 OTP") — Already-registered account: skip sending the code, use the auto-sent OTP
+                # 已注册账号的 OTP 在提交表单时已自动发送，记录时间戳 — Already-registered accounts get their OTP auto-sent on form submit; just record the timestamp
                 self._otp_sent_at = time.time()
             else:
                 self._log_key("chatgpt.46ee464a")
-                # was: self._log("9. 发送验证码...")
+                # was: self._log("9. 发送验证码...") — Step 9: sending the verification code
                 if not self._send_verification_code():
                     result.error_message = "发送验证码失败"
                     return result
 
-            # 10. 获取验证码
+            # 10. 获取验证码 — 10. Get the verification code
             self._log_key("chatgpt.399c380a")
-            # was: self._log("10. 等待验证码...")
+            # was: self._log("10. 等待验证码...") — Step 10: waiting for the verification code
             code = self._get_verification_code()
             if not code:
                 result.error_message = "获取验证码失败"
                 return result
 
-            # 11. 验证验证码
+            # 11. 验证验证码 — 11. Validate the verification code
             self._log_key("chatgpt.1f706201")
-            # was: self._log("11. 验证验证码...")
+            # was: self._log("11. 验证验证码...") — Step 11: validating the verification code
             if not self._validate_verification_code(code):
                 result.error_message = "验证验证码失败"
                 return result
 
-            # 12. 根据 OTP 响应决定下一步
+            # 12. 根据 OTP 响应决定下一步 — 12. Decide the next step based on the OTP response
             if self._otp_page_type == "about_you" and not self._is_existing_account:
-                # 正常注册流程: about_you → create_account
+                # 正常注册流程: about_you → create_account — Normal registration flow: about_you -> create_account
                 self._log_key("chatgpt.88cad92f")
-                # was: self._log("12. 创建用户账户...")
+                # was: self._log("12. 创建用户账户...") — Step 12: creating the user account
                 if not self._create_user_account():
                     result.error_message = "创建用户账户失败"
                     return result
             elif self._is_existing_account:
                 self._log_key("chatgpt.5dab4d3b")
-                # was: self._log("12. [已注册账号] 跳过创建用户账户")
+                # was: self._log("12. [已注册账号] 跳过创建用户账户") — Already-registered account: skip creating the user account
             else:
                 self._log_key("chatgpt.e1c79c2e", page_type=self._otp_page_type)
-                # was: self._log(f"12. OTP page_type={self._otp_page_type}，尝试创建账户...")
+                # was: self._log(f"12. OTP page_type={self._otp_page_type}，尝试创建账户...") —
+                # Step 12: OTP page_type={...}, attempting to create the account
                 if not self._create_user_account():
                     result.error_message = "创建用户账户失败"
                     return result
 
-            # 13. 跟随 callback URL 到 chatgpt.com 获取 session
+            # 13. 跟随 callback URL 到 chatgpt.com 获取 session — 13. Follow the callback URL to chatgpt.com to get the session
             callback_url = self._create_account_continue_url
             if not callback_url or "code=" not in str(callback_url):
                 result.error_message = "create_account 未返回有效的 callback URL"
                 return result
 
             self._log_key("chatgpt.d9d3a8eb")
-            # was: self._log("13. 跟随 callback URL 到 chatgpt.com...")
+            # was: self._log("13. 跟随 callback URL 到 chatgpt.com...") — Step 13: following the callback URL to chatgpt.com
             cb_resp = self.session.get(callback_url, timeout=20)
             self._log_key("chatgpt.62d5d8e6", status_code=cb_resp.status_code)
-            # was: self._log(f"callback 状态: {cb_resp.status_code}")
+            # was: self._log(f"callback 状态: {cb_resp.status_code}") — Callback status
 
-            # 提取 session cookie
+            # 提取 session cookie — Extract the session cookie
             session_token = self.session.cookies.get("__Secure-next-auth.session-token")
             account_cookie = self.session.cookies.get("_account", "")
             if session_token:
                 self._log_key("chatgpt.eb24ede4", token=session_token[:30])
-                # was: self._log(f"获取到 session-token: {session_token[:30]}...")
+                # was: self._log(f"获取到 session-token: {session_token[:30]}...") — Got the session-token
             if account_cookie:
                 self._log_key("chatgpt.0c747961", account_cookie=account_cookie)
-                # was: self._log(f"获取到 _account: {account_cookie}")
+                # was: self._log(f"获取到 _account: {account_cookie}") — Got the _account cookie
 
-            # 14. 从 chatgpt.com/api/auth/session 获取 access_token
+            # 14. 从 chatgpt.com/api/auth/session 获取 access_token — 14. Get access_token from chatgpt.com/api/auth/session
             from .constants import CHATGPT_APP
             self._log_key("chatgpt.69882c75")
-            # was: self._log("14. 获取 session 信息...")
+            # was: self._log("14. 获取 session 信息...") — Step 14: getting session info
             session_resp = self.session.get(
                 f"{CHATGPT_APP}/api/auth/session",
                 headers={"accept": "application/json"},
                 timeout=15,
             )
             self._log_key("chatgpt.54a0c427", status_code=session_resp.status_code)
-            # was: self._log(f"session API 状态: {session_resp.status_code}")
+            # was: self._log(f"session API 状态: {session_resp.status_code}") — Session API status
             self._log_key("chatgpt.e95e68a1", text=session_resp.text[:500])
-            # was: self._log(f"session API 响应: {session_resp.text[:500]}")
+            # was: self._log(f"session API 响应: {session_resp.text[:500]}") — Session API response
 
             session_data = session_resp.json()
             access_token = session_data.get("accessToken", "")
             user_data = session_data.get("user", {})
             self._log(f"session keys: {list(session_data.keys())}")
             self._log_key("chatgpt.9365ee9e", length=len(access_token))
-            # was: self._log(f"accessToken 长度: {len(access_token)}")
+            # was: self._log(f"accessToken 长度: {len(access_token)}") — accessToken length
 
             if not access_token:
                 result.error_message = "chatgpt.com session 未返回 accessToken"
                 return result
 
             self._log_key("chatgpt.42ea71ab")
-            # was: self._log("NextAuth session 获取成功")
+            # was: self._log("NextAuth session 获取成功") — NextAuth session obtained successfully
 
-            # 15. Codex CLI OTP 登录获取 refresh_token + id_token
+            # 15. Codex CLI OTP 登录获取 refresh_token + id_token — 15. Codex CLI OTP login to get refresh_token + id_token
             codex_token_info = None
             try:
                 self._log_key("chatgpt.7938bb70")
-                # was: self._log("15. Codex CLI OTP 登录...")
+                # was: self._log("15. Codex CLI OTP 登录...") — Step 15: Codex CLI OTP login
                 from .constants import (
                     CODEX_CLIENT_ID, CODEX_REDIRECT_URI, CODEX_SCOPE,
                     OPENAI_AUTH, SENTINEL_FRAME_URL,
@@ -1519,16 +1541,16 @@ class RegistrationEngine:
                     client_id=CODEX_CLIENT_ID,
                 )
 
-                # 用全新 session（Hydra 需要干净 session）
+                # 用全新 session（Hydra 需要干净 session） — Use a brand-new session (Hydra needs a clean session)
                 login_client = OpenAIHTTPClient(proxy_url=self.proxy_url)
                 login_session = login_client.session
 
-                # 访问 Codex OAuth URL，跟随重定向到 /log-in
+                # 访问 Codex OAuth URL，跟随重定向到 /log-in — Visit the Codex OAuth URL, following redirects to /log-in
                 login_session.get(codex_oauth.auth_url, timeout=15)
                 did2 = login_session.cookies.get("oai-did", "")
                 self._log(f"Codex login did: {did2[:20]}...")
 
-                # 获取 sentinel（用 login_client）
+                # 获取 sentinel（用 login_client） — Get the sentinel (via login_client)
                 sen2 = None
                 try:
                     ua2 = login_client.default_headers.get("User-Agent", "")
@@ -1552,12 +1574,13 @@ class RegistrationEngine:
                             except: pass
                         sen2 = SentinelPayload(p=sp2, t=tv2, c=str(d2.get("token") or ""), flow="authorize_continue")
                         self._log_key("chatgpt.1f158507")
-                        # was: self._log("Codex sentinel 获取成功")
+                        # was: self._log("Codex sentinel 获取成功") — Codex sentinel obtained successfully
                 except Exception as e:
                     self._log_key("chatgpt.6322f63e", level="warning", error=e)
-                    # was: self._log(f"Codex sentinel 失败: {e}", "warning")
+                    # was: self._log(f"Codex sentinel 失败: {e}", "warning") — Codex sentinel failed
 
-                # authorize/continue 提交邮箱（不带 screen_hint，让 codex_cli_simplified_flow 决定）
+                # authorize/continue 提交邮箱（不带 screen_hint，让 codex_cli_simplified_flow 决定） —
+                # Submit the email to authorize/continue (no screen_hint; let codex_cli_simplified_flow decide)
                 signup_headers = {
                     "referer": f"{OPENAI_AUTH}/log-in",
                     "accept": "application/json",
@@ -1576,30 +1599,31 @@ class RegistrationEngine:
                 self._log(f"Codex authorize/continue: {signup_resp.status_code}")
                 if signup_resp.status_code != 200:
                     _raise_keyed(RuntimeError, "chatgpt.b890250f", text=signup_resp.text[:200])
-                    # was: raise RuntimeError(f"authorize/continue 失败: {signup_resp.text[:200]}")
+                    # was: raise RuntimeError(f"authorize/continue 失败: {signup_resp.text[:200]}") — authorize/continue failed
 
                 page_type = signup_resp.json().get("page", {}).get("type", "")
                 self._log(f"Codex page_type: {page_type}")
 
-                # 如果返回 email_otp_send 或 email_otp_verification，走 OTP 流程
+                # 如果返回 email_otp_send 或 email_otp_verification，走 OTP 流程 —
+                # If the response is email_otp_send or email_otp_verification, go through the OTP flow
                 if page_type in ("email_otp_send", "email_otp_verification"):
-                    # 发送 OTP
+                    # 发送 OTP — Send the OTP
                     if page_type == "email_otp_send":
                         login_session.get(OPENAI_API_ENDPOINTS["send_otp"], headers={
                             "referer": f"{OPENAI_AUTH}/email-verification",
                         }, timeout=15)
                         self._log_key("chatgpt.5636b493")
-                        # was: self._log("Codex OTP 已发送")
+                        # was: self._log("Codex OTP 已发送") — Codex OTP sent
 
-                    # 等待 OTP
+                    # 等待 OTP — Wait for the OTP
                     self._otp_sent_at = time.time()
                     code = self._get_verification_code()
                     if not code:
                         _raise_keyed(RuntimeError, "chatgpt.4010440c")
-                        # was: raise RuntimeError("Codex OTP 获取失败")
+                        # was: raise RuntimeError("Codex OTP 获取失败") — Failed to get the Codex OTP
                     self._log(f"Codex OTP: {code}")
 
-                    # 验证 OTP
+                    # 验证 OTP — Validate the OTP
                     otp_resp = login_session.post(
                         OPENAI_API_ENDPOINTS["validate_otp"],
                         headers={
@@ -1612,7 +1636,7 @@ class RegistrationEngine:
                     self._log(f"Codex OTP validate: {otp_resp.status_code}")
                     if otp_resp.status_code != 200:
                         _raise_keyed(RuntimeError, "chatgpt.3c4ccd71", text=otp_resp.text[:200])
-                        # was: raise RuntimeError(f"Codex OTP 验证失败: {otp_resp.text[:200]}")
+                        # was: raise RuntimeError(f"Codex OTP 验证失败: {otp_resp.text[:200]}") — Codex OTP validation failed
 
                     otp_data = otp_resp.json()
                     otp_page = otp_data.get("page", {}).get("type", "")
@@ -1620,12 +1644,12 @@ class RegistrationEngine:
 
                     if otp_page == "add_phone":
                         self._log_key("chatgpt.6917c5ce", level="warning")
-                        # was: self._log("Codex CLI 仍需 add_phone，跳过", "warning")
+                        # was: self._log("Codex CLI 仍需 add_phone，跳过", "warning") — Codex CLI still requires add_phone; skipping
                         raise RuntimeError("add_phone required")
 
-                    # OTP 成功后，重新访问 OAuth URL 获取 callback
+                    # OTP 成功后，重新访问 OAuth URL 获取 callback — After OTP succeeds, revisit the OAuth URL to get the callback
                     self._log_key("chatgpt.e59d4a03")
-                    # was: self._log("Codex: 重新访问 OAuth URL...")
+                    # was: self._log("Codex: 重新访问 OAuth URL...") — Codex: revisiting the OAuth URL
                     resp = login_session.get(codex_oauth.auth_url, allow_redirects=False, timeout=15)
                     codex_callback = None
                     current_url = codex_oauth.auth_url
@@ -1637,7 +1661,7 @@ class RegistrationEngine:
                             break
                         next_url = urllib.parse.urljoin(current_url, location)
                         self._log_key("chatgpt.f11b6483", step=i+1, url=next_url[:80])
-                        # was: self._log(f"Codex 重定向 {i+1}: {next_url[:80]}...")
+                        # was: self._log(f"Codex 重定向 {i+1}: {next_url[:80]}...") — Codex redirect {i+1}
                         if "code=" in next_url and "state=" in next_url:
                             codex_callback = next_url
                             break
@@ -1646,7 +1670,7 @@ class RegistrationEngine:
 
                     if codex_callback:
                         self._log_key("chatgpt.8ba7f3ba")
-                        # was: self._log("Codex CLI callback 获取成功")
+                        # was: self._log("Codex CLI callback 获取成功") — Codex CLI callback obtained successfully
                         token_json = submit_callback_url(
                             callback_url=codex_callback,
                             expected_state=codex_oauth.state,
@@ -1657,32 +1681,34 @@ class RegistrationEngine:
                         )
                         codex_token_info = json.loads(token_json)
                         self._log_key("chatgpt.a6f4df02", keys=list(codex_token_info.keys()))
-                        # was: self._log(f"Codex token 成功: keys={list(codex_token_info.keys())}")
+                        # was: self._log(f"Codex token 成功: keys={list(codex_token_info.keys())}") — Codex token succeeded
                     else:
                         self._log_key("chatgpt.fbe1ad77", level="warning", status_code=resp.status_code)
-                        # was: self._log(f"Codex callback 未获取 (status={resp.status_code})", "warning")
+                        # was: self._log(f"Codex callback 未获取 (status={resp.status_code})", "warning") — Codex callback not obtained
                 else:
                     self._log_key("chatgpt.b5a18de0", level="warning", page_type=page_type)
-                    # was: self._log(f"Codex 非 OTP 流程 ({page_type})，跳过", "warning")
+                    # was: self._log(f"Codex 非 OTP 流程 ({page_type})，跳过", "warning") — Codex non-OTP flow; skipping
             except Exception as e:
                 self._log_key("chatgpt.32cf2b3c", level="warning", error=e)
-                # was: self._log(f"Codex CLI 登录失败: {e}", "warning")
+                # was: self._log(f"Codex CLI 登录失败: {e}", "warning") — Codex CLI login failed
 
-            # 提取账户信息（优先 Codex token，fallback 到 NextAuth session）
+            # 提取账户信息（优先 Codex token，fallback 到 NextAuth session） —
+            # Extract account info (prefer the Codex token, fall back to the NextAuth session)
             if codex_token_info and codex_token_info.get("access_token"):
                 self._log_key("chatgpt.eccd5137")
-                # was: self._log("使用 Codex CLI token（完整 refresh_token + id_token）")
+                # was: self._log("使用 Codex CLI token（完整 refresh_token + id_token）") — Using the Codex CLI token (full refresh_token + id_token)
                 result.account_id = codex_token_info.get("account_id", "") or account_cookie or ""
                 result.access_token = codex_token_info.get("access_token", "")
                 result.refresh_token = codex_token_info.get("refresh_token", "")
                 result.id_token = codex_token_info.get("id_token", "")
             else:
                 self._log_key("chatgpt.e3f1d9c6", level="warning")
-                # was: self._log("使用 NextAuth session token", "warning")
+                # was: self._log("使用 NextAuth session token", "warning") — Using the NextAuth session token
                 result.account_id = account_cookie or ""
                 result.access_token = access_token
                 result.refresh_token = ""
-                # access_token JWT 包含 chatgpt_account_id 等同于 id_token 的 claims
+                # access_token JWT 包含 chatgpt_account_id 等同于 id_token 的 claims —
+                # The access_token JWT contains chatgpt_account_id, equivalent to id_token's claims
                 result.id_token = access_token
 
             result.password = self.password or ""
@@ -1692,18 +1718,18 @@ class RegistrationEngine:
                 self.session_token = session_token
                 result.session_token = session_token
                 self._log_key("chatgpt.8972abcb")
-                # was: self._log(f"获取到 Session Token")
+                # was: self._log(f"获取到 Session Token") — Got the Session Token
 
-            # 17. 完成
+            # 17. 完成 — 17. Done
             self._log("=" * 60)
             if self._is_existing_account:
                 self._log_key("chatgpt.11617ebd")
-                # was: self._log("登录成功! (已注册账号)")
+                # was: self._log("登录成功! (已注册账号)") — Login succeeded! (already-registered account)
             else:
                 self._log_key("chatgpt.3c29106a")
-                # was: self._log("注册成功!")
+                # was: self._log("注册成功!") — Registration succeeded!
             self._log_key("chatgpt.1a4231de", email=result.email)
-            # was: self._log(f"邮箱: {result.email}")
+            # was: self._log(f"邮箱: {result.email}") — Email
             self._log(f"Account ID: {result.account_id}")
             self._log(f"Workspace ID: {result.workspace_id}")
             self._log("=" * 60)
@@ -1720,7 +1746,7 @@ class RegistrationEngine:
 
         except Exception as e:
             self._log_key("chatgpt.9c7e0bf9", level="error", error=e)
-            # was: self._log(f"注册过程中发生未预期错误: {e}", "error")
+            # was: self._log(f"注册过程中发生未预期错误: {e}", "error") — Unexpected error during registration
             result.error_message = str(e)
             return result
 
@@ -1737,4 +1763,4 @@ class RegistrationEngine:
         if not result.success:
             return False
 
-        return True  # 由 account_manager 统一处理存库
+        return True  # 由 account_manager 统一处理存库 — handled centrally by account_manager for persistence

@@ -18,11 +18,13 @@ def _result_text(result, key: str) -> str:
 def _assert_complete_oauth_callback(result) -> None:
     # NextAuth 流程只返回 account_id + access_token (+ session_token)
     # 传统 Codex CLI 流程返回全部 4 个字段
+    # The NextAuth flow only returns account_id + access_token (+ session_token);
+    # the legacy Codex CLI flow returns all 4 fields
     required = ("account_id", "access_token")
     missing = [key for key in required if not _result_text(result, key)]
     if missing:
         _raise_keyed(RuntimeError, "chatgpt.eb25e25d", missing=", ".join(missing))
-        # was: raise RuntimeError("ChatGPT 注册未完成完整 OAuth callback，缺少: " + ", ".join(missing))
+        # was: raise RuntimeError("ChatGPT 注册未完成完整 OAuth callback，缺少: " + ", ".join(missing)) — Registration's OAuth callback is missing required fields
 
 
 def _generate_chatgpt_registration_password(length: int = 16) -> str:

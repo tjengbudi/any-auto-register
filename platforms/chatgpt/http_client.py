@@ -27,12 +27,12 @@ class OpenAIHTTPClient(HTTPClient):
         """
         super().__init__(proxy_url, config)
 
-        # OpenAI 特定的默认配置
+        # OpenAI 特定的默认配置 — OpenAI-specific default settings
         if config is None:
             self.config.timeout = 30
             self.config.max_retries = 3
 
-        # 默认请求头
+        # 默认请求头 — Default request headers
         self.default_headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                          "(KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
@@ -56,12 +56,12 @@ class OpenAIHTTPClient(HTTPClient):
             response = self.get("https://cloudflare.com/cdn-cgi/trace", timeout=10)
             trace_text = response.text
 
-            # 解析位置信息
+            # 解析位置信息 — Parse the location info
             import re
             loc_match = re.search(r"loc=([A-Z]+)", trace_text)
             loc = loc_match.group(1) if loc_match else None
 
-            # 检查是否支持
+            # 检查是否支持 — Check whether the location is supported
             if loc in ["CN", "HK", "MO", "TW"]:
                 return False, loc
             return True, loc
@@ -96,12 +96,12 @@ class OpenAIHTTPClient(HTTPClient):
         Raises:
             HTTPClientError: 请求失败
         """
-        # 合并请求头
+        # 合并请求头 — Merge request headers
         request_headers = self.default_headers.copy()
         if headers:
             request_headers.update(headers)
 
-        # 设置 Content-Type
+        # 设置 Content-Type — Set Content-Type
         if json_data is not None and "Content-Type" not in request_headers:
             request_headers["Content-Type"] = "application/json"
         elif data is not None and "Content-Type" not in request_headers:
@@ -117,10 +117,10 @@ class OpenAIHTTPClient(HTTPClient):
                 **kwargs
             )
 
-            # 检查响应状态码
+            # 检查响应状态码 — Check the response status code
             response.raise_for_status()
 
-            # 尝试解析 JSON
+            # 尝试解析 JSON — Try to parse JSON
             try:
                 return response.json()
             except json.JSONDecodeError:
@@ -128,7 +128,7 @@ class OpenAIHTTPClient(HTTPClient):
 
         except cffi_requests.RequestsError as e:
             _raise_keyed(HTTPClientError, "chatgpt.ef22ade2", endpoint=endpoint, error=str(e))
-            # was: raise HTTPClientError(f"OpenAI 请求失败: {endpoint} - {e}")
+            # was: raise HTTPClientError(f"OpenAI 请求失败: {endpoint} - {e}") — OpenAI request failed
 
     def check_sentinel(self, did: str, proxies: Optional[Dict] = None) -> Optional[str]:
         """

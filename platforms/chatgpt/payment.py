@@ -118,7 +118,8 @@ def _subscription_status_from_usage(data: dict) -> str:
 
 def _fetch_usage_data(account, proxy: Optional[str] = None) -> dict:
     if not account.access_token:
-        _raise_keyed(ValueError, "chatgpt.9fbc4659")  # "账号缺少 access_token"
+        _raise_keyed(ValueError, "chatgpt.9fbc4659")  # "账号缺少 access_token" —
+        # "Account is missing access_token"
 
     headers = {
         "Authorization": f"Bearer {account.access_token}",
@@ -138,14 +139,15 @@ def _fetch_usage_data(account, proxy: Optional[str] = None) -> dict:
     resp.raise_for_status()
     data = resp.json()
     if not isinstance(data, dict):
-        _raise_keyed(ValueError, "chatgpt.e6f3043d")  # "wham/usage 响应格式异常"
+        _raise_keyed(ValueError, "chatgpt.e6f3043d")  # "wham/usage 响应格式异常" —
+        # "wham/usage response format is invalid"
     return data
 
 
 def _parse_cookie_str(cookies_str: str, domain: str) -> list:
     """将 'key=val; key2=val2' 格式解析为 Playwright cookie 列表"""
     cookies = []
-    # Playwright对于部分域名的cookie要求首字母带点
+    # Playwright对于部分域名的cookie要求首字母带点 — Playwright requires some domains' cookies to start with a dot
     if domain == "chatgpt.com":
         domain = ".chatgpt.com"
         
@@ -163,7 +165,8 @@ def _parse_cookie_str(cookies_str: str, domain: str) -> list:
             "path": "/",
         }
         
-        # Chromium/Playwright: prefix __Secure- 开头的 cookie 必须携带 secure: True 的 flag
+        # Chromium/Playwright: prefix __Secure- 开头的 cookie 必须携带 secure: True 的 flag —
+        # Chromium/Playwright: cookies prefixed with __Secure- must carry the secure: True flag
         if cookie_name.startswith("__Secure-"):
             cookie_obj["secure"] = True
             
@@ -204,7 +207,8 @@ def generate_plus_link(
 ) -> str:
     """生成 Plus 支付链接（后端携带账号 cookie 发请求）"""
     if not account.access_token:
-        _raise_keyed(ValueError, "chatgpt.9fbc4659")  # "账号缺少 access_token"
+        _raise_keyed(ValueError, "chatgpt.9fbc4659")  # "账号缺少 access_token" —
+        # "Account is missing access_token"
 
     currency = _COUNTRY_CURRENCY_MAP.get(country, "USD")
     headers = {
@@ -243,7 +247,8 @@ def generate_plus_link(
     detail = data.get("detail")
     if detail:
         raise ValueError(detail)
-    _raise_keyed(ValueError, "chatgpt.d79e3362")  # "API 未返回 checkout_session_id"
+    _raise_keyed(ValueError, "chatgpt.d79e3362")  # "API 未返回 checkout_session_id" —
+    # "API did not return checkout_session_id"
 
 
 def generate_team_link(
@@ -256,7 +261,8 @@ def generate_team_link(
 ) -> str:
     """生成 Team 支付链接（后端携带账号 cookie 发请求）"""
     if not account.access_token:
-        _raise_keyed(ValueError, "chatgpt.9fbc4659")  # "账号缺少 access_token"
+        _raise_keyed(ValueError, "chatgpt.9fbc4659")  # "账号缺少 access_token" —
+        # "Account is missing access_token"
 
     currency = _COUNTRY_CURRENCY_MAP.get(country, "USD")
     headers = {
@@ -301,7 +307,8 @@ def generate_team_link(
     detail = data.get("detail")
     if detail:
         raise ValueError(detail)
-    _raise_keyed(ValueError, "chatgpt.d79e3362")  # "API 未返回 checkout_session_id"
+    _raise_keyed(ValueError, "chatgpt.d79e3362")  # "API 未返回 checkout_session_id" —
+    # "API did not return checkout_session_id"
 
 
 def open_url_incognito(url: str, cookies_str: Optional[str] = None) -> bool:
@@ -322,8 +329,8 @@ def open_url_incognito(url: str, cookies_str: Optional[str] = None) -> bool:
                     ctx.add_cookies(_parse_cookie_str(cookies_str, "chatgpt.com"))
                 page = ctx.new_page()
                 page.goto(url)
-                # 保持窗口打开直到用户关闭
-                page.wait_for_timeout(300_000)  # 最多等待 5 分钟
+                # 保持窗口打开直到用户关闭 — Keep the window open until the user closes it
+                page.wait_for_timeout(300_000)  # 最多等待 5 分钟 — wait at most 5 minutes
         except Exception as e:
             logger.warning(f"Playwright 无痕打开失败: {e}")
 
@@ -344,7 +351,8 @@ def check_subscription_status(account: Account, proxy: Optional[str] = None) -> 
 def fetch_subscription_status_details(account: Account, proxy: Optional[str] = None) -> dict:
     """Return normalized subscription status plus raw usage data when available."""
     if not account.access_token:
-        _raise_keyed(ValueError, "chatgpt.9fbc4659")  # "账号缺少 access_token"
+        _raise_keyed(ValueError, "chatgpt.9fbc4659")  # "账号缺少 access_token" —
+        # "Account is missing access_token"
 
     headers = {
         "Authorization": f"Bearer {account.access_token}",
