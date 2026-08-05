@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlmodel import Session
 
-from customer_portal_api.app.deps import get_current_user, get_db_session
+from customer_portal_api.app.deps import get_current_user, get_db_session, get_portal_locale
 from customer_portal_api.app.models import PortalUser
 from customer_portal_api.app.services.auth import AuthService
 
@@ -26,20 +26,24 @@ class LogoutRequest(BaseModel):
 
 
 @router.post("/auth/login")
-def login(body: LoginRequest, session: Session = Depends(get_db_session)):
-    return AuthService(session).login(body.account, body.password)
+def login(body: LoginRequest, session: Session = Depends(get_db_session), lang: str = Depends(get_portal_locale)):
+    return AuthService(session, lang).login(body.account, body.password)
 
 
 @router.post("/auth/refresh")
-def refresh(body: RefreshRequest, session: Session = Depends(get_db_session)):
-    return AuthService(session).refresh(body.refresh_token)
+def refresh(body: RefreshRequest, session: Session = Depends(get_db_session), lang: str = Depends(get_portal_locale)):
+    return AuthService(session, lang).refresh(body.refresh_token)
 
 
 @router.post("/auth/logout")
-def logout(body: LogoutRequest, session: Session = Depends(get_db_session)):
-    return AuthService(session).logout(body.refresh_token)
+def logout(body: LogoutRequest, session: Session = Depends(get_db_session), lang: str = Depends(get_portal_locale)):
+    return AuthService(session, lang).logout(body.refresh_token)
 
 
 @router.get("/auth/me")
-def me(user: PortalUser = Depends(get_current_user), session: Session = Depends(get_db_session)):
-    return AuthService(session).get_me(user)
+def me(
+    user: PortalUser = Depends(get_current_user),
+    session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
+):
+    return AuthService(session, lang).get_me(user)

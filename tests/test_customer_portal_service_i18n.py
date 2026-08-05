@@ -7,14 +7,22 @@ Uses `starlette.testclient.TestClient` against the real
 `customer_portal_api.main.app`, matching the style of
 `tests/test_customer_portal_locale.py` and
 `tests/test_customer_portal_startup_guard.py`.
+
+Also covers story 5.3's remainder: `catalog.py`'s 30-entry label map
+(`EXECUTOR_LABELS`/`IDENTITY_MODE_LABELS`/`PERMISSION_SEEDS`/`ROLE_SEEDS`)
+rendering per-request through `self.lang`, and the 5 `PortalService` call
+sites Story 5.2 deliberately deferred (`cancel_task`, `check_proxies`,
+`solver_status`, `restart_solver`, the task-stream fallback line).
 """
 from __future__ import annotations
 
 import pytest
-from sqlmodel import create_engine
+from sqlmodel import Session as SQLSession, create_engine
 from starlette.testclient import TestClient
 
 import i18n
+from customer_portal_api.app.db import utcnow
+from customer_portal_api.app.models import PortalTask
 
 
 @pytest.fixture(autouse=True)
@@ -222,3 +230,145 @@ def test_untranslated_key_falls_back_to_zh_without_500(portal_client):
 
     assert resp.status_code == 404
     assert resp.json()["detail"] == "任务不存在"
+
+
+def _insert_task(task_id: str, *, status_value: str, error: str = "") -> None:
+    """Insert a `PortalTask` row directly against the currently-patched
+    engine (`customer_portal_api.app.db.engine`, monkeypatched by the
+    `portal_client` fixture) -- there is no create-task endpoint to drive
+    this through HTTP (`create_admin_register_task` is a 501 stub)."""
+    import customer_portal_api.app.db as db_module
+
+    with SQLSession(db_module.engine) as session:
+        session.add(
+            PortalTask(
+                id=task_id,
+                type="register",
+                status=status_value,
+                error=error,
+                created_at=utcnow(),
+                updated_at=utcnow(),
+            )
+        )
+        session.commit()
+
+
+# (d) catalog.py's 30-entry label map: /api/app/platforms's executor/
+# identity-mode option labels render through `self.lang`, not a value frozen
+# at seed time. chatgpt ships all three executors and both identity modes.
+def test_app_platforms_catalog_labels_render_per_language(portal_client):
+    for lang, executor_label, identity_label in (
+        ("en", "Protocol mode", "System mailbox"),
+        ("zh", "协议模式", "系统邮箱"),
+    ):
+        headers = _admin_headers(portal_client, accept_language=lang)
+        resp = portal_client.get("/api/app/platforms", headers=headers)
+        assert resp.status_code == 200, resp.text
+        chatgpt = next(item for item in resp.json() if item["name"] == "chatgpt")
+        executor_options = {opt["value"]: opt["label"] for opt in chatgpt["supported_executor_options"]}
+        identity_options = {opt["value"]: opt["label"] for opt in chatgpt["supported_identity_mode_options"]}
+        assert executor_options["protocol"] == executor_label
+        assert identity_options["mailbox"] == identity_label
+
+
+# OAUTH_PROVIDER_LABELS holds literal brand-name strings, not catalog keys
+# (per the spec's Always: leave them untouched). supported_oauth_provider_options
+# must keep rendering those brand names verbatim in both languages, not the
+# raw provider code (regression guard for choice_options' translated=False path).
+def test_app_platforms_oauth_provider_options_keep_brand_labels(portal_client):
+    for lang in ("en", "zh"):
+        headers = _admin_headers(portal_client, accept_language=lang)
+        resp = portal_client.get("/api/app/platforms", headers=headers)
+        assert resp.status_code == 200, resp.text
+        chatgpt = next(item for item in resp.json() if item["name"] == "chatgpt")
+        oauth_options = {opt["value"]: opt["label"] for opt in chatgpt["supported_oauth_provider_options"]}
+        assert oauth_options["google"] == "Google"
+        assert oauth_options["github"] == "GitHub"
+        assert oauth_options["microsoft"] == "Microsoft"
+
+
+# (e) /admin/roles and /admin/permissions render role_name/permission_name
+# through the catalog per request, not the zh-only value bootstrap wrote to
+# the DB column at seed time.
+def test_admin_roles_render_per_language(portal_client):
+    for lang, admin_label, user_label in (("en", "Administrator", "Regular user"), ("zh", "管理员", "普通用户")):
+        headers = _admin_headers(portal_client, accept_language=lang)
+        resp = portal_client.get("/api/admin/roles", headers=headers)
+        assert resp.status_code == 200, resp.text
+        by_code = {item["role_code"]: item["role_name"] for item in resp.json()["items"]}
+        assert by_code["admin"] == admin_label
+        assert by_code["user"] == user_label
+
+
+def test_admin_permissions_render_per_language(portal_client):
+    for lang, expected_label in (("en", "All admin permissions"), ("zh", "管理员全部权限")):
+        headers = _admin_headers(portal_client, accept_language=lang)
+        resp = portal_client.get("/api/admin/permissions", headers=headers)
+        assert resp.status_code == 200, resp.text
+        by_code = {item["permission_code"]: item["permission_name"] for item in resp.json()["items"]}
+        assert by_code["admin:*"] == expected_label
+
+
+# (f) The 5 remainder call sites Story 5.2 deliberately deferred.
+def test_cancel_task_renders_per_language(portal_client):
+    for lang, expected_text, task_id in (("en", "Task cancelled", "task-cancel-en"), ("zh", "任务已取消", "task-cancel-zh")):
+        headers = _admin_headers(portal_client, accept_language=lang)
+        _insert_task(task_id, status_value="running")
+
+        resp = portal_client.post(f"/api/tasks/{task_id}/cancel", headers=headers)
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["error"] == expected_text
+
+        events_resp = portal_client.get(f"/api/tasks/{task_id}/events", headers=headers)
+        assert events_resp.status_code == 200, events_resp.text
+        assert events_resp.json()["items"][-1]["message"] == expected_text
+
+
+def test_check_proxies_renders_per_language(portal_client):
+    for lang, expected_text in (
+        ("en", "The standalone edition has no real proxy check wired up; the request has been recorded"),
+        ("zh", "独立版未接入实际代理检测，已记录请求"),
+    ):
+        headers = _admin_headers(portal_client, accept_language=lang)
+        resp = portal_client.post("/api/proxies/check", headers=headers)
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["message"] == expected_text
+
+
+def test_solver_status_renders_per_language(portal_client):
+    for lang, expected_text in (("en", "The solver is not enabled in the standalone edition"), ("zh", "独立版未启用 solver")):
+        headers = _admin_headers(portal_client, accept_language=lang)
+        resp = portal_client.get("/api/solver/status", headers=headers)
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["message"] == expected_text
+
+
+def test_restart_solver_renders_per_language(portal_client):
+    for lang, expected_text in (
+        ("en", "The solver is not enabled in the standalone edition; no restart needed"),
+        ("zh", "独立版未启用 solver，无需重启"),
+    ):
+        headers = _admin_headers(portal_client, accept_language=lang)
+        resp = portal_client.post("/api/solver/restart", headers=headers)
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["message"] == expected_text
+
+
+@pytest.mark.parametrize(
+    ("lang", "status_value", "task_error", "expected_line"),
+    [
+        ("en", "succeeded", "", "Task completed"),
+        ("zh", "succeeded", "", "任务已完成"),
+        ("en", "failed", "", "Task ended"),
+        ("zh", "failed", "", "任务结束"),
+    ],
+    ids=["succeeded-en", "succeeded-zh", "failed-without-error-en", "failed-without-error-zh"],
+)
+def test_stream_task_events_fallback_line_renders_per_language(portal_client, lang, status_value, task_error, expected_line):
+    task_id = f"task-stream-{lang}-{status_value}"
+    _insert_task(task_id, status_value=status_value, error=task_error)
+    headers = _admin_headers(portal_client, accept_language=lang)
+
+    resp = portal_client.get(f"/api/tasks/{task_id}/logs/stream", headers=headers)
+    assert resp.status_code == 200, resp.text
+    assert f'"line": "{expected_line}"' in resp.text

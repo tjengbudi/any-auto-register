@@ -12,6 +12,7 @@ from fastapi import HTTPException, status
 
 from customer_portal_api.app.config import settings
 from customer_portal_api.app.db import utcnow
+from i18n import t
 
 
 def _b64url_encode(data: bytes) -> str:
@@ -62,19 +63,19 @@ def create_access_token(subject: str, claims: dict[str, Any]) -> str:
     return f"{encoded_header}.{encoded_payload}.{_b64url_encode(signature)}"
 
 
-def decode_access_token(token: str) -> dict[str, Any]:
+def decode_access_token(token: str, lang: str = "zh") -> dict[str, Any]:
     try:
         encoded_header, encoded_payload, encoded_signature = token.split(".", 2)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="无效的 access token") from exc
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=t("customerPortalApi.8a677570", lang)) from exc
     signing_input = f"{encoded_header}.{encoded_payload}".encode("utf-8")
     expected_signature = hmac.new(settings.jwt_secret.encode("utf-8"), signing_input, hashlib.sha256).digest()
     actual_signature = _b64url_decode(encoded_signature)
     if not hmac.compare_digest(expected_signature, actual_signature):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="access token 签名无效")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=t("customerPortalApi.7002c636", lang))
     payload = json.loads(_b64url_decode(encoded_payload).decode("utf-8"))
     if int(payload.get("exp", 0) or 0) <= int(utcnow().timestamp()):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="access token 已过期")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=t("customerPortalApi.c985f924", lang))
     return payload
 
 

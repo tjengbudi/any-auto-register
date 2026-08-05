@@ -1,15 +1,17 @@
 from __future__ import annotations
 
+from i18n import t
+
 
 EXECUTOR_LABELS = {
-    "protocol": "协议模式",
-    "headless": "后台浏览器自动",
-    "headed": "可视浏览器自动",
+    "protocol": "customerPortalApi.ec83bb04",
+    "headless": "customerPortalApi.c161fc9b",
+    "headed": "customerPortalApi.38258a58",
 }
 
 IDENTITY_MODE_LABELS = {
-    "mailbox": "系统邮箱",
-    "oauth_browser": "第三方账号",
+    "mailbox": "customerPortalApi.415fd6aa",
+    "oauth_browser": "customerPortalApi.94b52a85",
 }
 
 OAUTH_PROVIDER_LABELS = {
@@ -90,35 +92,35 @@ PLATFORM_SEEDS: list[dict] = [
 ]
 
 PERMISSION_SEEDS: list[dict] = [
-    {"permission_code": "admin:*", "permission_name": "管理员全部权限"},
-    {"permission_code": "admin:user:read", "permission_name": "查看用户"},
-    {"permission_code": "admin:user:write", "permission_name": "编辑用户"},
-    {"permission_code": "admin:platform:read", "permission_name": "查看平台"},
-    {"permission_code": "admin:config:read", "permission_name": "查看配置"},
-    {"permission_code": "admin:config:write", "permission_name": "修改配置"},
-    {"permission_code": "admin:task:read", "permission_name": "查看任务"},
-    {"permission_code": "admin:account:read", "permission_name": "查看账号"},
-    {"permission_code": "admin:account:write", "permission_name": "编辑账号"},
-    {"permission_code": "admin:proxy:read", "permission_name": "查看代理"},
-    {"permission_code": "admin:proxy:write", "permission_name": "编辑代理"},
-    {"permission_code": "admin:order:read", "permission_name": "查看订单"},
-    {"permission_code": "admin:subscription:read", "permission_name": "查看订阅"},
-    {"permission_code": "app:platform:view", "permission_name": "查看用户平台"},
-    {"permission_code": "app:task:create", "permission_name": "创建用户任务"},
-    {"permission_code": "app:task:view_self", "permission_name": "查看自己的任务"},
-    {"permission_code": "app:order:view_self", "permission_name": "查看自己的订单"},
-    {"permission_code": "app:order:create", "permission_name": "创建自己的订单"},
-    {"permission_code": "app:payment:submit", "permission_name": "提交自己的支付"},
-    {"permission_code": "app:subscription:view_self", "permission_name": "查看自己的订阅"},
-    {"permission_code": "app:profile:view_self", "permission_name": "查看自己的资料"},
-    {"permission_code": "app:profile:update_self", "permission_name": "更新自己的资料"},
-    {"permission_code": "payment:callback", "permission_name": "支付回调"},
+    {"permission_code": "admin:*", "permission_name": "customerPortalApi.85fe0023"},
+    {"permission_code": "admin:user:read", "permission_name": "customerPortalApi.61e865c7"},
+    {"permission_code": "admin:user:write", "permission_name": "customerPortalApi.fff6a05a"},
+    {"permission_code": "admin:platform:read", "permission_name": "customerPortalApi.868312f0"},
+    {"permission_code": "admin:config:read", "permission_name": "customerPortalApi.3b8ae0dc"},
+    {"permission_code": "admin:config:write", "permission_name": "customerPortalApi.da1e8010"},
+    {"permission_code": "admin:task:read", "permission_name": "customerPortalApi.36550b9c"},
+    {"permission_code": "admin:account:read", "permission_name": "customerPortalApi.844264f7"},
+    {"permission_code": "admin:account:write", "permission_name": "customerPortalApi.43568cc7"},
+    {"permission_code": "admin:proxy:read", "permission_name": "customerPortalApi.1f4f69f7"},
+    {"permission_code": "admin:proxy:write", "permission_name": "customerPortalApi.218e353f"},
+    {"permission_code": "admin:order:read", "permission_name": "customerPortalApi.7546a59d"},
+    {"permission_code": "admin:subscription:read", "permission_name": "customerPortalApi.98655b0f"},
+    {"permission_code": "app:platform:view", "permission_name": "customerPortalApi.c734b096"},
+    {"permission_code": "app:task:create", "permission_name": "customerPortalApi.9fee7688"},
+    {"permission_code": "app:task:view_self", "permission_name": "customerPortalApi.c05bd245"},
+    {"permission_code": "app:order:view_self", "permission_name": "customerPortalApi.fe63fd48"},
+    {"permission_code": "app:order:create", "permission_name": "customerPortalApi.50504d10"},
+    {"permission_code": "app:payment:submit", "permission_name": "customerPortalApi.e5f00c25"},
+    {"permission_code": "app:subscription:view_self", "permission_name": "customerPortalApi.334b105b"},
+    {"permission_code": "app:profile:view_self", "permission_name": "customerPortalApi.f802a135"},
+    {"permission_code": "app:profile:update_self", "permission_name": "customerPortalApi.d1033f24"},
+    {"permission_code": "payment:callback", "permission_name": "customerPortalApi.ff4c7790"},
 ]
 
 ROLE_SEEDS: list[dict] = [
     {
         "role_code": "admin",
-        "role_name": "管理员",
+        "role_name": "customerPortalApi.e1979671",
         "permissions": [
             "admin:*",
             "admin:user:read",
@@ -144,7 +146,7 @@ ROLE_SEEDS: list[dict] = [
     },
     {
         "role_code": "user",
-        "role_name": "普通用户",
+        "role_name": "customerPortalApi.f6a2faaa",
         "permissions": [
             "app:platform:view",
             "app:task:create",
@@ -159,6 +161,10 @@ ROLE_SEEDS: list[dict] = [
     },
 ]
 
+PERMISSION_NAME_KEYS: dict[str, str] = {seed["permission_code"]: seed["permission_name"] for seed in PERMISSION_SEEDS}
+
+ROLE_NAME_KEYS: dict[str, str] = {seed["role_code"]: seed["role_name"] for seed in ROLE_SEEDS}
+
 CONFIG_DEFAULTS: dict[str, str] = {
     "default_executor": "protocol",
     "default_identity_provider": "mailbox",
@@ -169,11 +175,19 @@ CONFIG_DEFAULTS: dict[str, str] = {
 }
 
 
-def choice_options(values: list[str], labels: dict[str, str]) -> list[dict]:
-    return [{"value": value, "label": labels.get(value, value)} for value in values if str(value or "").strip()]
+def choice_options(values: list[str], labels: dict[str, str], lang: str, *, translated: bool = True) -> list[dict]:
+    result = []
+    for value in values:
+        if not str(value or "").strip():
+            continue
+        label = labels.get(value, value)
+        if translated:
+            label = t(label, lang)
+        result.append({"value": value, "label": label})
+    return result
 
 
-def platform_payload(item: dict) -> dict:
+def platform_payload(item: dict, lang: str) -> dict:
     supported_executors = list(item.get("supported_executors", []) or [])
     supported_identity_modes = list(item.get("supported_identity_modes", []) or [])
     supported_oauth_providers = list(item.get("supported_oauth_providers", []) or [])
@@ -184,13 +198,15 @@ def platform_payload(item: dict) -> dict:
         "supported_executors": supported_executors,
         "supported_identity_modes": supported_identity_modes,
         "supported_oauth_providers": supported_oauth_providers,
-        "supported_executor_options": choice_options(supported_executors, EXECUTOR_LABELS),
-        "supported_identity_mode_options": choice_options(supported_identity_modes, IDENTITY_MODE_LABELS),
-        "supported_oauth_provider_options": choice_options(supported_oauth_providers, OAUTH_PROVIDER_LABELS),
+        "supported_executor_options": choice_options(supported_executors, EXECUTOR_LABELS, lang),
+        "supported_identity_mode_options": choice_options(supported_identity_modes, IDENTITY_MODE_LABELS, lang),
+        "supported_oauth_provider_options": choice_options(
+            supported_oauth_providers, OAUTH_PROVIDER_LABELS, lang, translated=False
+        ),
     }
 
 
-def collect_platform_choice_options(platforms: list[dict]) -> dict[str, list[dict]]:
+def collect_platform_choice_options(platforms: list[dict], lang: str) -> dict[str, list[dict]]:
     executor_values: list[str] = []
     identity_values: list[str] = []
     oauth_values: list[str] = []
@@ -205,7 +221,7 @@ def collect_platform_choice_options(platforms: list[dict]) -> dict[str, list[dic
             if value not in oauth_values:
                 oauth_values.append(value)
     return {
-        "executor_options": choice_options(executor_values, EXECUTOR_LABELS),
-        "identity_mode_options": choice_options(identity_values, IDENTITY_MODE_LABELS),
-        "oauth_provider_options": choice_options(oauth_values, OAUTH_PROVIDER_LABELS),
+        "executor_options": choice_options(executor_values, EXECUTOR_LABELS, lang),
+        "identity_mode_options": choice_options(identity_values, IDENTITY_MODE_LABELS, lang),
+        "oauth_provider_options": choice_options(oauth_values, OAUTH_PROVIDER_LABELS, lang, translated=False),
     }

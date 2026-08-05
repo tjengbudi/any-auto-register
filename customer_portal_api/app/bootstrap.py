@@ -17,6 +17,7 @@ from customer_portal_api.app.models import (
     PortalUser,
 )
 from customer_portal_api.app.security import hash_password
+from i18n import t
 
 
 def initialize_runtime() -> None:
@@ -42,14 +43,15 @@ def _seed_permissions(session: Session) -> None:
     }
     for seed in PERMISSION_SEEDS:
         item = existing.get(seed["permission_code"])
+        permission_name = t(seed["permission_name"], "zh")
         if item:
-            item.permission_name = seed["permission_name"]
+            item.permission_name = permission_name
             session.add(item)
             continue
         session.add(
             PortalPermission(
                 permission_code=seed["permission_code"],
-                permission_name=seed["permission_name"],
+                permission_name=permission_name,
                 created_at=utcnow(),
             )
         )
@@ -70,14 +72,15 @@ def _seed_roles(session: Session) -> None:
     }
     for seed in ROLE_SEEDS:
         role = existing_roles.get(seed["role_code"])
+        role_name = t(seed["role_name"], "zh")
         if role:
-            role.role_name = seed["role_name"]
+            role.role_name = role_name
             role.updated_at = utcnow()
             session.add(role)
         else:
             role = PortalRole(
                 role_code=seed["role_code"],
-                role_name=seed["role_name"],
+                role_name=role_name,
                 created_at=utcnow(),
                 updated_at=utcnow(),
             )
@@ -109,7 +112,7 @@ def _seed_admin(session: Session) -> None:
             username=settings.seed_admin_username,
             email=settings.seed_admin_email,
             password_hash=hash_password(settings.seed_admin_password),
-            display_name="管理员",
+            display_name=t("customerPortalApi.e1979671", "zh"),
             role_code="admin",
             status="active",
             created_at=utcnow(),
@@ -180,7 +183,7 @@ def _seed_products(session: Session) -> None:
             PortalProduct(
                 product_code=product_code,
                 platform_code=platform["platform_code"],
-                product_name=f"{platform['display_name']} 月度订阅",
+                product_name=f"{platform['display_name']} {t('customerPortalApi.6f87124a', 'zh')}",
                 amount=9.9,
                 duration_days=30,
                 status="active",

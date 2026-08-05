@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import timezone
+
 from fastapi import HTTPException, status
 from sqlmodel import Session, or_, select
 
@@ -21,11 +23,13 @@ from customer_portal_api.app.security import (
     refresh_token_expiry,
     verify_password,
 )
+from i18n import t
 
 
 class AuthService:
-    def __init__(self, session: Session):
+    def __init__(self, session: Session, lang: str = "zh"):
         self.session = session
+        self.lang = lang
 
     def login(self, account: str, password: str) -> dict:
         user = self.session.exec(
@@ -38,7 +42,7 @@ class AuthService:
             )
         ).first()
         if not user or user.status != "active" or not verify_password(password, user.password_hash):
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="账号或密码错误")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=t("customerPortalApi.80eb55c9", self.lang))
         user.last_login_at = utcnow()
         user.updated_at = utcnow()
         self.session.add(user)
@@ -49,11 +53,17 @@ class AuthService:
         token_row = self.session.exec(
             select(RefreshToken).where(RefreshToken.token_hash == hash_refresh_token(refresh_token))
         ).first()
-        if not token_row or token_row.revoked_at is not None or token_row.expires_at <= utcnow():
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="refresh token 无效或已过期")
+        expires_at = token_row.expires_at if token_row else None
+        if expires_at is not None and expires_at.tzinfo is None:
+            # sqlite drops tzinfo on the round trip through storage; `utcnow()`
+            # is always timezone-aware, so a naive value read back needs it
+            # restored before comparison, or `<=` below raises TypeError.
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        if not token_row or token_row.revoked_at is not None or expires_at <= utcnow():
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=t("customerPortalApi.e0760a78", self.lang))
         user = self.session.get(PortalUser, token_row.user_id)
         if not user or user.status != "active":
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户不存在或已被禁用")
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=t("customerPortalApi.25fa2ac3", self.lang))
         token_row.revoked_at = utcnow()
         self.session.add(token_row)
         self.session.commit()

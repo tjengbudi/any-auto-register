@@ -7,7 +7,7 @@ from sqlmodel import Session
 from customer_portal_api.app.db import engine
 from customer_portal_api.app.models import PortalUser
 from customer_portal_api.app.security import decode_access_token
-from i18n import LOCALES
+from i18n import LOCALES, t
 
 
 bearer_scheme = HTTPBearer(auto_error=False)
@@ -16,25 +16,6 @@ bearer_scheme = HTTPBearer(auto_error=False)
 def get_db_session():
     with Session(engine) as session:
         yield session
-
-
-def get_current_user(
-    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
-    session: Session = Depends(get_db_session),
-) -> PortalUser:
-    if not credentials or not credentials.credentials:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="缺少 access token")
-    payload = decode_access_token(credentials.credentials)
-    user = session.get(PortalUser, int(payload.get("sub", 0) or 0))
-    if not user or user.status != "active":
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户不存在或已被禁用")
-    return user
-
-
-def require_admin(user: PortalUser = Depends(get_current_user)) -> PortalUser:
-    if user.role_code != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="需要管理员权限")
-    return user
 
 
 def parse_accept_language(header: str | None) -> str:
@@ -91,3 +72,26 @@ def get_portal_locale(request: Request) -> str:
     `t()` call sites to reuse (AD-4).
     """
     return parse_accept_language(request.headers.get("accept-language"))
+
+
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+    session: Session = Depends(get_db_session),
+    lang: str = Depends(get_portal_locale),
+) -> PortalUser:
+    if not credentials or not credentials.credentials:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=t("customerPortalApi.a5aa1b16", lang))
+    payload = decode_access_token(credentials.credentials, lang)
+    user = session.get(PortalUser, int(payload.get("sub", 0) or 0))
+    if not user or user.status != "active":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=t("customerPortalApi.25fa2ac3", lang))
+    return user
+
+
+def require_admin(
+    user: PortalUser = Depends(get_current_user),
+    lang: str = Depends(get_portal_locale),
+) -> PortalUser:
+    if user.role_code != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=t("customerPortalApi.9228f9aa", lang))
+    return user

@@ -12,7 +12,12 @@ from fastapi import HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlmodel import Session, select
 
-from customer_portal_api.app.catalog import collect_platform_choice_options, platform_payload
+from customer_portal_api.app.catalog import (
+    PERMISSION_NAME_KEYS,
+    ROLE_NAME_KEYS,
+    collect_platform_choice_options,
+    platform_payload,
+)
 from customer_portal_api.app.db import utcnow
 from customer_portal_api.app.models import (
     PortalAccount,
@@ -37,6 +42,17 @@ from i18n import t
 
 
 TASK_TERMINAL_STATUSES = {"succeeded", "failed", "cancelled"}
+
+
+def _render_seed_name(key: str, lang: str, fallback: str) -> str:
+    """Render a catalog.py-derived seed name key, falling back to the
+    DB-persisted value when the code has no mapped key or the mapped key
+    resolves to nothing in either locale (t() then echoes the raw key
+    back, which must not reach a response body)."""
+    if not key:
+        return fallback
+    rendered = t(key, lang)
+    return rendered if rendered and rendered != key else fallback
 
 
 class PortalService:
@@ -74,7 +90,7 @@ class PortalService:
                 "protocol_order": [],
                 "browser_mode": "",
             },
-            **collect_platform_choice_options(platforms),
+            **collect_platform_choice_options(platforms, self.lang),
         }
 
     def create_app_register_task(self, user: PortalUser, payload: dict[str, Any]) -> dict:
@@ -105,7 +121,7 @@ class PortalService:
 
     async def stream_app_task_events(self, user: PortalUser, task_id: str, *, since: int = 0):
         self.get_app_task(user, task_id)
-        return self._stream_task_events(task_id, since=since)
+        return await self._stream_task_events(task_id, since=since)
 
     def get_profile(self, user: PortalUser) -> dict:
         return self._serialize_user(user, include_platforms=True)
@@ -251,7 +267,7 @@ class PortalService:
             "items": [
                 {
                     "role_code": item.role_code,
-                    "role_name": item.role_name,
+                    "role_name": _render_seed_name(ROLE_NAME_KEYS.get(item.role_code, ""), self.lang, item.role_name),
                     "permissions": self._permissions_for_role(item.role_code),
                 }
                 for item in roles
@@ -264,7 +280,9 @@ class PortalService:
             "items": [
                 {
                     "permission_code": item.permission_code,
-                    "permission_name": item.permission_name,
+                    "permission_name": _render_seed_name(
+                        PERMISSION_NAME_KEYS.get(item.permission_code, ""), self.lang, item.permission_name
+                    ),
                 }
                 for item in items
             ]
@@ -431,7 +449,7 @@ class PortalService:
                 "protocol_order": [],
                 "browser_mode": "",
             },
-            **collect_platform_choice_options(platforms),
+            **collect_platform_choice_options(platforms, self.lang),
         }
 
     def list_tasks(self, *, platform: str = "", status_value: str = "", page: int = 1, page_size: int = 50) -> dict:
@@ -456,7 +474,7 @@ class PortalService:
 
     async def stream_task_events(self, task_id: str, *, since: int = 0):
         self.get_task(task_id)
-        return self._stream_task_events(task_id, since=since)
+        return await self._stream_task_events(task_id, since=since)
 
     def cancel_task(self, task_id: str) -> dict:
         task = self.session.get(PortalTask, task_id)
@@ -465,7 +483,7 @@ class PortalService:
         if task.status in TASK_TERMINAL_STATUSES:
             return self._serialize_task(task)
         task.status = "cancelled"
-        task.error = task.error or "任务已取消"
+        task.error = task.error or t("customerPortalApi.6f96c2ad", self.lang)
         task.finished_at = utcnow()
         task.updated_at = utcnow()
         self.session.add(task)
@@ -474,7 +492,7 @@ class PortalService:
                 task_id=task.id,
                 type="state",
                 level="warning",
-                message="任务已取消",
+                message=t("customerPortalApi.6f96c2ad", self.lang),
                 detail_json="{}",
                 created_at=utcnow(),
             )
@@ -770,13 +788,13 @@ class PortalService:
         return {"is_active": item.is_active}
 
     def check_proxies(self) -> dict:
-        return {"message": "独立版未接入实际代理检测，已记录请求"}
+        return {"message": t("customerPortalApi.4207975c", self.lang)}
 
     def solver_status(self) -> dict:
-        return {"enabled": False, "running": False, "message": "独立版未启用 solver"}
+        return {"enabled": False, "running": False, "message": t("customerPortalApi.958f4b0c", self.lang)}
 
     def restart_solver(self) -> dict:
-        return {"ok": True, "message": "独立版未启用 solver，无需重启"}
+        return {"ok": True, "message": t("customerPortalApi.a9f98207", self.lang)}
 
     def grant_platform_access(self, user_id: int, platform_code: str, *, source_type: str, source_ref: str) -> None:
         row = self.session.exec(
@@ -891,7 +909,11 @@ class PortalService:
                 yield f"data: {json.dumps(self._serialize_task_event(item), ensure_ascii=False)}\n\n"
             task = self.session.get(PortalTask, task_id)
             if task and task.status in TASK_TERMINAL_STATUSES:
-                line = "任务已完成" if task.status == "succeeded" else (task.error or "任务结束")
+                line = (
+                    t("customerPortalApi.e9a880e5", self.lang)
+                    if task.status == "succeeded"
+                    else (task.error or t("customerPortalApi.170b3f24", self.lang))
+                )
                 yield f"data: {json.dumps({'done': True, 'status': task.status, 'line': line}, ensure_ascii=False)}\n\n"
 
         return generator()
@@ -946,7 +968,8 @@ class PortalService:
                 "supported_executors": json.loads(item.supported_executors_json or "[]"),
                 "supported_identity_modes": json.loads(item.supported_identity_modes_json or "[]"),
                 "supported_oauth_providers": json.loads(item.supported_oauth_providers_json or "[]"),
-            }
+            },
+            self.lang,
         )
 
     def _serialize_user(self, item: PortalUser, *, include_platforms: bool = False) -> dict:
