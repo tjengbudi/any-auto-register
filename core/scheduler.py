@@ -1,4 +1,4 @@
-"""定时任务调度 - 账号有效性检测、trial 到期提醒"""
+"""定时任务调度 - 账号有效性检测、trial 到期提醒 — Scheduled task dispatch: account validity checks, trial expiry reminders"""
 from datetime import datetime, timezone
 
 from sqlmodel import Session, select
@@ -42,7 +42,7 @@ class Scheduler:
             time.sleep(3600)
 
     def check_trial_expiry(self):
-        """检查 trial 到期账号，更新状态"""
+        """检查 trial 到期账号，更新状态 — check for expired trial accounts and update their status"""
         now = int(datetime.now(timezone.utc).timestamp())
         with Session(engine) as s:
             accounts = s.exec(select(AccountModel)).all()
@@ -63,7 +63,7 @@ class Scheduler:
                 print(f"[Scheduler] {updated} 个 trial 账号已到期")
 
     def check_accounts_valid(self, platform: str = None, limit: int = 50):
-        """批量检测账号有效性"""
+        """批量检测账号有效性 — batch-check account validity"""
         load_all()
         with Session(engine) as s:
             q = select(AccountModel)

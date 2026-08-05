@@ -1,13 +1,14 @@
 """
 HAR 文件自动分析工具 — 解析认证流程，输出结构化报告。
+Automated HAR file analyzer -- parses the auth flow and emits a structured report.
 
-用法:
+用法 / Usage:
     python3 tools/har_analyze.py --file tools/captures/example.har
 
-    # 输出 markdown 报告
+    # 输出 markdown 报告 -- emit a markdown report
     python3 tools/har_analyze.py --file tools/captures/example.har --output report.md
 
-    # 只看认证相关请求
+    # 只看认证相关请求 -- show only auth-related requests
     python3 tools/har_analyze.py --file tools/captures/example.har --auth-only
 """
 from __future__ import annotations
@@ -44,7 +45,7 @@ def load_har(path: str) -> dict:
 
 
 def is_auth_related(url: str, method: str, req_headers: dict, resp_headers: dict) -> bool:
-    """判断请求是否与认证相关"""
+    """判断请求是否与认证相关 — determine whether the request is auth-related"""
     url_lower = url.lower()
 
     # URL 包含认证关键词 — URL contains an auth keyword
@@ -69,7 +70,7 @@ def is_auth_related(url: str, method: str, req_headers: dict, resp_headers: dict
 
 
 def extract_redirects(entries: list) -> list[dict]:
-    """提取重定向链"""
+    """提取重定向链 — extract the redirect chain"""
     redirects = []
     for entry in entries:
         status = entry["response"]["status"]
@@ -87,7 +88,7 @@ def extract_redirects(entries: list) -> list[dict]:
 
 
 def extract_cookies(entries: list) -> dict[str, list]:
-    """提取所有 Set-Cookie"""
+    """提取所有 Set-Cookie — extract all Set-Cookie headers"""
     cookies = defaultdict(list)
     for entry in entries:
         url = entry["request"]["url"]
@@ -101,7 +102,7 @@ def extract_cookies(entries: list) -> dict[str, list]:
 
 
 def extract_js_files(entries: list) -> list[dict]:
-    """提取加载的 JS 文件"""
+    """提取加载的 JS 文件 — extract the loaded JS files"""
     js_files = []
     for entry in entries:
         url = entry["request"]["url"]
@@ -116,7 +117,7 @@ def extract_js_files(entries: list) -> list[dict]:
 
 
 def detect_anti_bot(entries: list, js_files: list) -> list[str]:
-    """检测反爬机制"""
+    """检测反爬机制 — detect anti-bot mechanisms"""
     mechanisms = []
 
     all_urls = [e["request"]["url"] for e in entries]
@@ -156,7 +157,7 @@ def detect_anti_bot(entries: list, js_files: list) -> list[str]:
 
 
 def detect_auth_pattern(entries: list) -> str:
-    """检测认证模式"""
+    """检测认证模式 — detect the auth mode"""
     all_urls = [e["request"]["url"] for e in entries]
 
     patterns = []
@@ -183,7 +184,7 @@ def detect_auth_pattern(entries: list) -> str:
 
 
 def analyze_har(har_data: dict, auth_only: bool = False) -> dict:
-    """分析 HAR 文件，返回结构化报告"""
+    """分析 HAR 文件，返回结构化报告 — analyze the HAR file and return a structured report"""
     entries = har_data.get("log", {}).get("entries", [])
 
     # 基本信息 — Basic info
@@ -254,7 +255,7 @@ def analyze_har(har_data: dict, auth_only: bool = False) -> dict:
 
 
 def format_report(report: dict, format: str = "text") -> str:
-    """格式化分析报告"""
+    """格式化分析报告 — format the analysis report"""
     lines = []
 
     lines.append("=" * 70)

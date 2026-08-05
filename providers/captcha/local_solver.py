@@ -5,7 +5,8 @@ from providers.registry import register_provider
 
 @register_provider("captcha", "local_solver")
 class LocalSolverCaptcha(BaseCaptcha):
-    """调用本地 api_solver 服务解 Turnstile（Camoufox/patchright）"""
+    """调用本地 api_solver 服务解 Turnstile（Camoufox/patchright） —
+    call the local api_solver service to solve Turnstile (Camoufox/patchright)"""
 
     def __init__(self, solver_url: str = ""):
         self.solver_url = solver_url.rstrip("/")
@@ -67,7 +68,7 @@ class LocalSolverCaptcha(BaseCaptcha):
     @staticmethod
     def start_solver(headless: bool = True, browser_type: str = "camoufox",
                      port: int = 8889) -> None:
-        """在后台线程启动本地 solver 服务"""
+        """在后台线程启动本地 solver 服务 — start the local solver service on a background thread"""
         import subprocess, sys, os
         solver_path = os.path.join(
             os.path.dirname(__file__), "..", "..", "services", "turnstile_solver", "start.py"

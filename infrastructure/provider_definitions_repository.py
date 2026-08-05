@@ -423,6 +423,12 @@ class ProviderDefinitionsRepository:
 
         新增的插入，已存在的更新字段定义（label、description、fields 等），
         确保代码升级后内置 provider 的元数据能同步到数据库。
+
+        Write the built-in provider definition seed data into the database.
+
+        New entries are inserted; existing ones have their field definitions
+        (label, description, fields, etc.) updated, ensuring built-in provider
+        metadata stays in sync with the database after a code upgrade.
         """
         with Session(engine) as session:
             existing: dict[str, ProviderDefinitionModel] = {}
@@ -492,7 +498,8 @@ class ProviderDefinitionsRepository:
             ).first()
 
     def list_driver_templates(self, provider_type: str) -> list[dict]:
-        """从 DB 读取：按 driver_type 去重，返回可用驱动模板列表。"""
+        """从 DB 读取：按 driver_type 去重，返回可用驱动模板列表。 —
+        Read from the DB: dedupe by driver_type and return the list of available driver templates."""
         with Session(engine) as session:
             definitions = session.exec(
                 select(ProviderDefinitionModel)
@@ -516,7 +523,8 @@ class ProviderDefinitionsRepository:
         return list(seen.values())
 
     def _get_driver_defaults(self, provider_type: str, driver_type: str) -> dict | None:
-        """从 DB 中查找同 driver_type 的已有 definition 作为模板。"""
+        """从 DB 中查找同 driver_type 的已有 definition 作为模板。 —
+        Look up an existing definition with the same driver_type in the DB to use as a template."""
         with Session(engine) as session:
             ref = session.exec(
                 select(ProviderDefinitionModel)

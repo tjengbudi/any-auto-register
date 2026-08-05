@@ -1,4 +1,5 @@
-"""代理池 - 从数据库读取代理，支持轮询和按区域选取"""
+"""代理池 - 从数据库读取代理，支持轮询和按区域选取
+Proxy pool, reading proxies from the database, supporting round-robin and region-based selection"""
 from typing import Optional
 from sqlmodel import Session, select
 from .db import ProxyModel, engine
@@ -17,6 +18,12 @@ class ProxyPool:
         优先级:
           1. 动态代理 provider（如果已配置且启用）
           2. 静态代理池（数据库中的固定代理列表）
+
+        Get the next available proxy.
+
+        Priority:
+          1. dynamic proxy provider (if configured and enabled)
+          2. static proxy pool (the fixed proxy list in the database)
         """
         # 1. 尝试动态代理 — Try the dynamic proxy provider first
         try:
@@ -66,7 +73,7 @@ class ProxyPool:
                 s.commit()
 
     def check_all(self) -> dict:
-        """检测所有代理可用性"""
+        """检测所有代理可用性 — check availability of all proxies"""
         import requests
         with Session(engine) as s:
             proxies = s.exec(select(ProxyModel)).all()

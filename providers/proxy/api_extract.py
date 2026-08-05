@@ -20,6 +20,12 @@ class ApiExtractProvider(BaseProxyProvider):
     适用于大多数代理商的"API 提取"接口，返回格式通常是:
       - 每行一个 IP:PORT
       - 或 JSON 数组
+
+    Generic API extract mode -- calls a URL that returns a list of proxy IPs.
+
+    Fits most providers' "API extract" endpoints, whose response format is usually:
+      - one IP:PORT per line
+      - or a JSON array
     """
 
     def __init__(
@@ -55,7 +61,7 @@ class ApiExtractProvider(BaseProxyProvider):
         )
 
     def _fetch(self) -> list[str]:
-        """从 API 获取代理列表。"""
+        """从 API 获取代理列表。 — fetch the proxy list from the API."""
         try:
             resp = proxy_providers.requests.get(self.api_url, timeout=self.timeout)
             resp.raise_for_status()

@@ -1,4 +1,5 @@
-"""共享的 OAuth 浏览器辅助（支持普通 Playwright / Chrome Profile / CDP）。"""
+"""共享的 OAuth 浏览器辅助（支持普通 Playwright / Chrome Profile / CDP）。 —
+Shared OAuth browser helper (supports plain Playwright / Chrome Profile / CDP)."""
 import time
 from typing import Callable, Iterable, Optional
 from urllib.parse import urlparse
@@ -68,7 +69,8 @@ def finalize_oauth_email(actual_email: str, email_hint: str, platform_name: str)
 
 
 def _detect_running_chrome_cdp(ports: tuple = (9222, 9223, 9224)) -> str:
-    """检测本机是否有 Chrome 开启了远程调试端口，返回 CDP URL 或空字符串。"""
+    """检测本机是否有 Chrome 开启了远程调试端口，返回 CDP URL 或空字符串。 —
+    Detect whether a local Chrome has a remote debug port open; return the CDP URL or an empty string."""
     import urllib.request
     for port in ports:
         try:
@@ -82,7 +84,7 @@ def _detect_running_chrome_cdp(ports: tuple = (9222, 9223, 9224)) -> str:
 
 
 def _detect_chrome_user_data_dir() -> str:
-    """自动检测系统 Chrome 用户数据目录。"""
+    """自动检测系统 Chrome 用户数据目录。 — Auto-detect the system's Chrome user data directory."""
     import os, sys
     if sys.platform == "darwin":
         path = os.path.expanduser("~/Library/Application Support/Google/Chrome")
@@ -94,7 +96,8 @@ def _detect_chrome_user_data_dir() -> str:
 
 
 def _relaunch_chrome_with_debug_port(port: int = 9222) -> bool:
-    """macOS: 关闭 Chrome 并用远程调试端口重启，成功返回 True。"""
+    """macOS: 关闭 Chrome 并用远程调试端口重启，成功返回 True。 —
+    macOS: quit Chrome and relaunch it with the remote debug port; returns True on success."""
     import subprocess, sys, time
     if sys.platform != "darwin":
         return False
@@ -144,7 +147,8 @@ _GOOGLE_ACCOUNT_SELECTORS = [
 
 
 class OAuthBrowser:
-    """全自动 OAuth 浏览器（支持普通 Playwright / Chrome Profile / CDP）。"""
+    """全自动 OAuth 浏览器（支持普通 Playwright / Chrome Profile / CDP）。 —
+    Fully automatic OAuth browser (supports plain Playwright / Chrome Profile / CDP)."""
 
     def __init__(
         self,
@@ -323,6 +327,9 @@ class OAuthBrowser:
     def auto_select_google_account(self, timeout: int = 15) -> bool:
         """Google 账号选择器出现时自动点击第一个账号。
         适用于 Chrome Profile 模式：Google 已登录，弹出账号选择器。
+
+        Automatically click the first account when the Google account picker appears.
+        Applies to Chrome Profile mode: Google is already signed in and the account picker pops up.
         """
         deadline = time.time() + timeout
         selectors = ", ".join(_GOOGLE_ACCOUNT_SELECTORS)

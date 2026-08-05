@@ -1,4 +1,4 @@
-"""注册身份提供者抽象。"""
+"""注册身份提供者抽象 — Abstraction for registration identity providers."""
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Optional

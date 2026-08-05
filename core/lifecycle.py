@@ -1,4 +1,5 @@
-"""账号生命周期管理 — 定时检测、自动续期、过期预警。"""
+"""账号生命周期管理 — 定时检测、自动续期、过期预警。
+Account lifecycle management -- scheduled checks, automatic renewal, expiry warnings."""
 from __future__ import annotations
 
 import logging
@@ -301,6 +302,12 @@ def refresh_and_sync_cpa(
     - 用 /backend-api/me 检查存活
     - 存活账号重新生成 CPA JSON 并上传
     - 封禁账号标记为 disabled
+
+    Refresh ChatGPT account tokens, check liveness, and re-upload to CPA.
+    - Refresh access_token using session_token
+    - Check liveness via /backend-api/me
+    - For live accounts, regenerate the CPA JSON and re-upload
+    - Mark banned accounts as disabled
     """
     log = log_fn or logger.info
 

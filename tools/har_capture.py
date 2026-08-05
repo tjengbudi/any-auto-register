@@ -1,14 +1,15 @@
 """
 自动 HAR 抓包工具 — 打开浏览器录制用户操作，保存 HAR 文件。
+Automated HAR capture tool -- opens a browser to record user actions and saves the HAR file.
 
-用法:
-    # 打开浏览器，手动注册，关闭后自动保存 HAR
+用法 / Usage:
+    # 打开浏览器，手动注册，关闭后自动保存 HAR -- open the browser, register manually, auto-saves the HAR on close
     python3 tools/har_capture.py --url https://auth.example.com/signup --name example
 
-    # 带代理
+    # 带代理 -- with a proxy
     python3 tools/har_capture.py --url https://auth.example.com/signup --name example --proxy http://127.0.0.1:7890
 
-输出:
+输出 / Output:
     tools/captures/example.har
 """
 from __future__ import annotations

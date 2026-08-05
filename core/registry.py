@@ -1,4 +1,5 @@
-"""平台插件注册表 - 自动扫描 platforms/ 目录加载插件"""
+"""平台插件注册表 - 自动扫描 platforms/ 目录加载插件
+Platform plugin registry, auto-scans the platforms/ directory to load plugins"""
 import importlib
 import pkgutil
 from datetime import datetime, timezone
@@ -18,13 +19,13 @@ def _utcnow() -> datetime:
 
 
 def register(cls: Type[BasePlatform]):
-    """装饰器：注册平台插件"""
+    """装饰器：注册平台插件 — decorator: register a platform plugin"""
     _registry[cls.name] = cls
     return cls
 
 
 def load_all():
-    """自动扫描并加载 platforms/ 下所有插件"""
+    """自动扫描并加载 platforms/ 下所有插件 — auto-scan and load all plugins under platforms/"""
     import platforms
     for finder, name, _ in pkgutil.iter_modules(platforms.__path__, platforms.__name__ + "."):
         try:
@@ -45,7 +46,8 @@ def get(name: str) -> Type[BasePlatform]:
 
 
 def _class_defaults(cls: Type[BasePlatform]) -> dict[str, list[str]]:
-    """从类属性获取 fallback 默认值（仅在 DB 无数据时使用）。"""
+    """从类属性获取 fallback 默认值（仅在 DB 无数据时使用）。 —
+    Get fallback default values from class attributes (used only when the DB has no data)."""
     return {
         "supported_executors": list(getattr(cls, "supported_executors", [])),
         "supported_identity_modes": list(getattr(cls, "supported_identity_modes", [])),

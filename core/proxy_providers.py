@@ -5,6 +5,15 @@
   2. 动态代理: 从第三方 API 实时获取代理 IP
 
 动态代理 provider 通过 provider_settings 配置；如果未配置则自动回退到静态代理池。
+
+Dynamic proxy IP provider -- concrete implementations have moved to providers/proxy/
+
+Supports two modes:
+  1. Static proxy: read a fixed proxy list from the database (existing logic)
+  2. Dynamic proxy: fetch proxy IPs from a third-party API in real time
+
+The dynamic proxy provider is configured via provider_settings; when unconfigured
+it automatically falls back to the static proxy pool.
 """
 from __future__ import annotations
 
@@ -29,12 +38,15 @@ def _raise_keyed(exc_cls, key: str, **params):
 
 
 class BaseProxyProvider(ABC):
-    """动态代理提供者基类。"""
+    """动态代理提供者基类。 — Dynamic proxy provider base class."""
 
     @abstractmethod
     def get_proxy(self) -> Optional[str]:
         """获取一个代理 URL，格式: http://host:port 或 http://user:pass@host:port。
-        返回 None 表示无可用代理。"""
+        返回 None 表示无可用代理。
+
+        Get a proxy URL, format: http://host:port or http://user:pass@host:port.
+        Returns None when no proxy is available."""
         ...
 
 
@@ -62,7 +74,7 @@ def __getattr__(name: str):
 # ---------------------------------------------------------------------------
 
 def create_proxy_provider(provider_key: str, config: dict) -> BaseProxyProvider:
-    """根据 provider_key 和配置创建代理提供者。"""
+    """根据 provider_key 和配置创建代理提供者。 — create a proxy provider from provider_key and config."""
     if provider_key == "api_extract":
         api_url = config.get("proxy_api_url", "")
         if not api_url:
@@ -89,6 +101,10 @@ def get_dynamic_proxy(extra: dict | None = None) -> Optional[str]:
     """尝试从配置的动态代理 provider 获取代理。
 
     如果未配置动态代理，返回 None（回退到静态代理池）。
+
+    Try to get a proxy from the configured dynamic proxy provider.
+
+    Returns None if no dynamic proxy is configured (falls back to the static proxy pool).
     """
     try:
         from infrastructure.provider_settings_repository import ProviderSettingsRepository

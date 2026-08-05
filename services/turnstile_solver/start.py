@@ -1,4 +1,4 @@
-"""启动本地 Turnstile Solver 服务"""
+"""启动本地 Turnstile Solver 服务 — start the local Turnstile Solver service"""
 import sys
 import os
 

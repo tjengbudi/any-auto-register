@@ -1,4 +1,4 @@
-"""平台插件基类"""
+"""平台插件基类 — Base class for platform plugins"""
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Optional
@@ -44,7 +44,7 @@ class Account:
 
 @dataclass
 class RegisterConfig:
-    """注册任务配置"""
+    """注册任务配置 — Registration task configuration"""
     executor_type: str = "protocol"   # protocol | headless | headed
     captcha_solver: str = "auto"  # auto | <provider_key> | manual
     proxy: Optional[str] = None
@@ -183,11 +183,11 @@ class BasePlatform(ABC):
 
     @abstractmethod
     def check_valid(self, account: Account) -> bool:
-        """检测账号是否有效"""
+        """检测账号是否有效 — check whether the account is valid"""
         ...
 
     def get_trial_url(self, account: Account) -> Optional[str]:
-        """生成试用激活链接（可选实现）"""
+        """生成试用激活链接（可选实现） — generate the trial activation link (optional to implement)"""
         return None
 
     def get_platform_actions(self) -> list:
@@ -332,11 +332,11 @@ class BasePlatform(ABC):
         return actions
 
     def get_quota(self, account: Account) -> dict:
-        """查询账号配额（可选实现）"""
+        """查询账号配额（可选实现） — query the account quota (optional to implement)"""
         return {}
 
     def _make_executor(self):
-        """根据 config 创建执行器"""
+        """根据 config 创建执行器 — create the executor from config"""
         from .executors.protocol import ProtocolExecutor
         t = self.config.executor_type
         if t == "protocol":
@@ -350,7 +350,7 @@ class BasePlatform(ABC):
         _raise_keyed(ValueError, "core.c13ab550", executor_type=t)
 
     def _make_captcha(self, **kwargs):
-        """根据 config 创建验证码解决器"""
+        """根据 config 创建验证码解决器 — create the captcha solver from config"""
         from .base_captcha import create_captcha_solver
 
         provider_key = str(kwargs.get("provider_key") or "").strip()

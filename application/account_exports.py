@@ -473,7 +473,8 @@ class AccountExportsService:
     # ------------------------------------------------------------------
 
     def export_kiro_go(self, selection: AccountExportSelection) -> ExportArtifact:
-        """导出 Kiro 账号为 Kiro-Go CLI Proxy 兼容的 config.json 格式。"""
+        """导出 Kiro 账号为 Kiro-Go CLI Proxy 兼容的 config.json 格式。 —
+        Export Kiro accounts to a Kiro-Go CLI Proxy-compatible config.json format."""
         selection.platform = "kiro"
         items = self.repository.select_for_export(selection)
         accounts = [_make_kiro_go_account(item) for item in items]
@@ -495,6 +496,11 @@ class AccountExportsService:
         """导出账号为 Any2API admin.json 兼容格式。
 
         支持多平台：Kiro → kiroAccounts, Grok → grokTokens, Cursor/Blink/ChatGPT → 对应 config。
+
+        Export accounts to an Any2API admin.json-compatible format.
+
+        Supports multiple platforms: Kiro → kiroAccounts, Grok → grokTokens,
+        Cursor/Blink/ChatGPT → their respective config.
         """
         items = self.repository.select_for_export(selection)
         admin_config = _build_any2api_admin_config(items)

@@ -1,4 +1,4 @@
-"""数据库模型 - SQLite via SQLModel"""
+"""数据库模型 - SQLite via SQLModel — Database models - SQLite via SQLModel"""
 import json
 import os
 from datetime import datetime, timezone
@@ -301,7 +301,8 @@ class ProxyModel(SQLModel, table=True):
 
 
 def save_account(account) -> 'AccountModel':
-    """从 base_platform.Account 存入数据库（同平台同邮箱则更新）"""
+    """从 base_platform.Account 存入数据库（同平台同邮箱则更新） —
+    persist a base_platform.Account to the database (updates if same platform+email exists)"""
     from core.account_graph import sync_platform_account_graph
 
     with Session(engine) as session:
@@ -446,7 +447,8 @@ def init_db():
 
 
 def _ensure_column(table: str, column: str, col_type: str):
-    """给已有表安全地加一列（SQLite 不支持 IF NOT EXISTS ADD COLUMN）。"""
+    """给已有表安全地加一列（SQLite 不支持 IF NOT EXISTS ADD COLUMN）。 —
+    Safely add a column to an existing table (SQLite doesn't support IF NOT EXISTS ADD COLUMN)."""
     inspector = inspect(engine)
     tables = set(inspector.get_table_names())
     if table not in tables:
@@ -464,7 +466,13 @@ def _cleanup_empty_provider_settings():
 
     判定条件：config / auth / metadata 三个字段都为空 dict 时认为
     用户从未编辑过，可以安全删除。被删后用户能从前端"新增"按钮
-    重新选择对应的 provider。"""
+    重新选择对应的 provider。
+
+    Clean up empty ProviderSettings that PR #42 auto-created in v1.0.7/v1.0.8.
+
+    Criterion: if the config / auth / metadata fields are all empty dicts, the
+    user is assumed to have never edited it, so it's safe to delete. After
+    deletion the user can pick the provider again via the frontend's "Add" button."""
     with Session(engine) as session:
         items = session.exec(select(ProviderSettingModel)).all()
         removed = 0
@@ -516,6 +524,13 @@ def _migrate_legacy_provider_keys():
     同时迁移 provider_settings 和 provider_definitions 两张表。
     如果新 key 已存在则删除旧记录（避免唯一约束冲突）。
     迁移后还会修正 auth_mode 值，使其匹配新版 definition 的有效值。
+
+    Migrate legacy provider_key and auth_mode values to the new naming.
+
+    Migrates both the provider_settings and provider_definitions tables.
+    If the new key already exists, the old record is deleted (to avoid a
+    unique-constraint conflict). Also corrects auth_mode values afterward
+    so they match the new definition's valid values.
     """
     with Session(engine) as session:
         migrated = 0
@@ -600,7 +615,8 @@ def _migrate_legacy_provider_keys():
 
 
 def _cleanup_non_real_providers():
-    """generic_http 不是真实邮箱，从 DB 中清除其 definition 和空 setting。"""
+    """generic_http 不是真实邮箱，从 DB 中清除其 definition 和空 setting。 —
+    generic_http isn't a real mailbox; clear its definition and empty setting from the DB."""
     remove_keys = [("mailbox", "generic_http")]
     with Session(engine) as session:
         for pt, pk in remove_keys:

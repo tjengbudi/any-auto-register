@@ -100,7 +100,7 @@ class HeroSmsBestCountryRequest(BaseModel):
 
 @router.post("/herosms/top-countries")
 def herosms_top_countries(body: HeroSmsBestCountryRequest | None = None, lang: str = Depends(get_ui_language)):
-    """获取按价格排序的国家列表（含价格和库存）。"""
+    """获取按价格排序的国家列表（含价格和库存）。 — Get the country list sorted by price (with price and stock)."""
     body = body or HeroSmsBestCountryRequest()
     provider = _provider_from_payload(HeroSmsQueryRequest(
         api_key=body.api_key, service=body.service, proxy=body.proxy,
@@ -121,7 +121,7 @@ def herosms_top_countries(body: HeroSmsBestCountryRequest | None = None, lang: s
 
 @router.post("/herosms/best-country")
 def herosms_best_country(body: HeroSmsBestCountryRequest | None = None, lang: str = Depends(get_ui_language)):
-    """自动选择最优国家（价格最低 + 库存充足）。"""
+    """自动选择最优国家（价格最低 + 库存充足）。 — Automatically pick the best country (lowest price + sufficient stock)."""
     body = body or HeroSmsBestCountryRequest()
     provider = _provider_from_payload(HeroSmsQueryRequest(
         api_key=body.api_key, service=body.service, proxy=body.proxy,

@@ -1,4 +1,5 @@
-"""验证码解决器基类 — 具体实现已迁移到 providers/captcha/"""
+"""验证码解决器基类 — 具体实现已迁移到 providers/captcha/
+Captcha solver base class; concrete implementations have moved to providers/captcha/"""
 from abc import ABC, abstractmethod
 
 from i18n import t
@@ -16,12 +17,12 @@ def _raise_keyed(exc_cls, key: str, **params):
 class BaseCaptcha(ABC):
     @abstractmethod
     def solve_turnstile(self, page_url: str, site_key: str) -> str:
-        """返回 Turnstile token"""
+        """返回 Turnstile token — return the Turnstile token"""
         ...
 
     @abstractmethod
     def solve_image(self, image_b64: str) -> str:
-        """返回图片验证码文字"""
+        """返回图片验证码文字 — return the image captcha text"""
         ...
 
 

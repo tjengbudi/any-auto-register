@@ -2,6 +2,11 @@
 
 在全局配置中设置 Any2API 的地址和管理密码后，
 每次注册成功都会自动将账号推送到 Any2API，无需手动导出导入。
+
+Automatically push accounts to an Any2API instance after registration completes.
+
+Once the Any2API address and admin password are set in the global config,
+every successful registration is auto-pushed to Any2API, no manual export/import needed.
 """
 from __future__ import annotations
 
@@ -18,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 class Any2ApiClient:
-    """Any2API 管理 API 客户端。"""
+    """Any2API 管理 API 客户端 — Any2API admin API client."""
 
     def __init__(self, base_url: str, password: str, *, timeout: int = 10):
         self.base_url = base_url.rstrip("/")
@@ -170,7 +175,7 @@ class Any2ApiClient:
 
 
 def _get_any2api_config() -> tuple[str, str]:
-    """从全局配置读取 Any2API 地址和密码。"""
+    """从全局配置读取 Any2API 地址和密码 — Read the Any2API address and password from the global config."""
     try:
         from core.config_store import config_store
         base_url = config_store.get("any2api_url", "")
@@ -181,11 +186,11 @@ def _get_any2api_config() -> tuple[str, str]:
 
 
 def push_account_to_any2api(account: Any, *, log_fn=None, log_key_fn=None) -> bool:
-    """注册完成后自动推送账号到 Any2API。
+    """注册完成后自动推送账号到 Any2API — Automatically push the account to Any2API after registration completes.
 
     Args:
-        account: BasePlatform.Account 对象
-        log_fn: 日志函数
+        account: BasePlatform.Account 对象 — a BasePlatform.Account object
+        log_fn: 日志函数 — logging function
         log_key_fn: 键控日志函数，优先于 log_fn 渲染，见 AD-6 —
             Keyed log function; takes precedence over log_fn's rendering (AD-6).
 

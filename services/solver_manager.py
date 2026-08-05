@@ -1,4 +1,4 @@
-"""Turnstile Solver 进程管理 - 后端启动时自动拉起"""
+"""Turnstile Solver 进程管理 - 后端启动时自动拉起 — Turnstile Solver process management, auto-started when the backend boots"""
 import subprocess
 import sys
 import os
@@ -27,7 +27,7 @@ def is_running() -> bool:
 
 
 def get_status() -> dict:
-    """返回 solver 详细状态，供 API 使用。"""
+    """返回 solver 详细状态，供 API 使用。 — return the solver's detailed status, for API use."""
     running = is_running()
     info: dict = {"running": running}
     if not running and _last_failure_reason:
@@ -43,6 +43,12 @@ def _ensure_camoufox_browser() -> bool:
 
     返回 True 表示就绪，False 表示下载失败（网络问题等）。Solver 启动前调用。
     首次下载约 100MB，之后会有缓存跳过。
+
+    Check whether the Camoufox browser binary is downloaded; auto-fetches it if not.
+
+    Returns True when ready, False if the download failed (network issues, etc.).
+    Called before the solver starts. The first download is about 100MB; later
+    calls are skipped via cache.
     """
     try:
         from camoufox.pkgman import installed_verstr, CamoufoxNotInstalled
@@ -185,7 +191,8 @@ def stop():
 
 
 def _kill_by_port(port: int):
-    """通过端口号查找并杀掉占用进程（跨平台）。"""
+    """通过端口号查找并杀掉占用进程（跨平台）。 —
+    find and kill the process occupying the given port (cross-platform)."""
     import platform
     try:
         if platform.system() == "Windows":
@@ -211,7 +218,9 @@ def _kill_by_port(port: int):
 
 
 def restart():
-    """同步重启：stop → 等端口释放 → start。手动重启会重置失败计数器。"""
+    """同步重启：stop → 等端口释放 → start。手动重启会重置失败计数器。 —
+    Synchronous restart: stop → wait for the port to free up → start. A manual
+    restart resets the failure counter."""
     global _consecutive_failures, _last_failure_reason
     _consecutive_failures = 0
     _last_failure_reason = ""
@@ -225,6 +234,6 @@ def restart():
 
 
 def start_async():
-    """在后台线程启动，不阻塞主进程"""
+    """在后台线程启动，不阻塞主进程 — start on a background thread without blocking the main process"""
     t = threading.Thread(target=start, daemon=True)
     t.start()

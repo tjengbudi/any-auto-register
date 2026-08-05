@@ -1,4 +1,4 @@
-"""邮箱池基类 - 抽象临时邮箱/收件服务"""
+"""邮箱池基类 - 抽象临时邮箱/收件服务 — Mailbox pool base class abstracting temp-mail/inbox services"""
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Callable
@@ -51,7 +51,7 @@ class MailboxAccount:
 class BaseMailbox(ABC):
     @abstractmethod
     def get_email(self, *, log_key_fn: Callable[[str, dict], None] | None = None) -> MailboxAccount:
-        """获取一个可用邮箱"""
+        """获取一个可用邮箱 — get an available mailbox"""
         ...
 
     @abstractmethod
@@ -59,23 +59,25 @@ class BaseMailbox(ABC):
                       timeout: int = 120, before_ids: set = None,
                       code_pattern: str = None, *,
                       log_key_fn: Callable[[str, dict], None] | None = None) -> str:
-        """等待并返回验证码，code_pattern 为自定义正则（默认匹配6位数字）"""
+        """等待并返回验证码，code_pattern 为自定义正则（默认匹配6位数字） —
+        Wait for and return the verification code; code_pattern is a custom regex (defaults to matching 6 digits)"""
         ...
 
     @abstractmethod
     def get_current_ids(self, account: MailboxAccount) -> set:
-        """返回当前邮件 ID 集合（用于过滤旧邮件）"""
+        """返回当前邮件 ID 集合（用于过滤旧邮件） — return the current set of email IDs (used to filter out old mail)"""
         ...
 
     def wait_for_link(self, account: MailboxAccount, keyword: str = "",
                       timeout: int = 120, before_ids: set = None, *,
                       log_key_fn: Callable[[str, dict], None] | None = None) -> str:
-        """等待并返回验证链接。默认由具体 provider 自行实现。"""
+        """等待并返回验证链接。默认由具体 provider 自行实现。 — Wait for and return the verification link; by default left to each concrete provider."""
         _raise_keyed(NotImplementedError, "core.9358e518", cls=self.__class__.__name__)
 
 
 class FallbackMailbox(BaseMailbox):
-    """按顺序尝试多个 provider，创建邮箱成功后固定使用同一 provider 收件。"""
+    """按顺序尝试多个 provider，创建邮箱成功后固定使用同一 provider 收件。 —
+    Try multiple providers in order; once a mailbox is created, stick with that same provider for inbox reads."""
 
     def __init__(self, providers: list[tuple[str, 'BaseMailbox']]):
         self.providers = [(str(key or "").strip(), mailbox) for key, mailbox in providers if str(key or "").strip() and mailbox]
@@ -317,7 +319,7 @@ MAILBOX_FACTORY_REGISTRY = {
 
 
 def create_mailbox(provider: str, extra: dict = None, proxy: str = None) -> 'BaseMailbox':
-    """工厂方法：根据 provider 创建对应的 mailbox 实例"""
+    """工厂方法：根据 provider 创建对应的 mailbox 实例 — Factory method: create the matching mailbox instance for the given provider"""
     from infrastructure.provider_definitions_repository import ProviderDefinitionsRepository
     from infrastructure.provider_settings_repository import ProviderSettingsRepository
 
@@ -381,7 +383,7 @@ def create_mailbox(provider: str, extra: dict = None, proxy: str = None) -> 'Bas
 
 
 class LaoudoMailbox(BaseMailbox):
-    """laoudo.com 邮箱服务"""
+    """laoudo.com 邮箱服务 — laoudo.com mailbox service"""
     def __init__(self, auth_token: str, email: str, account_id: str, api_url: str = ""):
         self.auth = auth_token
         self._email = email
@@ -509,7 +511,7 @@ class LaoudoMailbox(BaseMailbox):
 
 
 class AitreMailbox(BaseMailbox):
-    """mail.aitre.cc 临时邮箱"""
+    """mail.aitre.cc 临时邮箱 — mail.aitre.cc temp mailbox"""
     def __init__(self, email: str, api_url: str = ""):
         self._email = email
         self.api = (api_url or DEFAULT_AITRE_API_URL).rstrip("/")
@@ -592,7 +594,7 @@ class AitreMailbox(BaseMailbox):
 
 
 class TempMailLolMailbox(BaseMailbox):
-    """tempmail.lol 免费临时邮箱（无需注册，自动生成）"""
+    """tempmail.lol 免费临时邮箱（无需注册，自动生成） — tempmail.lol free temp mailbox (no signup, auto-generated)"""
 
     def __init__(self, proxy: str = None, api_url: str = ""):
         self.api = (api_url or DEFAULT_TEMPMAIL_LOL_API_URL).rstrip("/")
@@ -691,7 +693,7 @@ class TempMailLolMailbox(BaseMailbox):
 
 
 class TempMailWebMailbox(BaseMailbox):
-    """参考项目同款 Temp-Mail Web API。"""
+    """参考项目同款 Temp-Mail Web API。 — Same Temp-Mail Web API used by the reference project."""
 
     def __init__(self, base_url: str = "", proxy: str = None):
         self.base_url = _normalize_api_base_url(
@@ -961,7 +963,7 @@ class TempMailWebMailbox(BaseMailbox):
 
 
 class DuckMailMailbox(BaseMailbox):
-    """DuckMail 自动生成邮箱（随机创建账号）"""
+    """DuckMail 自动生成邮箱（随机创建账号） — DuckMail auto-generated mailbox (creates a random account)"""
 
     def __init__(self, api_url: str = "",
                  provider_url: str = "",
@@ -1115,7 +1117,7 @@ class DuckMailMailbox(BaseMailbox):
 
 
 class CFWorkerMailbox(BaseMailbox):
-    """Cloudflare Worker 自建临时邮箱服务"""
+    """Cloudflare Worker 自建临时邮箱服务 — Self-hosted temp mailbox service built on Cloudflare Worker"""
 
     def __init__(self, api_url: str, admin_token: str = "", domain: str = "",
                  fingerprint: str = "", proxy: str = None):
@@ -1246,7 +1248,7 @@ class CFWorkerMailbox(BaseMailbox):
 
 
 class MoeMailMailbox(BaseMailbox):
-    """MoeMail (sall.cc) 邮箱服务 - 自动注册账号并生成临时邮箱"""
+    """MoeMail (sall.cc) 邮箱服务 - 自动注册账号并生成临时邮箱 — MoeMail (sall.cc) mailbox service; auto-registers an account and generates a temp mailbox"""
 
     def __init__(
         self,
@@ -1539,6 +1541,10 @@ class FreemailMailbox(BaseMailbox):
     Freemail 自建邮箱服务（基于 Cloudflare Worker）
     项目: https://github.com/idinging/freemail
     支持管理员令牌或账号密码两种认证方式
+
+    Freemail self-hosted mailbox service (built on Cloudflare Worker)
+    Project: https://github.com/idinging/freemail
+    Supports either admin-token or username/password authentication
     """
 
     def __init__(self, api_url: str, admin_token: str = "",
@@ -1675,7 +1681,8 @@ class FreemailMailbox(BaseMailbox):
 
 
 class TestmailMailbox(BaseMailbox):
-    """testmail.app 邮箱服务，地址格式为 {namespace}.{tag}@inbox.testmail.app。"""
+    """testmail.app 邮箱服务，地址格式为 {namespace}.{tag}@inbox.testmail.app。 —
+    testmail.app mailbox service; address format is {namespace}.{tag}@inbox.testmail.app."""
 
     def __init__(
         self,
@@ -1861,7 +1868,8 @@ class TestmailMailbox(BaseMailbox):
 
 
 class DDGEmailMailbox(BaseMailbox):
-    """DuckDuckGo Email Protection — 生成 @duck.com 私密别名，通过 IMAP 从转发邮箱读取验证码"""
+    """DuckDuckGo Email Protection — 生成 @duck.com 私密别名，通过 IMAP 从转发邮箱读取验证码
+    generates a private @duck.com alias and reads the verification code via IMAP from the forwarding mailbox"""
 
     DDG_API = "https://quack.duckduckgo.com/api/email/addresses"
 

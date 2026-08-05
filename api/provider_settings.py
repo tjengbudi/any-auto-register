@@ -62,7 +62,8 @@ class ProviderTestRequest(BaseModel):
 
 @router.post("/test")
 def test_provider(body: ProviderTestRequest, lang: str = Depends(get_ui_language)):
-    """测试 provider 配置是否正确 — 尝试创建/获取一个邮箱地址。"""
+    """测试 provider 配置是否正确 — 尝试创建/获取一个邮箱地址。
+    Test whether the provider config is correct -- try creating/getting a mailbox address."""
     from infrastructure.provider_definitions_repository import ProviderDefinitionsRepository
 
     definitions = ProviderDefinitionsRepository()
@@ -84,7 +85,8 @@ def test_provider(body: ProviderTestRequest, lang: str = Depends(get_ui_language
 
 
 def _test_mailbox(driver_type: str, extra: dict, definition, lang: str) -> dict:
-    """尝试用给定配置创建一个邮箱，验证配置是否正确。"""
+    """尝试用给定配置创建一个邮箱，验证配置是否正确。 —
+    Try creating a mailbox with the given config to verify it's correct."""
     import traceback
     from core.base_mailbox import MAILBOX_FACTORY_REGISTRY
 

@@ -5,7 +5,8 @@ from providers.registry import register_provider
 
 @register_provider("captcha", "manual")
 class ManualCaptcha(BaseCaptcha):
-    """人工打码，阻塞等待用户输入"""
+    """人工打码，阻塞等待用户输入
+    manual captcha solving; blocks waiting for user input"""
 
     @classmethod
     def from_config(cls, config: dict) -> 'ManualCaptcha':

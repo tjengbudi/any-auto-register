@@ -1,4 +1,5 @@
-"""全局配置持久化 - 存储在 SQLite"""
+"""全局配置持久化 - 存储在 SQLite
+Global config persistence, stored in SQLite"""
 from typing import Optional
 from sqlmodel import Field, SQLModel, Session, select
 from .db import engine
@@ -11,7 +12,8 @@ class ConfigItem(SQLModel, table=True):
 
 
 class ConfigStore:
-    """简单 key-value 配置存储"""
+    """简单 key-value 配置存储
+    Simple key-value config store"""
 
     def get(self, key: str, default: str = "") -> str:
         with Session(engine) as s:

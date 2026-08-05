@@ -6,6 +6,16 @@
 
 配置存储在 provider_definitions.metadata_json 中，
 用户填写的值存在 provider_settings.config_json / auth_json 中。
+
+Generic HTTP mailbox driver -- every step is described via DB config, adding a new
+mailbox type takes zero code.
+
+Step pipeline:
+  auth_steps[]  →  create_email  →  list_emails  →  get_detail
+   (optional)       (optional)       (required)      (optional)
+
+Config is stored in provider_definitions.metadata_json;
+values the user fills in live in provider_settings.config_json / auth_json.
 """
 from __future__ import annotations
 
@@ -26,7 +36,8 @@ from core.tls import mark_session_insecure, suppress_insecure_request_warning
 # ---------------------------------------------------------------------------
 
 def _deep_get(data, path: str, default=None):
-    """简化 dot-path 取值: 'data.list' → data["data"]["list"]"""
+    """简化 dot-path 取值: 'data.list' → data["data"]["list"] —
+    simplified dot-path lookup: 'data.list' → data["data"]["list"]"""
     if not path:
         return data
     keys = path.split(".")
@@ -45,7 +56,7 @@ def _deep_get(data, path: str, default=None):
 
 
 def _render(template, variables: dict) -> str:
-    """替换模板中的 {var} 占位符"""
+    """替换模板中的 {var} 占位符 — replace {var} placeholders in a template"""
     if not isinstance(template, str):
         return template
     result = template
@@ -55,7 +66,7 @@ def _render(template, variables: dict) -> str:
 
 
 def _render_dict(template: dict | None, variables: dict) -> dict:
-    """递归替换 dict 中的 {var} 占位符"""
+    """递归替换 dict 中的 {var} 占位符 — recursively replace {var} placeholders in a dict"""
     if not template:
         return {}
     result = {}
@@ -81,6 +92,14 @@ class GenericHttpMailbox(BaseMailbox):
       2. settings: 用户 UI 填写的 flat 字段（api_url, list_path, auth_type, …）
 
     当 pipeline_config 为空时，自动从 settings 的 flat 字段构建管道。
+
+    Data-driven generic mailbox; every endpoint and auth step is described via config.
+
+    Config sources (merged by priority):
+      1. pipeline_config: the advanced step pipeline (from provider_definitions.metadata_json)
+      2. settings: flat fields filled in via the user UI (api_url, list_path, auth_type, …)
+
+    When pipeline_config is empty, the pipeline is auto-built from settings' flat fields.
     """
 
     def __init__(
@@ -104,7 +123,8 @@ class GenericHttpMailbox(BaseMailbox):
         self._authenticated = False
 
     def _build_pipeline(self, raw: dict | None) -> dict:
-        """从 metadata 管道和 flat settings 合并构建最终管道配置。"""
+        """从 metadata 管道和 flat settings 合并构建最终管道配置。 —
+        Build the final pipeline config by merging the metadata pipeline with flat settings."""
         pipeline = deepcopy(raw or {})
         s = self._settings
 
@@ -197,7 +217,7 @@ class GenericHttpMailbox(BaseMailbox):
     # ── Step execution engine ──
 
     def _execute_step(self, step_config: dict) -> dict | list | None:
-        """执行单个 HTTP 步骤，返回响应 JSON。"""
+        """执行单个 HTTP 步骤，返回响应 JSON。 — execute a single HTTP step, returning the response JSON."""
         session = self._get_session()
         api_url = self._vars.get("api_url", "").rstrip("/")
 
@@ -261,7 +281,7 @@ class GenericHttpMailbox(BaseMailbox):
         return resp_data
 
     def _run_auth(self) -> None:
-        """执行认证步骤链（如果有）。"""
+        """执行认证步骤链（如果有）。 — execute the auth step chain (if any)."""
         if self._authenticated:
             return
         auth_steps = self._pipeline.get("auth_steps") or []

@@ -14,6 +14,12 @@ class RotatingProxyProvider(BaseProxyProvider):
     适用于提供固定网关地址的代理商（如 BrightData、Oxylabs、IPRoyal 等），
     格式通常是: http://user:pass@gate.provider.com:port
     每次通过该网关发出的请求会自动使用不同的出口 IP。
+
+    Fixed-entry rotating proxy -- each request is automatically assigned a different IP.
+
+    Fits providers with a fixed gateway address (e.g. BrightData, Oxylabs, IPRoyal),
+    usually in the format: http://user:pass@gate.provider.com:port
+    Requests sent through that gateway automatically get a different exit IP each time.
     """
 
     def __init__(self, *, gateway_url: str):

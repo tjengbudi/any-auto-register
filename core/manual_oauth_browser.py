@@ -1,4 +1,5 @@
-"""向后兼容的 re-export 层，新代码请直接使用 core.oauth_browser。"""
+"""向后兼容的 re-export 层，新代码请直接使用 core.oauth_browser。 —
+Backward-compatible re-export layer; new code should use core.oauth_browser directly."""
 from core.oauth_browser import (  # noqa: F401
     OAuthBrowser,
     OAuthBrowser as ManualOAuthBrowser,

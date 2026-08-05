@@ -556,7 +556,8 @@ class TaskLogger:
 
 
 def _auto_push_any2api(task_logger: TaskLogger, account) -> None:
-    """注册成功后自动推送账号到 Any2API（如果已配置）。"""
+    """注册成功后自动推送账号到 Any2API（如果已配置）。 —
+    Automatically push the account to Any2API after successful registration (if configured)."""
     try:
         from core.any2api_sync import push_account_to_any2api
         push_account_to_any2api(account, log_fn=task_logger.log)

@@ -1,4 +1,5 @@
-"""通用 HTTP 客户端 - 基于 curl_cffi，支持代理、重试、会话管理"""
+"""通用 HTTP 客户端 - 基于 curl_cffi，支持代理、重试、会话管理
+Generic HTTP client, built on curl_cffi, with proxy, retry, and session management"""
 """
 HTTP 客户端封装
 基于 curl_cffi 的 HTTP 请求封装，支持代理和错误处理
@@ -30,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class RequestConfig:
-    """HTTP 请求配置"""
+    """HTTP 请求配置 — HTTP request configuration"""
     timeout: int = 30
     max_retries: int = 3
     retry_delay: float = 1.0
@@ -40,7 +41,7 @@ class RequestConfig:
 
 
 class HTTPClientError(Exception):
-    """HTTP 客户端异常"""
+    """HTTP 客户端异常 — HTTP client exception"""
     pass
 
 
@@ -48,6 +49,9 @@ class HTTPClient:
     """
     HTTP 客户端封装
     支持代理、重试、错误处理和会话管理
+
+    HTTP client wrapper
+    Supports proxy, retry, error handling, and session management
     """
 
     def __init__(
@@ -63,6 +67,13 @@ class HTTPClient:
             proxy_url: 代理 URL，如 "http://127.0.0.1:7890"
             config: 请求配置
             session: 可重用的会话对象
+
+        Initialize the HTTP client
+
+        Args:
+            proxy_url: proxy URL, e.g. "http://127.0.0.1:7890"
+            config: request configuration
+            session: a reusable session object
         """
         self.proxy_url = proxy_url
         self.config = config or RequestConfig()
@@ -70,7 +81,7 @@ class HTTPClient:
 
     @property
     def proxies(self) -> Optional[Dict[str, str]]:
-        """获取代理配置"""
+        """获取代理配置 — get the proxy configuration"""
         if not self.proxy_url:
             return None
         return {
@@ -80,7 +91,7 @@ class HTTPClient:
 
     @property
     def session(self) -> Session:
-        """获取会话对象（单例）"""
+        """获取会话对象（单例） — get the session object (singleton)"""
         if self._session is None:
             self._session = Session(
                 proxies=self.proxies,
@@ -109,6 +120,19 @@ class HTTPClient:
 
         Raises:
             HTTPClientError: 请求失败
+
+        Send an HTTP request.
+
+        Args:
+            method: HTTP method (GET, POST, PUT, DELETE, etc.)
+            url: request URL
+            **kwargs: additional request parameters
+
+        Returns:
+            the Response object
+
+        Raises:
+            HTTPClientError: on request failure
         """
         # 设置默认参数 — Set default parameters
         kwargs.setdefault("timeout", self.config.timeout)
@@ -152,31 +176,31 @@ class HTTPClient:
         _raise_keyed(HTTPClientError, "core.5aedd20d", method=method, url=url, error=str(last_exception))
 
     def get(self, url: str, **kwargs) -> Response:
-        """发送 GET 请求"""
+        """发送 GET 请求 — send a GET request"""
         return self.request("GET", url, **kwargs)
 
     def post(self, url: str, data: Any = None, json: Any = None, **kwargs) -> Response:
-        """发送 POST 请求"""
+        """发送 POST 请求 — send a POST request"""
         return self.request("POST", url, data=data, json=json, **kwargs)
 
     def put(self, url: str, data: Any = None, json: Any = None, **kwargs) -> Response:
-        """发送 PUT 请求"""
+        """发送 PUT 请求 — send a PUT request"""
         return self.request("PUT", url, data=data, json=json, **kwargs)
 
     def delete(self, url: str, **kwargs) -> Response:
-        """发送 DELETE 请求"""
+        """发送 DELETE 请求 — send a DELETE request"""
         return self.request("DELETE", url, **kwargs)
 
     def head(self, url: str, **kwargs) -> Response:
-        """发送 HEAD 请求"""
+        """发送 HEAD 请求 — send a HEAD request"""
         return self.request("HEAD", url, **kwargs)
 
     def options(self, url: str, **kwargs) -> Response:
-        """发送 OPTIONS 请求"""
+        """发送 OPTIONS 请求 — send an OPTIONS request"""
         return self.request("OPTIONS", url, **kwargs)
 
     def patch(self, url: str, data: Any = None, json: Any = None, **kwargs) -> Response:
-        """发送 PATCH 请求"""
+        """发送 PATCH 请求 — send a PATCH request"""
         return self.request("PATCH", url, data=data, json=json, **kwargs)
 
     def download_file(self, url: str, filepath: str, chunk_size: int = 8192) -> None:
@@ -190,6 +214,16 @@ class HTTPClient:
 
         Raises:
             HTTPClientError: 下载失败
+
+        Download a file.
+
+        Args:
+            url: file URL
+            filepath: path to save to
+            chunk_size: chunk size
+
+        Raises:
+            HTTPClientError: on download failure
         """
         try:
             response = self.get(url, stream=True)
@@ -212,6 +246,14 @@ class HTTPClient:
 
         Returns:
             bool: 代理是否可用
+
+        Check whether the proxy is available.
+
+        Args:
+            test_url: test URL
+
+        Returns:
+            bool: whether the proxy is available
         """
         if not self.proxy_url:
             return False
@@ -223,7 +265,7 @@ class HTTPClient:
             return False
 
     def close(self):
-        """关闭会话"""
+        """关闭会话 — close the session"""
         if self._session:
             self._session.close()
             self._session = None

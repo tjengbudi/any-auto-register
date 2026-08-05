@@ -1,4 +1,4 @@
-"""接码服务基类 + SMS-Activate / HeroSMS 实现。"""
+"""接码服务基类 + SMS-Activate / HeroSMS 实现。 — SMS-receiving service base class, plus SMS-Activate / HeroSMS implementations."""
 from __future__ import annotations
 
 import hashlib
@@ -443,6 +443,11 @@ class HeroSmsProvider(BaseSmsProvider):
 
         优先使用 getTopCountriesByServiceRank API，降级到 getPrices 全量解析。
         返回格式: [{"country": "66", "name": "Thailand", "price": 0.12, "count": 150}, ...]
+
+        Get the country list for the given service, sorted by price (with price and stock).
+
+        Prefers the getTopCountriesByServiceRank API, falling back to a full getPrices parse.
+        Return format: [{"country": "66", "name": "Thailand", "price": 0.12, "count": 150}, ...]
         """
         service_code = str(service or self.default_service or HERO_SMS_DEFAULT_SERVICE).strip()
 
@@ -485,7 +490,7 @@ class HeroSmsProvider(BaseSmsProvider):
             return []
 
     def _parse_top_countries_response(self, data) -> list[dict]:
-        """解析 getTopCountriesByServiceRank 响应。"""
+        """解析 getTopCountriesByServiceRank 响应。 — Parse the getTopCountriesByServiceRank response."""
         rows = []
         items = data
         # 可能嵌套在 data/result 键下 — May be nested under a data/result key
@@ -545,6 +550,16 @@ class HeroSmsProvider(BaseSmsProvider):
 
         Returns:
             最优国家 ID 字符串，或 None（无可用国家）
+
+        Automatically pick the best country: lowest price with sufficient stock.
+
+        Args:
+            service: service code (defaults to self.default_service)
+            min_stock: minimum stock requirement (defaults to 20)
+            max_price: maximum price limit (0 means unlimited)
+
+        Returns:
+            the best country ID string, or None (no country available)
         """
         # HeroSMS/SMSBower 中已验证对 OpenAI 走 SMS（非 WhatsApp）的国家白名单
         # OpenAI 2025年起对绝大多数国家改用 WhatsApp 验证
@@ -1046,7 +1061,8 @@ class HeroSmsProvider(BaseSmsProvider):
 
 
 class SmsBowerProvider(HeroSmsProvider):
-    """SMSBower provider — API 兼容 HeroSMS，仅 base URL 不同。"""
+    """SMSBower provider — API 兼容 HeroSMS，仅 base URL 不同。
+    API-compatible with HeroSMS; only the base URL differs."""
 
     BASE_URL = "https://smsbower.page/stubs/handler_api.php"
 

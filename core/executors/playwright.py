@@ -1,4 +1,4 @@
-"""Playwright 执行器 - 支持 headless/headed 模式"""
+"""Playwright 执行器 - 支持 headless/headed 模式 — Playwright executor, supporting headless/headed modes"""
 from ..base_executor import BaseExecutor, Response
 
 
@@ -86,44 +86,44 @@ class PlaywrightExecutor(BaseExecutor):
     
     # 浏览器操作方法 — Browser operation methods
     def goto(self, url: str, **kwargs):
-        """导航到 URL"""
+        """导航到 URL — navigate to a URL"""
         return self._page.goto(url, **kwargs)
     
     def fill(self, selector: str, value: str, **kwargs):
-        """填充输入框"""
+        """填充输入框 — fill an input field"""
         return self._page.fill(selector, value, **kwargs)
     
     def click(self, selector: str, **kwargs):
-        """点击元素"""
+        """点击元素 — click an element"""
         return self._page.click(selector, **kwargs)
     
     def wait_for_selector(self, selector: str, **kwargs):
-        """等待元素出现"""
+        """等待元素出现 — wait for an element to appear"""
         return self._page.wait_for_selector(selector, **kwargs)
     
     def query_selector(self, selector: str):
-        """查询元素"""
+        """查询元素 — query an element"""
         return self._page.query_selector(selector)
     
     def query_selector_all(self, selector: str):
-        """查询所有匹配元素"""
+        """查询所有匹配元素 — query all matching elements"""
         return self._page.query_selector_all(selector)
     
     def evaluate(self, script: str, *args):
-        """执行 JavaScript"""
+        """执行 JavaScript — execute JavaScript"""
         return self._page.evaluate(script, *args)
     
     def content(self) -> str:
-        """获取页面 HTML"""
+        """获取页面 HTML — get the page HTML"""
         return self._page.content()
     
     @property
     def url(self) -> str:
-        """当前页面 URL"""
+        """当前页面 URL — the current page URL"""
         return self._page.url
     
     def press(self, selector: str, key: str, **kwargs):
-        """按键"""
+        """按键 — press a key"""
         return self._page.press(selector, key, **kwargs)
 
     def close(self) -> None:

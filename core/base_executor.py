@@ -1,4 +1,5 @@
-"""执行器基类 - 抽象 HTTP 请求层，支持 protocol/headless/headed 三种模式"""
+"""执行器基类 - 抽象 HTTP 请求层，支持 protocol/headless/headed 三种模式
+Executor base class abstracting the HTTP request layer, supporting protocol/headless/headed modes"""
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any

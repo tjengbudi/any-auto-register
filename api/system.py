@@ -20,7 +20,7 @@ _VERSION_CACHE_LOCK = threading.Lock()
 
 
 def _fetch_latest_release() -> dict | None:
-    """拉 GitHub 最新 release，10min 缓存。"""
+    """拉 GitHub 最新 release，10min 缓存。 — fetch the latest GitHub release, cached for 10 minutes."""
     now = time.time()
     with _VERSION_CACHE_LOCK:
         cached = _VERSION_CACHE.get("data")
@@ -48,7 +48,7 @@ def _fetch_latest_release() -> dict | None:
 
 
 def _is_newer(latest: str, current: str) -> bool:
-    """比较语义化版本号；任一解析失败则比字符串。"""
+    """比较语义化版本号；任一解析失败则比字符串。 — compare semantic version strings; falls back to string comparison if either fails to parse."""
     def parse(s: str) -> tuple:
         parts = []
         for chunk in str(s or "").split("."):
@@ -81,7 +81,8 @@ def solver_restart(lang: str = Depends(get_ui_language)):
 
 @router.get("/version")
 def get_version():
-    """返回当前版本与 GitHub 最新 release。前端用此判断是否提示更新。"""
+    """返回当前版本与 GitHub 最新 release。前端用此判断是否提示更新。 —
+    Return the current version and the latest GitHub release; the frontend uses this to decide whether to prompt for an update."""
     current = __version__
     latest = _fetch_latest_release()
     has_update = bool(latest and _is_newer(latest.get("tag", ""), current))
