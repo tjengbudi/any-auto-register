@@ -38,7 +38,7 @@ class Account:
     token: str = ""
     status: AccountStatus = AccountStatus.REGISTERED
     trial_end_time: int = 0       # unix timestamp
-    extra: dict = field(default_factory=dict)  # 平台自定义字段
+    extra: dict = field(default_factory=dict)  # 平台自定义字段 — platform-specific custom fields
     created_at: int = field(default_factory=lambda: int(time.time()))
 
 
@@ -52,11 +52,12 @@ class RegisterConfig:
 
 
 class BasePlatform(ABC):
-    # 子类必须定义
+    # 子类必须定义 — Subclasses must define these
     name: str = ""
     display_name: str = ""
     version: str = "1.0.0"
     # 平台能力由数据库表提供；类上不再保留业务配置默认值。
+    # Platform capabilities come from the database table; the class no longer keeps business-config defaults.
     supported_executors: list = []
     supported_identity_modes: list = []
     supported_oauth_providers: list = []
@@ -83,6 +84,7 @@ class BasePlatform(ABC):
             _raise_keyed(
                 NotImplementedError,
                 "core.a8fadb96",  # "{display_name} 暂不支持 '{executor_type}' 执行器，当前支持: {supported}"
+                # "{display_name} does not support the '{executor_type}' executor yet, currently supported: {supported}"
                 display_name=self.display_name,
                 executor_type=self.config.executor_type,
                 supported=", ".join(self.supported_executors),
@@ -161,6 +163,7 @@ class BasePlatform(ABC):
             adapter = self.build_browser_registration_adapter()
             if adapter is None:
                 _raise_keyed(NotImplementedError, "core.a0e7325d", platform=self.display_name)  # "{platform} 未实现浏览器注册适配器"
+                # "{platform} does not implement a browser registration adapter"
             result = BrowserRegistrationFlow(adapter).run(ctx)
             return self._attach_identity_metadata(self._account_from_registration_result(result), identity)
 
@@ -171,7 +174,7 @@ class BasePlatform(ABC):
             result = ProtocolOAuthFlow(adapter).run(ctx)
             return self._attach_identity_metadata(self._account_from_registration_result(result), identity)
 
-        self.log_key("core.1a4231de", email=identity.email)  # "邮箱: {email}"
+        self.log_key("core.1a4231de", email=identity.email)  # "邮箱: {email}" — "Email: {email}"
         adapter = self.build_protocol_mailbox_adapter()
         if adapter is None:
             _raise_keyed(NotImplementedError, "core.dd49d654", display_name=self.display_name)
@@ -437,6 +440,7 @@ class BasePlatform(ABC):
         for provider_key in candidates:
             try:
                 self.log_key("core.9108f7f3", provider=provider_key)  # "尝试 Turnstile provider: {provider}"
+                # "Trying Turnstile provider: {provider}"
                 solver = self._make_captcha(provider_key=provider_key)
                 token = str(solver.solve_turnstile(page_url, site_key) or "").strip()
                 if token:
@@ -460,6 +464,7 @@ class BasePlatform(ABC):
             _raise_keyed(
                 NotImplementedError,
                 "core.d7a7c4ef",  # "{display_name} 暂不支持 identity_provider='{mode}'，当前支持: {supported}"
+                # "{display_name} does not support identity_provider='{mode}' yet, currently supported: {supported}"
                 display_name=self.display_name,
                 mode=mode,
                 supported=", ".join(self.supported_identity_modes),

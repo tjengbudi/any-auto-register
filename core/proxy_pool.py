@@ -18,7 +18,7 @@ class ProxyPool:
           1. 动态代理 provider（如果已配置且启用）
           2. 静态代理池（数据库中的固定代理列表）
         """
-        # 1. 尝试动态代理
+        # 1. 尝试动态代理 — Try the dynamic proxy provider first
         try:
             from core.proxy_providers import get_dynamic_proxy
             dynamic = get_dynamic_proxy()
@@ -27,7 +27,7 @@ class ProxyPool:
         except Exception:
             pass
 
-        # 2. 回退到静态代理池
+        # 2. 回退到静态代理池 — Fall back to the static proxy pool
         with Session(engine) as s:
             q = select(ProxyModel).where(ProxyModel.is_active == True)
             if region:
@@ -59,7 +59,7 @@ class ProxyPool:
             if p:
                 p.fail_count += 1
                 p.last_checked = datetime.now(timezone.utc)
-                # 连续失败超过10次自动禁用
+                # 连续失败超过10次自动禁用 — Auto-disable after repeated failures
                 if p.fail_count > 0 and p.success_count == 0 and p.fail_count >= 5:
                     p.is_active = False
                 s.add(p)

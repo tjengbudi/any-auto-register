@@ -26,12 +26,12 @@ class PlaywrightExecutor(BaseExecutor):
             launch_opts["proxy"] = {"server": self.proxy}
         self._browser = self._pw.chromium.launch(**launch_opts)
         
-        # 设置更长的默认超时
+        # 设置更长的默认超时 — Use a longer default timeout
         self._context = self._browser.new_context(
             viewport={"width": 1280, "height": 720},
             user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         )
-        self._context.set_default_timeout(60000)  # 60秒默认超时
+        self._context.set_default_timeout(60000)  # 60秒默认超时 — 60s default timeout
         self._page = self._context.new_page()
 
     def get(self, url, *, headers=None, params=None) -> Response:
@@ -84,7 +84,7 @@ class PlaywrightExecutor(BaseExecutor):
                 {"name": k, "value": v, "domain": domain, "path": "/"} for k, v in cookies.items()
             ])
     
-    # 浏览器操作方法
+    # 浏览器操作方法 — Browser operation methods
     def goto(self, url: str, **kwargs):
         """导航到 URL"""
         return self._page.goto(url, **kwargs)

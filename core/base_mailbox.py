@@ -34,6 +34,7 @@ def _log_key_or_print(log_key_fn: Callable[[str, dict], None] | None, key: str, 
         print(t(key, "zh", **params))
 
 # ── 邮箱服务默认 API 地址（统一维护，需要时在此修改） ──
+# ── Default mailbox service API URLs (maintained centrally, edit here when needed) ──
 DEFAULT_LAOUDO_API_URL = "https://laoudo.com/api/email"
 DEFAULT_AITRE_API_URL = "https://mail.aitre.cc/api/tempmail"
 DEFAULT_TEMPMAIL_LOL_API_URL = "https://api.tempmail.lol/v2"
@@ -44,7 +45,7 @@ DEFAULT_TEMPMAIL_WEB_BASE_URL = "https://web2.temp-mail.org"
 class MailboxAccount:
     email: str
     account_id: str = ""
-    extra: dict = None  # 平台额外信息
+    extra: dict = None  # 平台额外信息 — platform-specific extra info
 
 
 class BaseMailbox(ABC):
@@ -986,13 +987,13 @@ class DuckMailMailbox(BaseMailbox):
         password = "Test" + "".join(random.choices(string.digits, k=8)) + "!"
         domain = self.provider_url.replace("https://api.", "").replace("https://", "")
         address = f"{username}@{domain}"
-        # 创建账号
+        # 创建账号 — Create the account
         r = insecure_request(requests.post, f"{self.api}/api/mail?endpoint=%2Faccounts",
             json={"address": address, "password": password},
             headers=self._common_headers(), proxies=self.proxy, timeout=15)
         data = r.json()
         self._address = data.get("address", address)
-        # 登录获取 token
+        # 登录获取 token — Log in to get a token
         r2 = insecure_request(requests.post, f"{self.api}/api/mail?endpoint=%2Ftoken",
             json={"address": self._address, "password": password},
             headers=self._common_headers(), proxies=self.proxy, timeout=15)
@@ -1059,7 +1060,7 @@ class DuckMailMailbox(BaseMailbox):
                     mid = str(msg.get("id") or msg.get("msgid") or "")
                     if mid in seen: continue
                     seen.add(mid)
-                    # 请求邮件详情获取完整 text
+                    # 请求邮件详情获取完整 text — Request the mail detail to get the full text
                     try:
                         r2 = insecure_request(requests.get, f"{self.api}/api/mail?endpoint=%2Fmessages%2F{mid}",
                             headers={"authorization": f"Bearer {account.account_id}",
@@ -1201,15 +1202,15 @@ class CFWorkerMailbox(BaseMailbox):
                         continue
                     seen.add(mid)
                     raw = str(mail.get("raw", ""))
-                    # 1. 优先匹配 <span>XXXXXX</span> （Trae 邮件格式）
+                    # 1. 优先匹配 <span>XXXXXX</span> （Trae 邮件格式）— 1. Prefer matching <span>XXXXXX</span> (Trae mail format)
                     code_m = re.search(r'<span[^>]*>\s*(\d{6})\s*</span>', raw)
                     if code_m:
                         return code_m.group(1)
-                    # 2. 跳过 MIME header，只搜 body 部分，避免匹配时间戳
+                    # 2. 跳过 MIME header，只搜 body 部分，避免匹配时间戳 — 2. Skip the MIME header, search only the body, to avoid matching timestamps
                     body_start = raw.find('\r\n\r\n')
                     search_text = raw[body_start:] if body_start != -1 else raw
                     search_text = re.sub(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', '', search_text)
-                    # 排除时间戳模式 m=+XXXXXX. 和 t=XXXXXXXXXX
+                    # 排除时间戳模式 m=+XXXXXX. 和 t=XXXXXXXXXX — Exclude timestamp patterns m=+XXXXXX. and t=XXXXXXXXXX
                     search_text = re.sub(r'm=\+\d+\.\d+', '', search_text)
                     search_text = re.sub(r'\bt=\d+\b', '', search_text)
                     m = re.search(code_pattern or r'(?<!#)(?<!\d)(\d{6})(?!\d)', search_text)
@@ -1301,7 +1302,7 @@ class MoeMailMailbox(BaseMailbox):
             self._apply_session_token(s, self._configured_session_token)
             self._session = s
             self._session_token = self._configured_session_token
-            _log_key_or_print(log_key_fn, "core.ea7356a0")  # "[MoeMail] 使用已提供的 session-token"
+            _log_key_or_print(log_key_fn, "core.ea7356a0")  # "[MoeMail] 使用已提供的 session-token" — "[MoeMail] Using the provided session-token"
             return self._configured_session_token
 
         if not (self._configured_username and self._configured_password):
@@ -1331,6 +1332,7 @@ class MoeMailMailbox(BaseMailbox):
         if token:
             self._session_token = token
             _log_key_or_print(log_key_fn, "core.f44f6c24")  # "[MoeMail] 使用手动注册账号登录成功"
+            # "[MoeMail] Logged in successfully with the manually registered account"
             return token
         _raise_keyed(RuntimeError, "core.9fe2af7f", status=login_resp.status_code)
 
@@ -1345,7 +1347,7 @@ class MoeMailMailbox(BaseMailbox):
         import random, string
 
         s = self._new_session()
-        # 注册
+        # 注册 — Register
         username = "".join(random.choices(string.ascii_lowercase + string.digits, k=12))
         password = "Test" + "".join(random.choices(string.digits, k=8)) + "!"
         self._username = username
@@ -1362,11 +1364,11 @@ class MoeMailMailbox(BaseMailbox):
             except Exception:
                 register_error = r_reg.text
             _raise_keyed(RuntimeError, "core.a00259ed", error=str(register_error).strip() or f"HTTP {r_reg.status_code}")
-        # 获取 CSRF
+        # 获取 CSRF — Fetch the CSRF token
         with suppress_insecure_request_warning():
             csrf_r = s.get(f"{self.api}/api/auth/csrf", timeout=10)
         csrf = csrf_r.json().get("csrfToken", "")
-        # 登录
+        # 登录 — Log in
         with suppress_insecure_request_warning():
             login_resp = s.post(f"{self.api}/api/auth/callback/credentials",
                 headers={"content-type": "application/x-www-form-urlencoded"},
@@ -1382,12 +1384,12 @@ class MoeMailMailbox(BaseMailbox):
         token = self._extract_session_token(s)
         if token:
             self._session_token = token
-            _log_key_or_print(log_key_fn, "core.ff40994e")  # "[MoeMail] 登录成功"
+            _log_key_or_print(log_key_fn, "core.ff40994e")  # "[MoeMail] 登录成功" — "[MoeMail] Login succeeded"
             return token
         _log_key_or_print(log_key_fn, "core.de22ed55", cookies=str([c.name for c in s.cookies]))
         _raise_keyed(RuntimeError, "core.2d823603", status=login_resp.status_code)
 
-    # 优先用这些域名（信誉较好，不易被 AWS/Google 等拒绝）
+    # 优先用这些域名（信誉较好，不易被 AWS/Google 等拒绝）— Prefer these domains (better reputation, less likely rejected by AWS/Google etc.)
     _PREFERRED_DOMAINS = ("sall.cc", "cnmlgb.de", "zhooo.org", "coolkid.icu")
 
     def get_email(self, *, log_key_fn: Callable[[str, dict], None] | None = None) -> MailboxAccount:
@@ -1396,19 +1398,19 @@ class MoeMailMailbox(BaseMailbox):
         self._ensure_session(log_key_fn=log_key_fn)
         import random, string
         name = "".join(random.choices(string.ascii_letters + string.digits, k=8))
-        # 获取可用域名列表，优先选信誉好的域名，避免被 AWS 等平台拒绝
+        # 获取可用域名列表，优先选信誉好的域名，避免被 AWS 等平台拒绝 — Fetch available domains, preferring reputable ones to avoid rejection by AWS etc.
         domain = "sall.cc"
         try:
             with suppress_insecure_request_warning():
                 cfg_r = self._session.get(f"{self.api}/api/config", timeout=10)
             all_domains = [d.strip() for d in cfg_r.json().get("emailDomains", "sall.cc").split(",") if d.strip()]
             if all_domains:
-                # 从可用域名中筛选优先域名，按 _PREFERRED_DOMAINS 顺序选择
+                # 从可用域名中筛选优先域名，按 _PREFERRED_DOMAINS 顺序选择 — Filter preferred domains out of the available ones, in _PREFERRED_DOMAINS order
                 preferred = [d for d in self._PREFERRED_DOMAINS if d in all_domains]
                 if preferred:
                     domain = random.choice(preferred)
                 else:
-                    # 无优先域名可用，从剩余中随机选
+                    # 无优先域名可用，从剩余中随机选 — No preferred domain available, pick randomly from the rest
                     domain = random.choice(all_domains)
         except Exception:
             pass
@@ -1631,11 +1633,11 @@ class FreemailMailbox(BaseMailbox):
                     mid = str(msg.get("id", ""))
                     if not mid or mid in seen: continue
                     seen.add(mid)
-                    # 直接用 verification_code 字段
+                    # 直接用 verification_code 字段 — Use the verification_code field directly
                     code = str(msg.get("verification_code") or "")
                     if code and code != "None":
                         return code
-                    # 兜底：从 preview 提取
+                    # 兜底：从 preview 提取 — Fallback: extract from the preview
                     text = str(msg.get("preview", "")) + " " + str(msg.get("subject", ""))
                     m = re.search(r"(?<!\d)(\d{6})(?!\d)", text)
                     if m: return m.group(1)
@@ -1863,7 +1865,7 @@ class DDGEmailMailbox(BaseMailbox):
 
     DDG_API = "https://quack.duckduckgo.com/api/email/addresses"
 
-    # 常见邮箱 IMAP 地址自动匹配
+    # 常见邮箱 IMAP 地址自动匹配 — Auto-match common mailbox providers to their IMAP host
     _IMAP_HOSTS = {
         "163.com": "imap.163.com",
         "126.com": "imap.126.com",
@@ -1882,7 +1884,7 @@ class DDGEmailMailbox(BaseMailbox):
         self.imap_pass = imap_pass
         self.proxy = {"http": proxy, "https": proxy} if proxy else None
 
-        # 自动推断 IMAP host
+        # 自动推断 IMAP host — Auto-infer the IMAP host
         if not self.imap_host and self.imap_user and "@" in self.imap_user:
             domain = self.imap_user.split("@", 1)[1].lower()
             self.imap_host = self._IMAP_HOSTS.get(domain, f"imap.{domain}")
@@ -1945,7 +1947,7 @@ class DDGEmailMailbox(BaseMailbox):
             conn = None
             try:
                 conn = imaplib.IMAP4_SSL(self.imap_host, 993, timeout=10)
-                # 163/126 要求先发 ID 命令
+                # 163/126 要求先发 ID 命令 — 163/126 require sending an ID command first
                 if any(h in self.imap_host for h in ("163.com", "126.com", "yeah.net")):
                     imaplib.Commands['ID'] = ('NONAUTH', 'AUTH', 'SELECTED')
                     conn._simple_command('ID', '("name" "IMAPClient" "version" "1.0")')
@@ -1955,7 +1957,7 @@ class DDGEmailMailbox(BaseMailbox):
                 _, msg_nums = conn.search(None, "ALL")
                 ids = msg_nums[0].split() if msg_nums and msg_nums[0] else []
 
-                # 首次轮询：把所有已有邮件标记为已读，只等新邮件
+                # 首次轮询：把所有已有邮件标记为已读，只等新邮件 — First poll: mark all existing emails as seen, wait only for new ones
                 if not baseline_done:
                     seen_ids = set(ids)
                     baseline_done = True
@@ -1976,16 +1978,16 @@ class DDGEmailMailbox(BaseMailbox):
                     raw = msg_data[0][1]
                     msg = email_lib.message_from_bytes(raw)
 
-                    # 检查是否是发给 alias 的（DDG 转发会保留原始 To）
+                    # 检查是否是发给 alias 的（DDG 转发会保留原始 To）— Check whether it's addressed to the alias (DDG forwarding keeps the original To)
                     to_addr = str(msg.get("To", "") or "").lower()
                     from_addr = str(msg.get("From", "") or "").lower()
                     subject = str(msg.get("Subject", "") or "")
 
-                    # 只看发给 alias 或来自 openai/noreply 的
+                    # 只看发给 alias 或来自 openai/noreply 的 — Only consider mail to the alias or from openai/noreply
                     if alias_email.lower() not in to_addr and "openai" not in from_addr and "noreply" not in from_addr:
                         continue
 
-                    # 提取正文
+                    # 提取正文 — Extract the body
                     body_parts = []
                     if msg.is_multipart():
                         for part in msg.walk():
@@ -2002,7 +2004,7 @@ class DDGEmailMailbox(BaseMailbox):
                             body_parts.append(payload.decode(charset, errors="replace"))
 
                     combined = subject + " " + " ".join(body_parts)
-                    # 去掉 style/script 标签内容，避免匹配 CSS 颜色值如 #000000
+                    # 去掉 style/script 标签内容，避免匹配 CSS 颜色值如 #000000 — Strip style/script tag contents, to avoid matching CSS colors like #000000
                     combined = re.sub(r'<style[^>]*>.*?</style>', '', combined, flags=re.DOTALL | re.IGNORECASE)
                     combined = re.sub(r'<script[^>]*>.*?</script>', '', combined, flags=re.DOTALL | re.IGNORECASE)
                     combined = re.sub(r'<[^>]+>', ' ', combined)

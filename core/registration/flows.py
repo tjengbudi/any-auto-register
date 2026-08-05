@@ -33,6 +33,7 @@ class BrowserRegistrationFlow:
                 ensure_oauth_browser_reuse(
                     ctx,
                     "core.727d286a",  # "{platform} 无头 OAuth 需要配置 chrome_user_data_dir 或 chrome_cdp_url，以便复用本机已登录的浏览器会话"
+                    # "{platform} headless OAuth requires chrome_user_data_dir or chrome_cdp_url so it can reuse an already logged-in local browser session"
                     platform=ctx.platform_display_name,
                 )
             if self.adapter.oauth_runner:
@@ -41,8 +42,10 @@ class BrowserRegistrationFlow:
 
         if self.adapter.capability.browser_mailbox_requires_email:
             ensure_identity_email(ctx, "core.51eed862", platform=ctx.platform_display_name)  # "{platform} 浏览器模式需要邮箱地址"
+            # "{platform} needs an email address for browser mode"
         if self.adapter.capability.browser_mailbox_requires_mailbox:
             ensure_mailbox_identity(ctx, "core.1dbde11c", platform=ctx.platform_display_name)  # "{platform} 浏览器邮箱注册依赖 mailbox provider"
+            # "{platform} browser mailbox registration depends on a mailbox provider"
 
         artifacts = RegistrationArtifacts()
         if self.adapter.use_captcha_for_mailbox and getattr(ctx.identity, "identity_provider", "") == "mailbox":
@@ -74,6 +77,7 @@ class BrowserRegistrationFlow:
 
                 exc = RuntimeError(t("core.a0e7325d", "zh", platform=ctx.platform_display_name))
                 exc.i18n_key = "core.a0e7325d"  # "{platform} 未实现浏览器注册适配器"
+                # "{platform} does not implement a browser registration adapter"
                 exc.i18n_params = {"platform": ctx.platform_display_name}
                 raise exc
             raw = self.adapter.browser_register_runner(worker, ctx, artifacts)
@@ -93,6 +97,7 @@ class ProtocolMailboxFlow:
             self.adapter.preflight(ctx)
         if self.adapter.capability.protocol_mailbox_requires_email:
             ensure_identity_email(ctx, "core.6814ed3f", platform=ctx.platform_display_name)  # "{platform} 注册流程依赖 mailbox provider，当前未获取到邮箱账号"
+            # "{platform} registration depends on a mailbox provider, but no email account was obtained"
         if self.adapter.capability.protocol_mailbox_requires_mailbox:
             ensure_mailbox_identity(ctx, "core.6814ed3f", platform=ctx.platform_display_name)
 

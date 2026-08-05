@@ -38,7 +38,7 @@ class Scheduler:
                 self.check_trial_expiry()
             except Exception as e:
                 print(f"[Scheduler] 错误: {e}")
-            # 每小时检查一次
+            # 每小时检查一次 — Check once every hour
             time.sleep(3600)
 
     def check_trial_expiry(self):

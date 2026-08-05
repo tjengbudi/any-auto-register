@@ -22,7 +22,7 @@ from core.tls import mark_session_insecure, suppress_insecure_request_warning
 
 
 # ---------------------------------------------------------------------------
-# 工具函数
+# 工具函数 — Utility functions
 # ---------------------------------------------------------------------------
 
 def _deep_get(data, path: str, default=None):
@@ -70,7 +70,7 @@ def _render_dict(template: dict | None, variables: dict) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# 通用 HTTP 邮箱驱动
+# 通用 HTTP 邮箱驱动 — Generic HTTP mailbox driver
 # ---------------------------------------------------------------------------
 
 class GenericHttpMailbox(BaseMailbox):
@@ -92,13 +92,13 @@ class GenericHttpMailbox(BaseMailbox):
         self._settings = dict(settings or {})
         self._proxy = {"http": proxy, "https": proxy} if proxy else None
 
-        # 从 metadata 管道 + flat settings 合并出最终管道
+        # 从 metadata 管道 + flat settings 合并出最终管道 — Merge the metadata pipeline with flat settings into the final pipeline
         self._pipeline = self._build_pipeline(pipeline_config)
 
-        # 运行时变量池：用户配置 + 步骤提取值
+        # 运行时变量池：用户配置 + 步骤提取值 — Runtime variable pool: user config + values extracted during steps
         self._vars: dict[str, str] = dict(self._settings)
 
-        # HTTP session（带 cookie jar，支持多步认证）
+        # HTTP session（带 cookie jar，支持多步认证）— HTTP session (with a cookie jar, supports multi-step auth)
         self._session: requests.Session | None = None
         self._email: str | None = None
         self._authenticated = False
@@ -108,17 +108,18 @@ class GenericHttpMailbox(BaseMailbox):
         pipeline = deepcopy(raw or {})
         s = self._settings
 
-        # flat settings 中的值作为默认，metadata 中的值优先
+        # flat settings 中的值作为默认，metadata 中的值优先 — flat settings values are the default, metadata values take priority
         pipeline.setdefault("email_mode", s.get("email_mode", "fixed"))
         pipeline.setdefault("response_list_path", s.get("response_list_path", ""))
         pipeline.setdefault("response_id_field", s.get("response_id_field", "id"))
 
-        # 正文字段：逗号分隔字符串 → list
+        # 正文字段：逗号分隔字符串 → list — body fields: comma-separated string -> list
         if "response_body_fields" not in pipeline:
             raw_fields = s.get("response_body_fields", "subject,content,html,text,body,preview")
             pipeline["response_body_fields"] = [f.strip() for f in raw_fields.split(",") if f.strip()]
 
         # 从 flat settings 构建 list_emails 步骤（如果 metadata 里没有）
+        # Build the list_emails step from flat settings (if absent in metadata)
         if "list_emails" not in pipeline:
             list_path = s.get("list_path", "")
             if list_path:
@@ -135,7 +136,7 @@ class GenericHttpMailbox(BaseMailbox):
                         pass
                 pipeline["list_emails"] = step
 
-        # 从 flat settings 构建 create_email 步骤
+        # 从 flat settings 构建 create_email 步骤 — Build the create_email step from flat settings
         if "create_email" not in pipeline:
             create_method = s.get("create_method", "").strip()
             create_path = s.get("create_path", "").strip()
@@ -153,7 +154,7 @@ class GenericHttpMailbox(BaseMailbox):
                     step["extract"] = {"email": email_field}
                 pipeline["create_email"] = step
 
-        # 从 flat settings 构建 get_detail 步骤
+        # 从 flat settings 构建 get_detail 步骤 — Build the get_detail step from flat settings
         if "get_detail" not in pipeline:
             detail_path = s.get("detail_path", "").strip()
             if detail_path:
@@ -162,6 +163,7 @@ class GenericHttpMailbox(BaseMailbox):
         return pipeline
 
     # ── HTTP session 管理 ──────────────────────────────────────────────
+    # ── HTTP session management ──
 
     def _get_session(self) -> requests.Session:
         if self._session is None:
@@ -175,7 +177,7 @@ class GenericHttpMailbox(BaseMailbox):
             )
             s.headers.update({"user-agent": ua})
 
-            # 根据 auth_type 自动注入认证 header
+            # 根据 auth_type 自动注入认证 header — Auto-inject the auth header based on auth_type
             auth_type = self._settings.get("auth_type", "none")
             token = self._settings.get("auth_token", "")
             if token:
@@ -185,13 +187,14 @@ class GenericHttpMailbox(BaseMailbox):
                     header_name = self._settings.get("auth_header_name", "authorization")
                     s.headers[header_name] = token
                 elif auth_type == "api_key_param":
-                    # api_key 作为查询参数，在每次请求时注入
+                    # api_key 作为查询参数，在每次请求时注入 — api_key as a query param, injected on every request
                     pass
 
             self._session = s
         return self._session
 
     # ── 步骤执行引擎 ──────────────────────────────────────────────────
+    # ── Step execution engine ──
 
     def _execute_step(self, step_config: dict) -> dict | list | None:
         """执行单个 HTTP 步骤，返回响应 JSON。"""
@@ -208,7 +211,7 @@ class GenericHttpMailbox(BaseMailbox):
         # query params
         params = _render_dict(step_config.get("params"), self._vars)
 
-        # api_key 作为查询参数注入
+        # api_key 作为查询参数注入 — Inject api_key as a query parameter
         if self._settings.get("auth_type") == "api_key_param" and self._settings.get("auth_token"):
             key_name = self._settings.get("auth_header_name", "apikey")
             params[key_name] = self._settings["auth_token"]
@@ -240,14 +243,14 @@ class GenericHttpMailbox(BaseMailbox):
         except Exception:
             resp_data = {"_text": resp.text}
 
-        # 提取变量
+        # 提取变量 — Extract variables
         extract_map = step_config.get("extract") or {}
         for var_name, json_path in extract_map.items():
             extracted = _deep_get(resp_data, json_path)
             if extracted is not None:
                 self._vars[var_name] = str(extracted)
 
-        # 提取 cookie
+        # 提取 cookie — Extract the cookie
         cookie_name = step_config.get("extract_cookie")
         if cookie_name:
             for cookie in session.cookies:
@@ -267,6 +270,7 @@ class GenericHttpMailbox(BaseMailbox):
         self._authenticated = True
 
     # ── BaseMailbox 接口 ──────────────────────────────────────────────
+    # ── BaseMailbox interface ──
 
     def get_email(self, *, log_key_fn: Callable[[str, dict], None] | None = None) -> MailboxAccount:
         self._run_auth()
@@ -301,7 +305,7 @@ class GenericHttpMailbox(BaseMailbox):
         if not create_step:
             _raise_keyed(RuntimeError, "core.f6c8edeb")
 
-        # 多步创建（list of steps）
+        # 多步创建（list of steps）— Multi-step creation (list of steps)
         steps = create_step if isinstance(create_step, list) else [create_step]
         for step in steps:
             self._execute_step(step)
@@ -369,7 +373,7 @@ class GenericHttpMailbox(BaseMailbox):
                 if not isinstance(items, list):
                     items = []
 
-                # 如果有 get_detail 步骤，需要逐个获取详情
+                # 如果有 get_detail 步骤，需要逐个获取详情 — If a get_detail step exists, fetch each item's detail individually
                 detail_step = self._pipeline.get("get_detail")
 
                 for item in items:
@@ -378,7 +382,7 @@ class GenericHttpMailbox(BaseMailbox):
                         continue
                     seen.add(mid)
 
-                    # 拼接正文
+                    # 拼接正文 — Assemble the body text
                     if detail_step:
                         self._vars["message_id"] = mid
                         detail_resp = self._execute_step(detail_step)
@@ -392,7 +396,7 @@ class GenericHttpMailbox(BaseMailbox):
                         if val:
                             text_parts.append(str(val))
 
-                    # 也检查特殊字段
+                    # 也检查特殊字段 — Also check the special field
                     code_val = detail_data.get("verification_code")
                     if code_val and str(code_val) != "None":
                         return str(code_val)
@@ -401,7 +405,7 @@ class GenericHttpMailbox(BaseMailbox):
                     if not combined.strip():
                         continue
 
-                    # 正则提取验证码
+                    # 正则提取验证码 — Extract the verification code with a regex
                     pattern = code_pattern or r'(?<!\d)(\d{6})(?!\d)'
                     m = re.search(pattern, combined)
                     if m:

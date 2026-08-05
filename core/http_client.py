@@ -110,11 +110,11 @@ class HTTPClient:
         Raises:
             HTTPClientError: 请求失败
         """
-        # 设置默认参数
+        # 设置默认参数 — Set default parameters
         kwargs.setdefault("timeout", self.config.timeout)
         kwargs.setdefault("allow_redirects", self.config.follow_redirects)
 
-        # 添加代理配置
+        # 添加代理配置 — Add proxy configuration
         if self.proxies and "proxies" not in kwargs:
             kwargs["proxies"] = self.proxies
 
@@ -123,14 +123,14 @@ class HTTPClient:
             try:
                 response = self.session.request(method, url, **kwargs)
 
-                # 检查响应状态码
+                # 检查响应状态码 — Check the response status code
                 if response.status_code >= 400:
                     logger.warning(
                         f"HTTP {response.status_code} for {method} {url}"
                         f" (attempt {attempt + 1}/{self.config.max_retries})"
                     )
 
-                    # 如果是服务器错误，重试
+                    # 如果是服务器错误，重试 — Retry on server errors
                     if response.status_code >= 500 and attempt < self.config.max_retries - 1:
                         time.sleep(self.config.retry_delay * (attempt + 1))
                         continue

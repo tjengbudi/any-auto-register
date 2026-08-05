@@ -479,7 +479,7 @@ def _cleanup_empty_provider_settings():
             session.commit()
 
 
-# 旧版 provider_key → 新版 provider_key 映射
+# 旧版 provider_key → 新版 provider_key 映射 — Legacy provider_key -> new provider_key mapping
 _LEGACY_PROVIDER_KEY_MAP: dict[tuple[str, str], str] = {
     # mailbox
     ("mailbox", "moemail"): "moemail_api",
@@ -499,7 +499,7 @@ _LEGACY_PROVIDER_KEY_MAP: dict[tuple[str, str], str] = {
     ("captcha", "twocaptcha"): "twocaptcha_api",
 }
 
-# 旧版 auth_mode 值 → 新版 auth_mode 值映射
+# 旧版 auth_mode 值 → 新版 auth_mode 值映射 — Legacy auth_mode value -> new auth_mode value mapping
 _LEGACY_AUTH_MODE_MAP: dict[str, str] = {
     "endpoint_only": "password",
     "manual_login": "password",
@@ -520,7 +520,7 @@ def _migrate_legacy_provider_keys():
     with Session(engine) as session:
         migrated = 0
 
-        # 1. 迁移 provider_key
+        # 1. 迁移 provider_key — Migrate provider_key
         for (ptype, old_key), new_key in _LEGACY_PROVIDER_KEY_MAP.items():
             # --- provider_settings ---
             old_setting = session.exec(
@@ -564,14 +564,14 @@ def _migrate_legacy_provider_keys():
             session.commit()
             print(f"[DB] 已迁移 {migrated} 条旧版 provider key")
 
-        # 2. 修正 auth_mode 值
+        # 2. 修正 auth_mode 值 — Fix up auth_mode values
         fixed = 0
         all_settings = session.exec(select(ProviderSettingModel)).all()
         for item in all_settings:
             old_mode = item.auth_mode or ""
             if not old_mode:
                 continue
-            # 查找对应的 definition
+            # 查找对应的 definition — Look up the matching definition
             defn = session.exec(
                 select(ProviderDefinitionModel)
                 .where(ProviderDefinitionModel.provider_type == item.provider_type)
@@ -581,9 +581,9 @@ def _migrate_legacy_provider_keys():
                 continue
             valid_modes = {m.get("value") for m in defn.get_auth_modes()}
             if not valid_modes or old_mode in valid_modes:
-                # 当前值已经有效，跳过
+                # 当前值已经有效，跳过 — Already a valid value, skip
                 continue
-            # 尝试映射
+            # 尝试映射 — Try to map it
             new_mode = _LEGACY_AUTH_MODE_MAP.get(old_mode)
             if new_mode and new_mode in valid_modes:
                 item.auth_mode = new_mode

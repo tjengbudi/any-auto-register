@@ -389,7 +389,7 @@ class HeroSmsProvider(BaseSmsProvider):
         if isinstance(data, list):
             return data
         if isinstance(data, dict):
-            # 可能是 {"dr": {"name": "OpenAI", ...}, ...} 格式
+            # 可能是 {"dr": {"name": "OpenAI", ...}, ...} 格式 — May be shaped like {"dr": {"name": "OpenAI", ...}, ...}
             result = []
             for key, value in data.items():
                 if key in ("status", "message", "error"):
@@ -409,10 +409,10 @@ class HeroSmsProvider(BaseSmsProvider):
         if isinstance(data, list):
             return data
         if isinstance(data, dict):
-            # 检查是否是错误响应 {"status":0,"message":"No access","data":[]}
+            # 检查是否是错误响应 {"status":0,"message":"No access","data":[]} — Check for an error response shaped like this
             if data.get("status") == 0 or data.get("message") == "No access":
                 raise RuntimeError(f"SMS API access denied: {data.get('message', 'unknown')}")
-            # HeroSMS 可能返回 {"0": {"id": 0, "eng": "Russia"}, ...} 格式
+            # HeroSMS 可能返回 {"0": {"id": 0, "eng": "Russia"}, ...} 格式 — HeroSMS may return this shape instead
             result = []
             for key, value in data.items():
                 if key in ("status", "message", "data", "error"):
@@ -446,7 +446,7 @@ class HeroSmsProvider(BaseSmsProvider):
         """
         service_code = str(service or self.default_service or HERO_SMS_DEFAULT_SERVICE).strip()
 
-        # 策略1: 使用 getTopCountriesByServiceRank（HeroSMS 专用排名接口）
+        # 策略1: 使用 getTopCountriesByServiceRank（HeroSMS 专用排名接口）— Strategy 1: use HeroSMS's dedicated ranking endpoint
         for action in ("getTopCountriesByServiceRank", "getTopCountriesByService"):
             try:
                 data = self._request({"action": action, "service": service_code}).json()
@@ -457,7 +457,7 @@ class HeroSmsProvider(BaseSmsProvider):
             except Exception:
                 continue
 
-        # 策略2: 从 getPrices 全量数据中解析
+        # 策略2: 从 getPrices 全量数据中解析 — Strategy 2: parse it out of the full getPrices data
         try:
             prices = self.get_prices(service=service_code)
             rows = []
@@ -488,11 +488,11 @@ class HeroSmsProvider(BaseSmsProvider):
         """解析 getTopCountriesByServiceRank 响应。"""
         rows = []
         items = data
-        # 可能嵌套在 data/result 键下
+        # 可能嵌套在 data/result 键下 — May be nested under a data/result key
         if isinstance(data, dict):
             items = data.get("data") or data.get("result") or data.get("response") or data
         if isinstance(items, dict):
-            # {country_id: {price, count, ...}} 格式
+            # {country_id: {price, count, ...}} 格式 — {country_id: {price, count, ...}} shape
             for key, value in items.items():
                 if not isinstance(value, dict):
                     continue
@@ -549,8 +549,11 @@ class HeroSmsProvider(BaseSmsProvider):
         # HeroSMS/SMSBower 中已验证对 OpenAI 走 SMS（非 WhatsApp）的国家白名单
         # OpenAI 2025年起对绝大多数国家改用 WhatsApp 验证
         # 目前只有泰国确认走 SMS
+        # Allowlist of countries verified to route OpenAI via SMS (not WhatsApp) on HeroSMS/SMSBower.
+        # OpenAI has moved most countries to WhatsApp verification since 2025.
+        # Only Thailand is currently confirmed to still use SMS.
         ALLOWED_COUNTRIES = {
-            "52",   # Thailand (已验证走SMS)
+            "52",   # Thailand (已验证走SMS) — verified to use SMS
         }
 
         try:
@@ -574,7 +577,7 @@ class HeroSmsProvider(BaseSmsProvider):
                 continue
             return country_id
 
-        # 如果没有满足 min_stock 的，放宽到 count > 0
+        # 如果没有满足 min_stock 的，放宽到 count > 0 — If none meet min_stock, relax to count > 0
         for row in rows:
             country_id = str(row.get("country") or "")
             if country_id not in ALLOWED_COUNTRIES:
@@ -658,23 +661,25 @@ class HeroSmsProvider(BaseSmsProvider):
 
         # 动态获取该国家该服务的实际价格，用实际价格作为 maxPrice
         # 这样能确保拿到物理号码（而不是被分配虚拟号码）
+        # Dynamically fetch the actual price for this country/service and use it as maxPrice.
+        # This ensures a physical number is obtained (rather than being assigned a virtual one).
         effective_max_price = self.max_price if self.max_price > 0 else 1
         try:
             prices = self.get_prices(service=service, country=country)
-            # getPrices 返回格式: {country_id: {service_code: {cost, count}}}
+            # getPrices 返回格式: {country_id: {service_code: {cost, count}}} — getPrices response shape
             country_prices = prices.get(str(country)) or prices.get(country) or {}
             service_prices = country_prices.get(service) or {}
             actual_cost = service_prices.get("cost") or service_prices.get("price")
             if actual_cost is not None:
                 actual_cost = float(actual_cost)
-                # 用实际价格的 3 倍作为 maxPrice（留足余量），但不超过用户配置的上限
+                # 用实际价格的 3 倍作为 maxPrice（留足余量），但不超过用户配置的上限 — Use 3x the actual price as maxPrice (extra headroom), capped at the user-configured limit
                 dynamic_max = round(actual_cost * 3, 4)
                 if self.max_price > 0:
                     effective_max_price = min(self.max_price, max(dynamic_max, 0.2))
                 else:
                     effective_max_price = max(dynamic_max, 0.2)
         except Exception:
-            pass  # 查询失败就用默认值
+            pass  # 查询失败就用默认值 — fall back to the default on lookup failure
 
         common["maxPrice"] = effective_max_price
 
@@ -691,7 +696,7 @@ class HeroSmsProvider(BaseSmsProvider):
         except Exception as exc:
             v2_error = str(exc)
 
-        # 如果 NO_NUMBERS 且 maxPrice 低于用户配置的上限，提高 maxPrice 重试
+        # 如果 NO_NUMBERS 且 maxPrice 低于用户配置的上限，提高 maxPrice 重试 — If NO_NUMBERS and maxPrice is below the user-configured limit, raise maxPrice and retry
         if "NO_NUMBERS" in v2_error and self.max_price > 0 and effective_max_price < self.max_price:
             common["maxPrice"] = self.max_price
             try:
@@ -1046,7 +1051,7 @@ class SmsBowerProvider(HeroSmsProvider):
     BASE_URL = "https://smsbower.page/stubs/handler_api.php"
 
     def _request(self, params: dict, *, needs_key: bool = True, timeout: int = 30) -> requests.Response:
-        # SMSBower 所有接口都需要 api_key（包括 getServicesList、getCountries）
+        # SMSBower 所有接口都需要 api_key（包括 getServicesList、getCountries）— All SMSBower endpoints require api_key (including getServicesList, getCountries)
         payload = dict(params)
         if needs_key or self.api_key:
             payload["api_key"] = self.api_key
@@ -1150,11 +1155,11 @@ class PhoneCallbackController:
                 _HERO_SMS_VERIFY_LOCK.acquire()
                 self._verify_lock_acquired = True
 
-            # 智能国家选择：如果启用了 auto_select_country，自动查询最优国家
+            # 智能国家选择：如果启用了 auto_select_country，自动查询最优国家 — Smart country selection: if auto_select_country is enabled, automatically look up the best country
             effective_country = self.country
             auto_select = _safe_bool(self.config.get("herosms_auto_country") or self.config.get("smsbower_auto_country"), False)
             if auto_select and isinstance(provider, HeroSmsProvider):
-                self.log_key("core.307b1040")  # "正在查询最优国家（价格最低 + 库存充足）..."
+                self.log_key("core.307b1040")  # "正在查询最优国家（价格最低 + 库存充足）..." — "Querying the best country (lowest price + sufficient stock)..."
                 try:
                     min_stock = _safe_int(self.config.get("herosms_auto_country_min_stock") or self.config.get("smsbower_auto_country_min_stock"), 20)
                     max_price_limit = _safe_float(self.config.get("herosms_auto_country_max_price") or self.config.get("smsbower_auto_country_max_price"), 0)
@@ -1164,20 +1169,20 @@ class PhoneCallbackController:
                         max_price=max_price_limit,
                     )
                     if best:
-                        self.log_key("core.00504213", best=best)  # "自动选择最优国家: {best}"
+                        self.log_key("core.00504213", best=best)  # "自动选择最优国家: {best}" — "Automatically selected the best country: {best}"
                         effective_country = best
                     else:
-                        self.log_key("core.58babe63")  # "未找到满足条件的国家，使用默认配置"
+                        self.log_key("core.58babe63")  # "未找到满足条件的国家，使用默认配置" — "No country met the criteria; using the default config"
                 except Exception as exc:
-                    self.log_key("core.5dcc29ce", exc=str(exc))  # "智能国家选择失败({exc})，使用默认配置"
+                    self.log_key("core.5dcc29ce", exc=str(exc))  # "智能国家选择失败({exc})，使用默认配置" — "Smart country selection failed ({exc}); using the default config"
 
             country_label = effective_country or self.config.get("sms_country") or self.config.get("sms_activate_country") or "default"
             self.log_key("core.1ba95019", provider=self.provider_key, service=self.service, country=country_label)
-            self.log_key("core.1d069f52", provider=self.provider_key)  # "正在从 {provider} 获取手机号..."
+            self.log_key("core.1d069f52", provider=self.provider_key)  # "正在从 {provider} 获取手机号..." — "Fetching a phone number from {provider}..."
             try:
                 self.activation = provider.get_number(service=self.service, country=effective_country)
             except Exception as first_exc:
-                # 如果是自动选择的国家失败了，回退到默认国家重试
+                # 如果是自动选择的国家失败了，回退到默认国家重试 — If the auto-selected country failed, fall back to the default country and retry
                 fallback_country = self.country or self.config.get("sms_country") or self.config.get("herosms_country") or ""
                 if auto_select and effective_country != fallback_country and fallback_country:
                     self.log_key("core.2f6bd846", country=effective_country, fallback=fallback_country)
@@ -1208,7 +1213,7 @@ class PhoneCallbackController:
             self.log_key("core.d9817248", activation_id=self.activation.activation_id)
             code = provider.get_code(self.activation.activation_id, timeout=180)
             if code:
-                self.log_key("core.ff3edf97", code=code)  # "收到验证码: {code}"
+                self.log_key("core.ff3edf97", code=code)  # "收到验证码: {code}" — "Received verification code: {code}"
                 if getattr(provider, "auto_report_success_on_code", True):
                     self.report_success()
                 else:

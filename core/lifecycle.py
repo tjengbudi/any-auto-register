@@ -329,7 +329,7 @@ def refresh_and_sync_cpa(
         except Exception:
             return {}
 
-    # 读取 CPA 配置
+    # 读取 CPA 配置 — Read CPA configuration
     try:
         from core.config_store import config_store
         cpa_api_url = config_store.get("cpa_api_url", "")
@@ -337,7 +337,7 @@ def refresh_and_sync_cpa(
     except Exception:
         cpa_api_url, cpa_api_key = "", ""
 
-    # 获取所有活跃 chatgpt 账号
+    # 获取所有活跃 chatgpt 账号 — Fetch all active chatgpt accounts
     with Session(engine) as session:
         q = select(AccountModel).where(AccountModel.platform == platform)
         q = q.order_by(AccountModel.created_at.desc()).limit(limit)
@@ -363,7 +363,7 @@ def refresh_and_sync_cpa(
             continue
 
         try:
-            # 1. 用 session_token 刷新 access_token
+            # 1. 用 session_token 刷新 access_token — Refresh access_token using session_token
             proxy = credentials.get("proxy", None)
             s = cffi_requests.Session(impersonate="chrome120", proxy=proxy)
             s.cookies.set("__Secure-next-auth.session-token", session_token,
@@ -385,12 +385,12 @@ def refresh_and_sync_cpa(
 
             results["refreshed"] += 1
 
-            # 更新 credential
+            # 更新 credential — Update the credential
             new_session = s.cookies.get("__Secure-next-auth.session-token") or session_token
             credential_updates = {"access_token": access_token}
             if new_session != session_token:
                 credential_updates["session_token"] = new_session
-            # id_token = access_token (NextAuth 没有独立 id_token)
+            # id_token = access_token (NextAuth 没有独立 id_token) — NextAuth has no separate id_token
             credential_updates["id_token"] = access_token
 
             with Session(engine) as sess:
@@ -405,7 +405,7 @@ def refresh_and_sync_cpa(
                     sess.add(model)
                     sess.commit()
 
-            # 2. 检查存活
+            # 2. 检查存活 — Check whether it is still alive
             check_resp = cffi_requests.get(
                 "https://chatgpt.com/backend-api/me",
                 headers={"authorization": f"Bearer {access_token}", "accept": "application/json"},
@@ -432,7 +432,7 @@ def refresh_and_sync_cpa(
                         sess.commit()
                 continue
 
-            # 3. 上传到 CPA
+            # 3. 上传到 CPA — Upload to CPA
             if cpa_api_url and cpa_api_key:
                 from datetime import timedelta
                 tz8 = timezone(timedelta(hours=8))
@@ -543,7 +543,7 @@ class LifecycleManager:
                     refresh_expiring_tokens()
                     self._last_refresh = now
 
-                # CPA sync (刷新 token + 存活检查 + 上传)
+                # CPA sync (刷新 token + 存活检查 + 上传) — refresh token + liveness check + upload
                 if now - self._last_cpa_sync >= self.cpa_sync_interval:
                     print("[LifecycleManager] 开始 CPA 同步 (刷新+检查+上传)...")
                     refresh_and_sync_cpa()

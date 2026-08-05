@@ -47,6 +47,7 @@ def ensure_oauth_executor_allowed(ctx: RegistrationContext, allowed_executor_typ
     if ctx.executor_type not in allowed_executor_types:
         if key is None:
             key = "core.e180ad44"  # "{platform} 当前 OAuth 仅支持 executor_type={expected}"
+            # "{platform} currently only supports OAuth with executor_type={expected}"
             params = {**params, "platform": ctx.platform_display_name, "expected": ", ".join(allowed_executor_types)}
         _raise_keyed(RegistrationUnsupportedError, key, **params)
 
@@ -74,7 +75,7 @@ def build_otp_callback(
         if wait_message is not None:
             ctx.log(wait_message)
         else:
-            ctx.log_key("core.cfeae2ac")  # "等待验证码..."
+            ctx.log_key("core.cfeae2ac")  # "等待验证码..." — "Waiting for the verification code..."
         kwargs = {
             "keyword": keyword,
             "before_ids": getattr(ctx.identity, "before_ids", set()),
@@ -93,7 +94,7 @@ def build_otp_callback(
             if success_label is not None:
                 ctx.log(f"{success_label}: {code}")
             else:
-                ctx.log_key("core.52bc9ea2", code=code)  # "验证码: {code}"
+                ctx.log_key("core.52bc9ea2", code=code)  # "验证码: {code}" — "Verification code: {code}"
         return code
 
     return otp_cb
@@ -123,6 +124,7 @@ def build_phone_callbacks(ctx: RegistrationContext, *, service: str | None = Non
             source = "legacy sms_activate_api_key"
     if not provider_key:
         ctx.log_key("core.ea0e6bf1")  # "[SMS] 未配置 SMS provider（...），phone_callback=None — 注册到 add_phone 步骤将抛错"
+        # "[SMS] no SMS provider configured (...), phone_callback=None -- registration will raise at the add_phone step"
         return None, None
 
     definition = definitions_repo.get_by_key("sms", provider_key)
@@ -194,7 +196,7 @@ def build_link_callback(
         if wait_message is not None:
             ctx.log(wait_message)
         else:
-            ctx.log_key("core.479bedce")  # "等待验证链接邮件..."
+            ctx.log_key("core.479bedce")  # "等待验证链接邮件..." — "Waiting for the verification link email..."
         before_ids = mailbox.get_current_ids(mail_acct)
         # ctx.log_key_fn, not ctx.log_key -- see build_otp_callback's kwargs above.
         kwargs = {"keyword": keyword, "before_ids": before_ids, "log_key_fn": ctx.log_key_fn}
@@ -206,7 +208,7 @@ def build_link_callback(
             if success_label is not None:
                 ctx.log(f"{success_label}: {preview}")
             else:
-                ctx.log_key("core.015a4247", preview=preview)  # "验证链接: {preview}"
+                ctx.log_key("core.015a4247", preview=preview)  # "验证链接: {preview}" — "Verification link: {preview}"
         return link
 
     return link_cb
