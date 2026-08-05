@@ -14,7 +14,10 @@ class YesCaptcha(BaseCaptcha):
     def from_config(cls, config: dict) -> 'YesCaptcha':
         client_key = str(config.get("yescaptcha_key", "") or "")
         if not client_key:
-            raise RuntimeError("YesCaptcha Key 未配置")
+            exc = RuntimeError("YesCaptcha Key 未配置")
+            exc.i18n_key = "providers.9bfc5153"
+            exc.i18n_params = {}
+            raise exc
         return cls(client_key)
 
     def solve_turnstile(self, page_url: str, site_key: str) -> str:
@@ -26,7 +29,11 @@ class YesCaptcha(BaseCaptcha):
         }, timeout=30)
         task_id = r.json().get("taskId")
         if not task_id:
-            raise RuntimeError(f"YesCaptcha 创建任务失败: {r.text}")
+            text = r.text
+            exc = RuntimeError(f"YesCaptcha 创建任务失败: {text}")
+            exc.i18n_key = "providers.1b3c747c"
+            exc.i18n_params = {"text": text}
+            raise exc
         for _ in range(60):
             time.sleep(3)
             d = insecure_request(requests.post, f"{self.api}/getTaskResult", json={
@@ -35,8 +42,15 @@ class YesCaptcha(BaseCaptcha):
             if d.get("status") == "ready":
                 return d["solution"]["token"]
             if d.get("errorId", 0) != 0:
-                raise RuntimeError(f"YesCaptcha 错误: {d}")
-        raise TimeoutError("YesCaptcha Turnstile 超时")
+                d_str = str(d)
+                exc = RuntimeError(f"YesCaptcha 错误: {d_str}")
+                exc.i18n_key = "providers.4ec76fbc"
+                exc.i18n_params = {"d": d_str}
+                raise exc
+        exc = TimeoutError("YesCaptcha Turnstile 超时")
+        exc.i18n_key = "providers.ee9cda95"
+        exc.i18n_params = {}
+        raise exc
 
     def solve_image(self, image_b64: str) -> str:
         raise NotImplementedError

@@ -55,10 +55,17 @@ def create_provider(provider_type: str, driver_type: str, config: dict) -> Any:
     """
     cls = get_provider_class(provider_type, driver_type)
     if cls is None:
-        raise ValueError(f"未注册的 provider: {provider_type}/{driver_type}")
+        exc = ValueError(f"未注册的 provider: {provider_type}/{driver_type}")
+        exc.i18n_key = "providers.0d361083"
+        exc.i18n_params = {"provider_type": provider_type, "driver_type": driver_type}
+        raise exc
     factory = getattr(cls, "from_config", None)
     if factory is None:
-        raise TypeError(f"{cls.__name__} 缺少 from_config 类方法")
+        cls_name = cls.__name__
+        exc = TypeError(f"{cls_name} 缺少 from_config 类方法")
+        exc.i18n_key = "providers.446112fc"
+        exc.i18n_params = {"cls_name": cls_name}
+        raise exc
     return factory(config)
 
 

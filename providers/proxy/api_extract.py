@@ -43,7 +43,10 @@ class ApiExtractProvider(BaseProxyProvider):
     def from_config(cls, config: dict) -> 'ApiExtractProvider':
         api_url = config.get("proxy_api_url", "")
         if not api_url:
-            raise RuntimeError("动态代理未配置 API URL")
+            exc = RuntimeError("动态代理未配置 API URL")
+            exc.i18n_key = "providers.14a57e71"
+            exc.i18n_params = {}
+            raise exc
         return cls(
             api_url=api_url,
             protocol=config.get("proxy_protocol", "http"),

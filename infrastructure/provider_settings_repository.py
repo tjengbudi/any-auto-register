@@ -122,13 +122,19 @@ class ProviderSettingsRepository:
     ) -> ProviderSettingModel:
         definition = self.definitions.get_by_key(provider_type, provider_key)
         if not definition:
-            raise ValueError(f"未知 provider: {provider_type}/{provider_key}")
+            exc = ValueError(f"未知 provider: {provider_type}/{provider_key}")
+            exc.i18n_key = "infrastructure.93615891"
+            exc.i18n_params = {"provider_type": provider_type, "provider_key": provider_key}
+            raise exc
 
         with Session(engine) as session:
             if setting_id:
                 item = session.get(ProviderSettingModel, setting_id)
                 if not item:
-                    raise ValueError("provider setting 不存在")
+                    exc = ValueError("provider setting 不存在")
+                    exc.i18n_key = "infrastructure.0fa0f821"
+                    exc.i18n_params = {}
+                    raise exc
             else:
                 item = session.exec(
                     select(ProviderSettingModel)

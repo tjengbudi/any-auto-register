@@ -23,7 +23,10 @@ class RotatingProxyProvider(BaseProxyProvider):
     def from_config(cls, config: dict) -> 'RotatingProxyProvider':
         gateway = config.get("proxy_gateway_url", "")
         if not gateway:
-            raise RuntimeError("旋转代理未配置网关地址")
+            exc = RuntimeError("旋转代理未配置网关地址")
+            exc.i18n_key = "providers.76b19954"
+            exc.i18n_params = {}
+            raise exc
         return cls(gateway_url=gateway)
 
     def get_proxy(self) -> Optional[str]:

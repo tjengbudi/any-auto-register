@@ -553,7 +553,10 @@ class ProviderDefinitionsRepository:
             if definition_id:
                 item = session.get(ProviderDefinitionModel, definition_id)
                 if not item:
-                    raise ValueError("provider definition 不存在")
+                    exc = ValueError("provider definition 不存在")
+                    exc.i18n_key = "infrastructure.f4a7f40a"
+                    exc.i18n_params = {}
+                    raise exc
             else:
                 item = session.exec(
                     select(ProviderDefinitionModel)
@@ -596,7 +599,10 @@ class ProviderDefinitionsRepository:
                 .where(ProviderSettingModel.provider_key == item.provider_key)
             ).first()
             if has_settings:
-                raise ValueError("请先删除对应 provider 配置，再删除 definition")
+                exc = ValueError("请先删除对应 provider 配置，再删除 definition")
+                exc.i18n_key = "infrastructure.be12dfa8"
+                exc.i18n_params = {}
+                raise exc
             session.delete(item)
             session.commit()
             return True

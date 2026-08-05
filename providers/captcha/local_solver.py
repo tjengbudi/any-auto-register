@@ -25,7 +25,11 @@ class LocalSolverCaptcha(BaseCaptcha):
         r.raise_for_status()
         task_id = r.json().get("taskId")
         if not task_id:
-            raise RuntimeError(f"LocalSolver 未返回 taskId: {r.text}")
+            text = r.text
+            exc = RuntimeError(f"LocalSolver 未返回 taskId: {text}")
+            exc.i18n_key = "providers.4ea7683b"
+            exc.i18n_params = {"text": text}
+            raise exc
         # 轮询结果
         for _ in range(60):
             time.sleep(2)
@@ -37,16 +41,25 @@ class LocalSolverCaptcha(BaseCaptcha):
             if res.status_code == 200:
                 data = res.json()
                 if data.get("errorId"):
-                    message = data.get("errorDescription") or data.get("errorCode") or data
-                    raise RuntimeError(f"LocalSolver Turnstile 失败: {message}")
+                    message = str(data.get("errorDescription") or data.get("errorCode") or data)
+                    exc = RuntimeError(f"LocalSolver Turnstile 失败: {message}")
+                    exc.i18n_key = "providers.78d5466d"
+                    exc.i18n_params = {"message": message}
+                    raise exc
                 status = data.get("status")
                 if status == "ready":
                     token = data.get("solution", {}).get("token")
                     if token:
                         return token
                 elif status == "CAPTCHA_FAIL":
-                    raise RuntimeError("LocalSolver Turnstile 失败")
-        raise TimeoutError("LocalSolver Turnstile 超时")
+                    exc = RuntimeError("LocalSolver Turnstile 失败")
+                    exc.i18n_key = "providers.17194286"
+                    exc.i18n_params = {}
+                    raise exc
+        exc = TimeoutError("LocalSolver Turnstile 超时")
+        exc.i18n_key = "providers.4ccd485e"
+        exc.i18n_params = {}
+        raise exc
 
     def solve_image(self, image_b64: str) -> str:
         raise NotImplementedError
@@ -76,4 +89,7 @@ class LocalSolverCaptcha(BaseCaptcha):
                 return
             except Exception:
                 pass
-        raise RuntimeError("LocalSolver 启动超时")
+        exc = RuntimeError("LocalSolver 启动超时")
+        exc.i18n_key = "providers.850c56bd"
+        exc.i18n_params = {}
+        raise exc

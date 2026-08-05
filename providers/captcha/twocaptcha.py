@@ -13,7 +13,10 @@ class TwoCaptcha(BaseCaptcha):
     def from_config(cls, config: dict) -> 'TwoCaptcha':
         api_key = str(config.get("twocaptcha_key", "") or "")
         if not api_key:
-            raise RuntimeError("2Captcha Key 未配置")
+            exc = RuntimeError("2Captcha Key 未配置")
+            exc.i18n_key = "providers.1146b4a0"
+            exc.i18n_params = {}
+            raise exc
         return cls(api_key)
 
     def solve_turnstile(self, page_url: str, site_key: str) -> str:
@@ -34,10 +37,18 @@ class TwoCaptcha(BaseCaptcha):
         create.raise_for_status()
         payload = create.json()
         if payload.get("status") != 1:
-            raise RuntimeError(f"2Captcha 创建任务失败: {payload}")
+            payload_str = str(payload)
+            exc = RuntimeError(f"2Captcha 创建任务失败: {payload_str}")
+            exc.i18n_key = "providers.bc8aa395"
+            exc.i18n_params = {"payload": payload_str}
+            raise exc
         task_id = payload.get("request")
         if not task_id:
-            raise RuntimeError(f"2Captcha 未返回任务 ID: {payload}")
+            payload_str = str(payload)
+            exc = RuntimeError(f"2Captcha 未返回任务 ID: {payload_str}")
+            exc.i18n_key = "providers.b0f1f4ea"
+            exc.i18n_params = {"payload": payload_str}
+            raise exc
 
         for _ in range(60):
             time.sleep(3)
@@ -56,8 +67,15 @@ class TwoCaptcha(BaseCaptcha):
             if data.get("status") == 1:
                 return str(data.get("request") or "")
             if data.get("request") not in {"CAPCHA_NOT_READY", "CAPTCHA_NOT_READY"}:
-                raise RuntimeError(f"2Captcha 错误: {data}")
-        raise TimeoutError("2Captcha Turnstile 超时")
+                data_str = str(data)
+                exc = RuntimeError(f"2Captcha 错误: {data_str}")
+                exc.i18n_key = "providers.04161146"
+                exc.i18n_params = {"data": data_str}
+                raise exc
+        exc = TimeoutError("2Captcha Turnstile 超时")
+        exc.i18n_key = "providers.482309b7"
+        exc.i18n_params = {}
+        raise exc
 
     def solve_image(self, image_b64: str) -> str:
         raise NotImplementedError
