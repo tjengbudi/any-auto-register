@@ -3,38 +3,38 @@ name: CI
 on:
   push:
     branches:
-      - '**'   # 所有分支；tag 由 release.yml 负责
+      - '**'   # 所有分支；tag 由 release.yml 负责 — all branches; tags are handled by release.yml
   pull_request:
 
 jobs:
   backend:
-    name: 后端导入与收集
+    name: 后端导入与收集 — Backend import & collection
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'   # 与 Dockerfile 和 release.yml 一致
+          python-version: '3.12'   # 与 Dockerfile 和 release.yml 一致 — matches Dockerfile and release.yml
           cache: pip
 
-      - name: 安装依赖
+      - name: 安装依赖 — Install dependencies
         run: pip install -r requirements.txt
 
-      - name: 后端可导入
+      - name: 后端可导入 — Backend importable
         run: python -c "from main import app; print(app.title, app.version)"
 
-      - name: 客户门户可导入
-        # 守护 customer_portal_api 的导入前缀：出现裸 `from app.` 会在此失败
+      - name: 客户门户可导入 — Customer portal importable
+        # 守护 customer_portal_api 的导入前缀：出现裸 `from app.` 会在此失败 — Guards the customer_portal_api import prefix: a bare `from app.` import will fail here
         run: python -c "from customer_portal_api.main import app; print(app.title, app.version)"
 
-      - name: 运行测试
-        # 收集失败同样会在这里暴露：任一模块导入失败会让整个套件归零
+      - name: 运行测试 — Run tests
+        # 收集失败同样会在这里暴露：任一模块导入失败会让整个套件归零 — Collection failures surface here too: any single module import failure zeroes out the whole suite
         run: pytest -q
         timeout-minutes: 15
 
   frontend:
-    name: 前端构建
+    name: 前端构建 — Frontend build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -43,9 +43,12 @@ jobs:
         with:
           node-version: 20
 
-      - name: 构建前端
-        # `npm run build` 先跑 tsc -b，类型错误会导致构建失败
+      - name: 构建前端 — Build frontend
+        # `npm run build` 先跑 tsc -b，类型错误会导致构建失败 — `npm run build` runs tsc -b first; type errors will fail the build
         # 注意：不跑 `npm run lint`，它从未通过。2026-07-29 实测 160 error，
         # 其中 151 个是 no-explicit-any。总数会随 eslint-plugin-react-hooks
         # 的 caret 版本重新解析而浮动，不要把它当作固定值。
+        # Note: `npm run lint` is not run — it has never passed. As tested on 2026-07-29, it hit 160 errors,
+        # 151 of which were no-explicit-any. The total fluctuates as eslint-plugin-react-hooks's
+        # caret version gets re-resolved, so don't treat it as a fixed number.
         run: cd frontend && npm ci --legacy-peer-deps && npm run build

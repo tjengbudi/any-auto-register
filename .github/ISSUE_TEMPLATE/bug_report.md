@@ -39,7 +39,7 @@ labels: bug
 - **Node**: <!-- 18 / 20 -->
 - **版本 / Version**: <!-- v1.0.6 / desktop / docker / source -->
 - **执行模式 / Mode**: <!-- protocol / headless / headed -->
-- **代理 / Proxy**: <!-- 无 / 数据中心 / 住宅 -->
+- **代理 / Proxy**: <!-- 无 (none) / 数据中心 (datacenter) / 住宅 (residential) -->
 - **平台 / Platform**: <!-- chatgpt / cursor / kiro / ... -->
 
 ## 其他信息 / Additional Context

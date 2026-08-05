@@ -23,7 +23,7 @@ labels: enhancement
 
 ## 平台 / 适用范围 / Scope
 
-- [ ] 新平台支持 / New platform support（哪个平台？）
+- [ ] 新平台支持 / New platform support（哪个平台？— which platform?）
 - [ ] 新邮箱服务 / New mailbox provider
 - [ ] 新验证码 / 接码服务 / New captcha or SMS provider
 - [ ] UI / UX 改进 / UI improvement
