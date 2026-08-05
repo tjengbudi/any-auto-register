@@ -99,6 +99,105 @@ def test_shared_key_endpoints_render_per_language(portal_client, method, path, z
     assert zh_resp.json()["detail"] == zh_text
 
 
+# (a2) Validation-error (422/400/501) call sites the shared-key table above
+# doesn't reach: duplicate/missing-field checks and the two "not implemented"
+# stubs, each hit with a single request that needs no prior setup.
+@pytest.mark.parametrize(
+    ("method", "path", "body", "expected_status", "zh_text", "en_text"),
+    [
+        (
+            "post",
+            "/api/admin/users",
+            {"username": "admin", "password": "whatever123"},
+            400,
+            "用户名已存在",
+            "Username already exists",
+        ),
+        (
+            "post",
+            "/api/admin/users",
+            {"username": "", "password": ""},
+            422,
+            "username 和 password 必填",
+            "username and password are required",
+        ),
+        (
+            "post",
+            "/api/accounts",
+            {"platform": "", "email": "", "password": ""},
+            422,
+            "platform、email、password 必填",
+            "platform, email, and password are required",
+        ),
+        (
+            "post",
+            "/api/tasks/register",
+            {"platform": "chatgpt"},
+            501,
+            "独立版暂未实现注册任务",
+            "Registration tasks are not implemented in the standalone edition",
+        ),
+    ],
+    ids=[
+        "duplicate-username",
+        "missing-username-password",
+        "missing-account-fields",
+        "admin-register-task-not-implemented",
+    ],
+)
+def test_validation_and_not_implemented_endpoints_render_per_language(
+    portal_client, method, path, body, expected_status, zh_text, en_text
+):
+    en_headers = _admin_headers(portal_client, accept_language="en")
+    zh_headers = _admin_headers(portal_client, accept_language="zh")
+
+    en_resp = getattr(portal_client, method)(path, headers=en_headers, json=body)
+    zh_resp = getattr(portal_client, method)(path, headers=zh_headers, json=body)
+
+    assert en_resp.status_code == zh_resp.status_code == expected_status
+    assert en_resp.json()["detail"] == en_text
+    assert zh_resp.json()["detail"] == zh_text
+
+
+# (a3) Duplicate-field checks that require a pre-existing record: create one
+# user/proxy per language, then trigger the same-language conflict. Each
+# language iteration uses its own conflicting value -- the "en" pass's
+# holder user must not collide with the "zh" pass's, since both run against
+# the same portal_client/database within one test.
+@pytest.mark.parametrize(
+    ("field", "value_template", "zh_text", "en_text"),
+    [
+        ("email", "dup-{suffix}@example.com", "邮箱已被占用", "Email already in use"),
+        ("mobile", "000000000{suffix_digit}", "手机号已被占用", "Mobile number already in use"),
+    ],
+    ids=["duplicate-email", "duplicate-mobile"],
+)
+def test_duplicate_user_field_renders_per_language(portal_client, field, value_template, zh_text, en_text):
+    for lang, expected_text, suffix, suffix_digit in (("en", en_text, "en", "1"), ("zh", zh_text, "zh", "2")):
+        conflicting_value = value_template.format(suffix=suffix, suffix_digit=suffix_digit)
+        headers = _admin_headers(portal_client, accept_language=lang)
+        first_body = {"username": f"{field}-holder-{suffix}", "password": "whatever123", field: conflicting_value}
+        create_resp = portal_client.post("/api/admin/users", headers=headers, json=first_body)
+        assert create_resp.status_code == 200, create_resp.text
+
+        second_body = {"username": f"{field}-dup-{suffix}", "password": "whatever123", field: conflicting_value}
+        dup_resp = portal_client.post("/api/admin/users", headers=headers, json=second_body)
+        assert dup_resp.status_code == 400
+        assert dup_resp.json()["detail"] == expected_text
+
+
+def test_duplicate_proxy_renders_per_language(portal_client):
+    for lang, expected_text in (("en", "Proxy already exists"), ("zh", "代理已存在")):
+        headers = _admin_headers(portal_client, accept_language=lang)
+        url = f"http://dup-proxy-{lang}.example.com"
+        first_resp = portal_client.post("/api/proxies", headers=headers, json={"url": url})
+        assert first_resp.status_code == 200, first_resp.text
+
+        dup_resp = portal_client.post("/api/proxies", headers=headers, json={"url": url})
+        assert dup_resp.status_code == 400
+        assert dup_resp.json()["detail"] == expected_text
+
+
 # (b) Accept-Language absent falls back to the Chinese detail.
 def test_absent_accept_language_falls_back_to_zh(portal_client):
     headers = _admin_headers(portal_client)  # no Accept-Language sent
