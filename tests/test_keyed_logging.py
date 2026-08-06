@@ -287,10 +287,13 @@ def test_register_wires_registration_context_log_key_to_raw_log_key_fn(monkeypat
     ctx = captured["ctx"]
     assert ctx.log_key_fn is platform._log_key_fn
 
-    # register() itself already emitted a core.1a4231de ("邮箱: {email}",
-    # story 4.4) log_key call through this same sink before raising above --
-    # assert on the newest entry rather than the whole list so this test
-    # doesn't couple to that unrelated call.
+    # register() itself already emits a core.1a4231de ("邮箱: {email}", story
+    # 4.4) log_key call through this same sink before raising above. Assert the
+    # whole sequence rather than just the tail, so a spurious or duplicated
+    # emission from register() still fails this test.
     ctx.log_key("owner.hash8", name="x", count=3)
 
-    assert recorded[-1] == ("owner.hash8", {"name": "x", "count": 3})
+    assert recorded == [
+        ("core.1a4231de", {"email": "user@example.com"}),
+        ("owner.hash8", {"name": "x", "count": 3}),
+    ]

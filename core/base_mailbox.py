@@ -36,7 +36,11 @@ def _log_key_or_print(log_key_fn: Callable[[str, dict], None] | None, key: str, 
     except Exception:
         # Fire-and-forget: a rendering/logging failure here must never mask
         # a caller's real success/failure outcome or swallow an intended raise.
-        pass
+        # 但要留痕，否则 TaskLogger 的非标量参数校验、损坏的 catalog、写库失败
+        # 都会变成一条无声消失的日志 —
+        # Still leave a trace, or TaskLogger's non-scalar param guard, a corrupt
+        # catalog and a failed event write all become a silently vanishing line.
+        logger.debug("i18n log sink failed, key=%s", key, exc_info=True)
 
 # ── 邮箱服务默认 API 地址（统一维护，需要时在此修改） ──
 # ── Default mailbox service API URLs (maintained centrally, edit here when needed) ──
@@ -1359,7 +1363,12 @@ class MoeMailMailbox(BaseMailbox):
         password = "Test" + "".join(random.choices(string.digits, k=8)) + "!"
         self._username = username
         self._password = password
-        _log_key_or_print(log_key_fn, "core.f28c5b21", username=username, password=password)
+        # 密码打码：这条日志从前只进控制台，现在会落进 task_events 并经 API 返回，
+        # 明文凭据不该跟着一起走 —
+        # Mask the password: this line used to be console-only, but it now lands
+        # in task_events and is served back over the API — a plaintext credential
+        # must not ride along.
+        _log_key_or_print(log_key_fn, "core.f28c5b21", username=username, password="***")
         with suppress_insecure_request_warning():
             r_reg = s.post(f"{self.api}/api/auth/register",
                 json={"username": username, "password": password, "turnstileToken": ""},
@@ -1428,7 +1437,7 @@ class MoeMailMailbox(BaseMailbox):
         data = r.json()
         self._email = data.get("email", data.get("address", ""))
         email_id = data.get("id", "")
-        _log_key_or_print(log_key_fn, "core.687b8c3b", email=self._email, id=email_id, domain=domain, status=r.status_code)
+        _log_key_or_print(log_key_fn, "core.687b8c3b", email=str(self._email), id=str(email_id), domain=domain, status=r.status_code)
         if not email_id:
             _log_key_or_print(log_key_fn, "core.71494406", data=str(data))
             generate_error = data.get("error") or data.get("message") or r.text
@@ -1739,7 +1748,10 @@ class TestmailMailbox(BaseMailbox):
         response = requests.get(self.api, params=params, proxies=self.proxy, timeout=15)
         payload = response.json()
         if payload.get("result") == "fail":
-            _raise_keyed(RuntimeError, "core.a8477441", message=payload.get("message") or response.text)
+            # str() 包一层：上游可能给回 dict/list，非标量参数会让 t() 退化成裸键 —
+            # Wrap in str(): upstream may hand back a dict/list, and a non-scalar
+            # param degrades t() to the bare key, losing the message entirely.
+            _raise_keyed(RuntimeError, "core.a8477441", message=str(payload.get("message") or response.text))
         return payload.get("emails", []) or []
 
     @staticmethod

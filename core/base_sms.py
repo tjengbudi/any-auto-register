@@ -1216,10 +1216,13 @@ class PhoneCallbackController:
                     raise
             self.phase = "need_code"
             reused = bool((self.activation.metadata or {}).get("reused"))
-            reuse_label = "复用号码" if reused else "新号码"
+            # 复用/新号码分成两个键，标签不能当参数传 —— 参数在写入时就定型了，
+            # 渲染却发生在读取时，按读者语言进行 —
+            # One key per branch: the label cannot be a param, because params are
+            # frozen at write time while rendering happens at read time in the
+            # reader's language, so a zh label would leak into the en render.
             self.log_key(
-                "core.84c1e8f0",
-                reuse_label=reuse_label,
+                "core.b5e03c6e" if reused else "core.cb52a8e0",
                 phone=self.activation.phone_number,
                 activation_id=self.activation.activation_id,
             )
