@@ -1794,7 +1794,14 @@ class RegistrationEngine:
         except Exception as e:
             self._log_key("chatgpt.9c7e0bf9", level="error", error=e)
             # was: self._log(f"注册过程中发生未预期错误: {e}", "error") — Unexpected error during registration
+            # str(e) 是运行时透传文案，按约定不带 key；同时必须清掉 _set_error 可能
+            # 已经写在 result 上的旧 key，否则下游会用旧 key 覆盖渲染这条真实错误 —
+            # str(e) is dynamic passthrough text and carries no key by convention; also
+            # clear any i18n_key a preceding _set_error already stamped onto result, or
+            # a downstream forwarder re-renders this real error as the stale message.
             result.error_message = str(e)
+            result.i18n_key = None
+            result.i18n_params = {}
             return result
 
     def save_to_database(self, result: RegistrationResult) -> bool:

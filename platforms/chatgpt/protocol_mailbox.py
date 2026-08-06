@@ -75,7 +75,7 @@ class ChatGPTProtocolMailboxWorker:
                 # match _raise_keyed's AD-17 forwarding convention.
                 if getattr(result, "i18n_key", None) is not None:
                     exc.i18n_key = result.i18n_key
-                    exc.i18n_params = result.i18n_params
+                    exc.i18n_params = getattr(result, "i18n_params", None) or {}
                 raise exc
             _raise_keyed(RuntimeError, "chatgpt.6d57824e")  # "注册失败" — "Registration failed"
         return result
