@@ -1028,7 +1028,8 @@ def _recover_signup_password_page(page, log, log_key: Optional[Callable[[str, di
 def _wait_for_signup_entry_transition(page, log, log_key: Optional[Callable[[str, dict], None]] = None, timeout: int = 20) -> dict:
     deadline = time.time() + timeout
     while time.time() < deadline:
-        if _click_passwordless_login_if_available(page, log, log_key, context="邮箱页提交后"):
+        if _click_passwordless_login_if_available(page, log, log_key, context=t("chatgpt.e907994f", "zh")):
+            # was: context="邮箱页提交后"
             time.sleep(0.5)
             continue
         state = _derive_registration_state_from_page(page)
@@ -1756,7 +1757,8 @@ def _submit_login_email_via_page(page, email: str, log, log_key: Optional[Callab
     while time.time() < deadline:
         current_url = str(page.url or "")
         last_url = current_url or last_url
-        if _click_passwordless_login_if_available(page, log, log_key, context="OAuth 邮箱页提交后"):
+        if _click_passwordless_login_if_available(page, log, log_key, context=t("chatgpt.bf3405a0", "zh")):
+            # was: context="OAuth 邮箱页提交后"
             time.sleep(0.5)
             continue
         state = _derive_oauth_state_from_page(page)
@@ -1781,7 +1783,8 @@ def _submit_login_email_via_page(page, email: str, log, log_key: Optional[Callab
         if error_text:
             return {"ok": False, "status": 400, "url": current_url, "data": None, "text": error_text}
         time.sleep(0.5)
-    return {"ok": False, "status": 0, "url": last_url, "data": None, "text": "OAuth 邮箱页提交后未跳转"}
+    return {"ok": False, "status": 0, "url": last_url, "data": None, "text": t("chatgpt.8dc588dc", "zh")}
+    # was: "text": "OAuth 邮箱页提交后未跳转"
 
 
 def _do_codex_oauth(page, cookies_dict: dict, email: str, password: str, otp_callback, phone_callback, proxy: str | None, log, log_key: Optional[Callable[[str, dict], None]] = None) -> dict | None:
@@ -2338,7 +2341,7 @@ def _do_add_phone_attempt(
 
     # 解析国家拨号码和本地号码 — Parse the country dial code and local number
     dial_code, local_number, country_name = _parse_phone_country_and_local(phone_number)
-    _emit_log_key(log, log_key, "chatgpt.49a9af86", country=country_name or '未知', dial_code=dial_code, local=local_number[:4])
+    _emit_log_key(log, log_key, "chatgpt.49a9af86", country=country_name or t("chatgpt.4d8c1c5b", "zh"), dial_code=dial_code, local=local_number[:4])
     # was: log(f"  解析号码: 国家={country_name or '未知'} 拨号码=+{dial_code} 本地号={local_number[:4]}...") —
     # was: log(f"  Parsed number: country={country_name or 'unknown'} dial_code=+{dial_code} local={local_number[:4]}...")
 
@@ -3079,7 +3082,8 @@ def _submit_oauth_password_direct(page, password: str, log, log_key: Optional[Ca
         if error_text:
             return {"ok": False, "status": 400, "url": current_url, "data": None, "text": error_text}
         time.sleep(0.5)
-    return {"ok": False, "status": 0, "url": str(page.url or ""), "data": None, "text": "OAuth 密码提交后未跳转"}
+    return {"ok": False, "status": 0, "url": str(page.url or ""), "data": None, "text": t("chatgpt.22296a30", "zh")}
+    # was: "text": "OAuth 密码提交后未跳转"
 
 
 def _submit_password_via_page(page, password: str, log, log_key: Optional[Callable[[str, dict], None]] = None) -> dict:
@@ -3123,9 +3127,11 @@ def _submit_password_via_page(page, password: str, log, log_key: Optional[Callab
         if page_type == "login_password" and _recover_signup_password_page(page, log, log_key):
             input_selector = _wait_for_any_selector(page, PASSWORD_INPUT_SELECTORS, timeout=5)
             if not input_selector:
-                return {"ok": False, "status": 400, "url": current_url, "data": None, "text": "登录密码页恢复后未找到注册密码输入框"}
+                return {"ok": False, "status": 400, "url": current_url, "data": None, "text": t("chatgpt.f0af50bf", "zh")}
+                # was: "text": "登录密码页恢复后未找到注册密码输入框"
             if not _fill_input_like_user(page, input_selector, password):
-                return {"ok": False, "status": 400, "url": current_url, "data": None, "text": "登录密码页恢复后密码重新填写失败"}
+                return {"ok": False, "status": 400, "url": current_url, "data": None, "text": t("chatgpt.f5127da3", "zh")}
+                # was: "text": "登录密码页恢复后密码重新填写失败"
             submit_selector = _click_first(page, PASSWORD_SUBMIT_SELECTORS, timeout=5)
             if submit_selector:
                 _emit_log_key(log, log_key, "chatgpt.ec4ed81b", submit_selector=submit_selector)
@@ -3139,20 +3145,23 @@ def _submit_password_via_page(page, password: str, log, log_key: Optional[Callab
                 start_url = str(page.url or start_url)
                 time.sleep(0.4)
                 continue
-            return {"ok": False, "status": 400, "url": current_url, "data": None, "text": "登录密码页恢复后未找到提交方式"}
+            return {"ok": False, "status": 400, "url": current_url, "data": None, "text": t("chatgpt.10277998", "zh")}
+            # was: "text": "登录密码页恢复后未找到提交方式"
         error_text = _extract_auth_error_text(page)
         if error_text:
             _dump_debug(page, "chatgpt_password_fail")
             return {"ok": False, "status": 400, "url": current_url, "data": None, "text": error_text}
         time.sleep(0.5)
     _dump_debug(page, "chatgpt_password_fail")
-    return {"ok": False, "status": 0, "url": last_url, "data": None, "text": "密码页提交后未跳转"}
+    return {"ok": False, "status": 0, "url": last_url, "data": None, "text": t("chatgpt.e1478083", "zh")}
+    # was: "text": "密码页提交后未跳转"
 
 
 def _submit_otp_via_page(page, code: str, log, log_key: Optional[Callable[[str, dict], None]] = None) -> dict:
     otp = str(code or "").strip()
     if not otp:
-        return {"ok": False, "status": 400, "url": page.url, "data": None, "text": "验证码为空"}
+        return {"ok": False, "status": 400, "url": page.url, "data": None, "text": t("chatgpt.88b0dec0", "zh")}
+        # was: "text": "验证码为空"
 
     # 等待页面加载完成，确保 OTP 输入框已渲染 — Wait for the page to finish loading so the OTP inputs are rendered
     try:
@@ -3239,7 +3248,8 @@ def _submit_otp_via_page(page, code: str, log, log_key: Optional[Callable[[str, 
                 continue
 
     if not filled:
-        return {"ok": False, "status": 0, "url": page.url, "data": None, "text": "验证码页未找到可填写输入框"}
+        return {"ok": False, "status": 0, "url": page.url, "data": None, "text": t("chatgpt.46bdba42", "zh")}
+        # was: "text": "验证码页未找到可填写输入框"
 
     _browser_pause(page)
     submit_selector = _click_first(
@@ -3257,7 +3267,8 @@ def _submit_otp_via_page(page, code: str, log, log_key: Optional[Callable[[str, 
         timeout=8,
     )
     if not submit_selector:
-        return {"ok": False, "status": 0, "url": page.url, "data": None, "text": "验证码页未找到 Continue 按钮"}
+        return {"ok": False, "status": 0, "url": page.url, "data": None, "text": t("chatgpt.c46a84b7", "zh")}
+        # was: "text": "验证码页未找到 Continue 按钮"
     _emit_log_key(log, log_key, "chatgpt.6c6526d1", submit_selector=submit_selector)
     # was: log(f"验证码页已点击继续按钮: {submit_selector}") — OTP page: clicked the continue button
 
@@ -3279,7 +3290,8 @@ def _submit_otp_via_page(page, code: str, log, log_key: Optional[Callable[[str, 
         if error_text:
             return {"ok": False, "status": 400, "url": current_url, "data": None, "text": error_text}
         time.sleep(0.5)
-    return {"ok": False, "status": 0, "url": last_url, "data": None, "text": "验证码页提交后未跳转"}
+    return {"ok": False, "status": 0, "url": last_url, "data": None, "text": t("chatgpt.60d4453b", "zh")}
+    # was: "text": "验证码页提交后未跳转"
 
 
 def _submit_about_you_via_page(page, log, log_key: Optional[Callable[[str, dict], None]] = None) -> dict:
@@ -3956,7 +3968,8 @@ def _submit_about_you_via_page(page, log, log_key: Optional[Callable[[str, dict]
             return {"ok": False, "status": 400, "url": current_url, "data": None, "text": error_text}
         time.sleep(0.5)
     _dump_debug(page, "chatgpt_about_you_fail")
-    return {"ok": False, "status": 0, "url": last_url, "data": None, "text": "about_you 提交后未跳转"}
+    return {"ok": False, "status": 0, "url": last_url, "data": None, "text": t("chatgpt.e36bc9c8", "zh")}
+    # was: "text": "about_you 提交后未跳转"
 
 
 def _browser_registration_flow(page, email: str, password: str, otp_callback, phone_callback, log, log_key: Optional[Callable[[str, dict], None]] = None) -> dict:
@@ -4192,7 +4205,7 @@ class ChatGPTBrowserRegister:
                 self.otp_callback,
                 self.phone_callback,
                 self.log,
-                self.log_key,
+                self._log_key_fn,
             )
             self.log_key("chatgpt.3052c843", page=final_state.get('page_type') or '-')
             # was: self.log(f"注册流程完成: page={final_state.get('page_type') or '-'}") —
@@ -4246,7 +4259,7 @@ class ChatGPTBrowserRegister:
                 result = _do_codex_oauth(
                     page, {}, email, password,
                     self.otp_callback, self.phone_callback, self.proxy, self.log,
-                    self.log_key,
+                    self._log_key_fn,
                 )
                 return result
         except Exception as e:

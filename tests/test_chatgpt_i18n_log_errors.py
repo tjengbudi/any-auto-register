@@ -14,6 +14,18 @@ Mechanisms covered:
      fake is needed);
   5. RegistrationEngine._log_key -- wired vs unwired (falls back to
      ._log, which appends to .logs and calls .callback_logger).
+  6. regression: run()/_retry_oauth_fresh_browser() must thread
+     self._log_key_fn (the raw (key, dict) callable) into the free
+     helper functions' log_key parameter, never self.log_key (the bound
+     wrapper) -- _emit_log_key always invokes log_key(key, params) with
+     params as one positional dict, which the wrapper's (self, key,
+     **params) signature cannot accept.
+  7. RegistrationEngine._set_error -- a newly-migrated result.error_message
+     authoring site renders through the keyed catalog and forwards
+     i18n_key/i18n_params onto the result, mirroring _raise_keyed.
+  8. a newly-migrated dict "text" default (_submit_otp_via_page's
+     empty-code early return) renders through the keyed catalog instead
+     of a raw Chinese literal.
 """
 from __future__ import annotations
 
@@ -23,9 +35,10 @@ import pytest
 
 from i18n import t
 from platforms.chatgpt import browser_register as browser_register_module
+from platforms.chatgpt._i18n_helpers import _emit_log_key
 from platforms.chatgpt.payment import _fetch_usage_data
 from platforms.chatgpt.plugin import _assert_complete_oauth_callback
-from platforms.chatgpt.register import RegistrationEngine
+from platforms.chatgpt.register import RegistrationEngine, RegistrationResult
 
 
 # --- 1. raise site, no params -------------------------------------------
@@ -155,3 +168,105 @@ def test_registration_engine_log_key_unwired_falls_back_to_log():
     assert plain_calls == [rendered]
     assert len(engine.logs) == 1
     assert engine.logs[0].endswith(rendered)
+
+
+# --- 6. regression: run()/_retry_oauth_fresh_browser() must thread ------
+# self._log_key_fn (the raw sink), never self.log_key (the bound wrapper),
+# into a free helper function's log_key parameter.
+
+
+def test_emit_log_key_rejects_the_bound_wrapper_method():
+    """Reproduces the crash this story fixes: _emit_log_key always calls
+    log_key(key, params) with params as one positional dict. A bound
+    `log_key(self, key, **params)` method cannot accept that shape.
+    """
+    calls: list[tuple[str, dict]] = []
+    worker = browser_register_module.ChatGPTBrowserRegister(
+        headless=True,
+        proxy=None,
+        otp_callback=None,
+        log_fn=lambda message: (_ for _ in ()).throw(AssertionError("should not fall back")),
+        log_key_fn=lambda key, params: calls.append((key, params)),
+    )
+
+    with pytest.raises(TypeError):
+        _emit_log_key(worker.log, worker.log_key, "chatgpt.1d89a161")
+
+
+def test_emit_log_key_accepts_the_raw_log_key_fn():
+    """The fixed shape: threading self._log_key_fn (not self.log_key) through
+    a free helper function's log_key parameter works end-to-end.
+    """
+    calls: list[tuple[str, dict]] = []
+    worker = browser_register_module.ChatGPTBrowserRegister(
+        headless=True,
+        proxy=None,
+        otp_callback=None,
+        log_fn=lambda message: (_ for _ in ()).throw(AssertionError("should not fall back")),
+        log_key_fn=lambda key, params: calls.append((key, params)),
+    )
+
+    _emit_log_key(worker.log, worker._log_key_fn, "chatgpt.1d89a161")
+
+    assert calls == [("chatgpt.1d89a161", {})]
+
+
+def test_run_and_retry_oauth_fresh_browser_thread_the_raw_log_key_fn():
+    """Locks down the actual fix at the two call sites named in the story:
+    run() and _retry_oauth_fresh_browser() must pass self._log_key_fn into
+    _browser_registration_flow/_do_codex_oauth's log_key parameter, not the
+    self.log_key wrapper -- inspecting source is the only way to pin this
+    without driving a real Camoufox browser.
+    """
+    import inspect
+
+    run_source = inspect.getsource(browser_register_module.ChatGPTBrowserRegister.run)
+    retry_source = inspect.getsource(
+        browser_register_module.ChatGPTBrowserRegister._retry_oauth_fresh_browser
+    )
+    for source in (run_source, retry_source):
+        assert "self._log_key_fn" in source
+        assert "self.log_key,\n" not in source
+
+
+# --- 7. RegistrationEngine._set_error -------------------------------------
+# a newly-migrated result.error_message authoring site.
+
+
+def test_registration_engine_set_error_renders_keyed_text_no_params():
+    engine = object.__new__(RegistrationEngine)
+    result = RegistrationResult(success=False)
+
+    engine._set_error(result, "chatgpt.ba523ab8")  # "创建邮箱失败"
+
+    assert result.error_message == t("chatgpt.ba523ab8", "zh")
+    assert result.i18n_key == "chatgpt.ba523ab8"
+    assert result.i18n_params == {}
+
+
+def test_registration_engine_set_error_renders_keyed_text_with_params():
+    engine = object.__new__(RegistrationEngine)
+    result = RegistrationResult(success=False)
+
+    engine._set_error(result, "chatgpt.ec914607", location="CN")
+
+    assert result.error_message == t("chatgpt.ec914607", "zh", location="CN")
+    assert result.i18n_key == "chatgpt.ec914607"
+    assert result.i18n_params == {"location": "CN"}
+
+
+# --- 8. a newly-migrated dict "text" default -------------------------------
+
+
+def test_submit_otp_via_page_empty_code_uses_keyed_text_default():
+    page = SimpleNamespace(url="https://chatgpt.com/onboarding")
+
+    result = browser_register_module._submit_otp_via_page(page, "", lambda message: None)
+
+    assert result == {
+        "ok": False,
+        "status": 400,
+        "url": page.url,
+        "data": None,
+        "text": t("chatgpt.88b0dec0", "zh"),
+    }

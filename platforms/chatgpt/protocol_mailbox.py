@@ -67,6 +67,15 @@ class ChatGPTProtocolMailboxWorker:
         result = self.engine.run()
         if not result or not result.success:
             if result and result.error_message:
-                raise RuntimeError(result.error_message)
+                exc = RuntimeError(result.error_message)
+                # _set_error() 把 i18n_key/i18n_params 存在 result 上而不是异常上，
+                # 这里原样转发到异常，保持与 _raise_keyed 一致的 AD-17 转发约定 —
+                # _set_error() stashes i18n_key/i18n_params on the result, not an
+                # exception; forward them onto the exception here unchanged, to
+                # match _raise_keyed's AD-17 forwarding convention.
+                if getattr(result, "i18n_key", None) is not None:
+                    exc.i18n_key = result.i18n_key
+                    exc.i18n_params = result.i18n_params
+                raise exc
             _raise_keyed(RuntimeError, "chatgpt.6d57824e")  # "注册失败" — "Registration failed"
         return result

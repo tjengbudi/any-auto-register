@@ -299,6 +299,17 @@ class RegistrationEngine:
         else:
             self._log(t(key, "zh", **params), level)
 
+    def _set_error(self, result: "RegistrationResult", key: str, **params) -> None:
+        """把 keyed 文案写入 result.error_message，并把 i18n_key/i18n_params 存在
+        result 上供下游转发 —— 镜像 _raise_keyed 对异常的处理方式 ——
+        Render the keyed text into result.error_message, and keep
+        i18n_key/i18n_params on result for a downstream forward -- mirrors
+        how _raise_keyed attaches them to an exception.
+        """
+        result.error_message = t(key, "zh", **params)
+        result.i18n_key = key
+        result.i18n_params = params
+
     def _generate_password(self, length: int = DEFAULT_PASSWORD_LENGTH) -> str:
         """生成随机密码 — Generate a random password"""
         # OpenAI 注册页对纯字母数字密码存在更高概率拒绝，补一个符号位更稳。 —
@@ -1391,7 +1402,8 @@ class RegistrationEngine:
             # was: self._log("1. 检查 IP 地理位置...") — Step 1: checking IP geolocation
             ip_ok, location = self._check_ip_location()
             if not ip_ok:
-                result.error_message = f"IP 地理位置不支持: {location}"
+                self._set_error(result, "chatgpt.ec914607", location=location)
+                # was: result.error_message = f"IP 地理位置不支持: {location}"
                 self._log_key("chatgpt.7ca03ffa", level="error", location=location)
                 # was: self._log(f"IP 检查失败: {location}", "error") — IP check failed
                 return result
@@ -1403,7 +1415,7 @@ class RegistrationEngine:
             self._log_key("chatgpt.e2775f7e")
             # was: self._log("2. 创建邮箱...") — Step 2: creating the mailbox
             if not self._create_email():
-                result.error_message = "创建邮箱失败"
+                self._set_error(result, "chatgpt.ba523ab8")  # "创建邮箱失败"
                 return result
 
             result.email = self.email
@@ -1412,14 +1424,14 @@ class RegistrationEngine:
             self._log_key("chatgpt.0b1b16ce")
             # was: self._log("3. 初始化会话...") — Step 3: initializing the session
             if not self._init_session():
-                result.error_message = "初始化会话失败"
+                self._set_error(result, "chatgpt.5e7ac670")  # "初始化会话失败"
                 return result
 
             # 4. 开始 OAuth 流程 — 4. Start the OAuth flow
             self._log_key("chatgpt.155c3111")
             # was: self._log("4. 开始 OAuth 授权流程...") — Step 4: starting the OAuth authorization flow
             if not self._start_oauth():
-                result.error_message = "开始 OAuth 流程失败"
+                self._set_error(result, "chatgpt.3870ac6d")  # "开始 OAuth 流程失败"
                 return result
 
             # 5. 获取 Device ID — 5. Get the Device ID
@@ -1427,7 +1439,7 @@ class RegistrationEngine:
             # was: self._log("5. 获取 Device ID...") — Step 5: getting the Device ID
             did = self._get_device_id()
             if not did:
-                result.error_message = "获取 Device ID 失败"
+                self._set_error(result, "chatgpt.d96c4ea4")  # "获取 Device ID 失败"
                 return result
 
             # 6. 检查 Sentinel 拦截 — 6. Check Sentinel interception
@@ -1446,7 +1458,8 @@ class RegistrationEngine:
             # was: self._log("7. 提交注册表单...") — Step 7: submitting the registration form
             signup_result = self._submit_signup_form(did, sen_payload)
             if not signup_result.success:
-                result.error_message = f"提交注册表单失败: {signup_result.error_message}"
+                self._set_error(result, "chatgpt.e42d4896", error=signup_result.error_message)
+                # was: result.error_message = f"提交注册表单失败: {signup_result.error_message}"
                 return result
 
             # 8. [已注册账号跳过] 注册密码 — 8. Set the registration password [skipped for already-registered accounts]
@@ -1458,7 +1471,7 @@ class RegistrationEngine:
                 # was: self._log("8. 注册密码...") — Step 8: setting the registration password
                 password_ok, password = self._register_password()
                 if not password_ok:
-                    result.error_message = "注册密码失败"
+                    self._set_error(result, "chatgpt.e017fe9e")  # "注册密码失败"
                     return result
 
             # 9. [已注册账号跳过] 发送验证码 — 9. Send the verification code [skipped for already-registered accounts]
@@ -1471,7 +1484,7 @@ class RegistrationEngine:
                 self._log_key("chatgpt.46ee464a")
                 # was: self._log("9. 发送验证码...") — Step 9: sending the verification code
                 if not self._send_verification_code():
-                    result.error_message = "发送验证码失败"
+                    self._set_error(result, "chatgpt.0a7b29f3")  # "发送验证码失败"
                     return result
 
             # 10. 获取验证码 — 10. Get the verification code
@@ -1479,14 +1492,14 @@ class RegistrationEngine:
             # was: self._log("10. 等待验证码...") — Step 10: waiting for the verification code
             code = self._get_verification_code()
             if not code:
-                result.error_message = "获取验证码失败"
+                self._set_error(result, "chatgpt.9d9734f9")  # "获取验证码失败"
                 return result
 
             # 11. 验证验证码 — 11. Validate the verification code
             self._log_key("chatgpt.1f706201")
             # was: self._log("11. 验证验证码...") — Step 11: validating the verification code
             if not self._validate_verification_code(code):
-                result.error_message = "验证验证码失败"
+                self._set_error(result, "chatgpt.20f03823")  # "验证验证码失败"
                 return result
 
             # 12. 根据 OTP 响应决定下一步 — 12. Decide the next step based on the OTP response
@@ -1495,7 +1508,7 @@ class RegistrationEngine:
                 self._log_key("chatgpt.88cad92f")
                 # was: self._log("12. 创建用户账户...") — Step 12: creating the user account
                 if not self._create_user_account():
-                    result.error_message = "创建用户账户失败"
+                    self._set_error(result, "chatgpt.7b782079")  # "创建用户账户失败"
                     return result
             elif self._is_existing_account:
                 self._log_key("chatgpt.5dab4d3b")
@@ -1505,13 +1518,13 @@ class RegistrationEngine:
                 # was: self._log(f"12. OTP page_type={self._otp_page_type}，尝试创建账户...") —
                 # Step 12: OTP page_type={...}, attempting to create the account
                 if not self._create_user_account():
-                    result.error_message = "创建用户账户失败"
+                    self._set_error(result, "chatgpt.7b782079")  # "创建用户账户失败"
                     return result
 
             # 13. 跟随 callback URL 到 chatgpt.com 获取 session — 13. Follow the callback URL to chatgpt.com to get the session
             callback_url = self._create_account_continue_url
             if not callback_url or "code=" not in str(callback_url):
-                result.error_message = "create_account 未返回有效的 callback URL"
+                self._set_error(result, "chatgpt.f8b78ed2")  # "create_account 未返回有效的 callback URL"
                 return result
 
             self._log_key("chatgpt.d9d3a8eb")
@@ -1552,7 +1565,7 @@ class RegistrationEngine:
             # was: self._log(f"accessToken 长度: {len(access_token)}") — accessToken length
 
             if not access_token:
-                result.error_message = "chatgpt.com session 未返回 accessToken"
+                self._set_error(result, "chatgpt.2c1be459")  # "chatgpt.com session 未返回 accessToken"
                 return result
 
             self._log_key("chatgpt.42ea71ab")

@@ -11,6 +11,7 @@ from typing import Optional
 
 from curl_cffi import requests as cffi_requests
 
+from i18n import t
 from core.base_platform import Account
 from platforms.chatgpt._i18n_helpers import _raise_keyed
 
@@ -245,11 +246,16 @@ def generate_plus_link(
     data = resp.json()
     if "checkout_session_id" in data:
         return TEAM_CHECKOUT_BASE_URL + data["checkout_session_id"]
-    detail = data.get("detail")
-    if detail:
-        raise ValueError(detail)
-    _raise_keyed(ValueError, "chatgpt.d79e3362")  # "API 未返回 checkout_session_id" —
-    # "API did not return checkout_session_id"
+    # dict.get 的缺键/存在-但-为空语义必须原样保留，不能退化为真值判断；
+    # 缺键分支走 _raise_keyed 以携带 i18n_key/i18n_params —
+    # dict.get's missing-key-vs-present-but-empty semantics must be preserved
+    # exactly, not degraded into a truthiness check; the missing-key branch
+    # goes through _raise_keyed so the exception still carries
+    # i18n_key/i18n_params, matching every other keyed raise in this file.
+    if "detail" in data:
+        raise ValueError(data["detail"])
+    _raise_keyed(ValueError, "chatgpt.d79e3362")
+    # was: raise ValueError(data.get("detail", "API 未返回 checkout_session_id"))
 
 
 def generate_team_link(
@@ -305,11 +311,16 @@ def generate_team_link(
     data = resp.json()
     if "checkout_session_id" in data:
         return TEAM_CHECKOUT_BASE_URL + data["checkout_session_id"]
-    detail = data.get("detail")
-    if detail:
-        raise ValueError(detail)
-    _raise_keyed(ValueError, "chatgpt.d79e3362")  # "API 未返回 checkout_session_id" —
-    # "API did not return checkout_session_id"
+    # dict.get 的缺键/存在-但-为空语义必须原样保留，不能退化为真值判断；
+    # 缺键分支走 _raise_keyed 以携带 i18n_key/i18n_params —
+    # dict.get's missing-key-vs-present-but-empty semantics must be preserved
+    # exactly, not degraded into a truthiness check; the missing-key branch
+    # goes through _raise_keyed so the exception still carries
+    # i18n_key/i18n_params, matching every other keyed raise in this file.
+    if "detail" in data:
+        raise ValueError(data["detail"])
+    _raise_keyed(ValueError, "chatgpt.d79e3362")
+    # was: raise ValueError(data.get("detail", "API 未返回 checkout_session_id"))
 
 
 def open_url_incognito(url: str, cookies_str: Optional[str] = None) -> bool:
