@@ -87,7 +87,12 @@ class BasePlatform(ABC):
                 # "{display_name} does not support the '{executor_type}' executor yet, currently supported: {supported}"
                 display_name=self.display_name,
                 executor_type=self.config.executor_type,
-                supported=", ".join(self.supported_executors),
+                # 保持迁移前的列表字面形态：空列表必须渲染成 `[]`，
+                # 那正是"插件没有声明 capability"这一静默故障的识别标志 —
+                # Keep the pre-migration list literal: an empty list must render
+                # as `[]`, which is the tell for a plugin shipped without
+                # capability class attributes.
+                supported=str(list(self.supported_executors)),
             )
 
     def set_logger(self, logger):
@@ -467,7 +472,7 @@ class BasePlatform(ABC):
                 # "{display_name} does not support identity_provider='{mode}' yet, currently supported: {supported}"
                 display_name=self.display_name,
                 mode=mode,
-                supported=", ".join(self.supported_identity_modes),
+                supported=str(list(self.supported_identity_modes)),
             )
         return create_identity_provider(
             mode,

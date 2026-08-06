@@ -138,7 +138,7 @@ def build_phone_callbacks(ctx: RegistrationContext, *, service: str | None = Non
             if str(field.get("category") or "").strip() == "auth"
         ]
     if auth_fields and not any(str(merged.get(field_key, "")).strip() for field_key in auth_fields):
-        ctx.log_key("core.97cd10fd", provider=provider_key, source=source, fields=", ".join(auth_fields))
+        ctx.log_key("core.97cd10fd", provider=provider_key, source=source, fields=str(auth_fields))
         return None, None
 
     if ctx.proxy and not str(merged.get("sms_proxy") or merged.get("proxy") or "").strip():

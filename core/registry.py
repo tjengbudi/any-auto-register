@@ -37,7 +37,7 @@ def load_all():
 def get(name: str) -> Type[BasePlatform]:
     if name not in _registry:
         key = "core.d761dd77"
-        params = {"name": name, "registered": ", ".join(_registry.keys())}
+        params = {"name": name, "registered": str(list(_registry.keys()))}
         exc = KeyError(t(key, "zh", **params))
         exc.i18n_key = key
         exc.i18n_params = params

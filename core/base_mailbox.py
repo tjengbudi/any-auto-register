@@ -23,10 +23,17 @@ def _raise_keyed(exc_cls, key: str, **params):
 
 
 def _log_key_or_print(log_key_fn: Callable[[str, dict], None] | None, key: str, **params) -> None:
-    """`log_key_fn` 存在时走它，否则退化为和从前完全一致的 print(zh 文本) ——
-    Route through `log_key_fn` when set, else degrade to the exact previous
-    print(zh text) output for an unwired caller (the "[Prefix] " tag lives
-    inside the minted zh template itself, so the fallback is byte-identical).
+    """`log_key_fn` 存在时走它，否则退化为 print(zh 文本) ——
+    Route through `log_key_fn` when set, else degrade to print(zh text) for an
+    unwired caller (the "[Prefix] " tag lives inside the minted zh template
+    itself, so the fallback reproduces the pre-migration console line).
+
+    两处刻意的例外，不再逐字节相同 — Two deliberate exceptions to that
+    byte-for-byte equivalence: MoeMail 注册密码已改为掩码（凭据不该进入会被
+    持久化并经 API 返回的日志），下面的 except 也可能让整行消失 —
+    the MoeMail registration password is masked (a credential must not reach a
+    persisted, API-served log), and the `except` below may drop the line
+    entirely.
     """
     try:
         if log_key_fn is not None:
@@ -40,7 +47,11 @@ def _log_key_or_print(log_key_fn: Callable[[str, dict], None] | None, key: str, 
         # 都会变成一条无声消失的日志 —
         # Still leave a trace, or TaskLogger's non-scalar param guard, a corrupt
         # catalog and a failed event write all become a silently vanishing line.
-        logger.debug("i18n log sink failed, key=%s", key, exc_info=True)
+        # 用 warning 而非 debug：本项目从不配置 logging，根 logger 停在 WARNING，
+        # debug 一行也到不了任何地方 —
+        # warning, not debug: this project configures logging nowhere, so the
+        # root logger sits at WARNING and a debug line reaches no handler at all.
+        logger.warning("i18n log sink failed, key=%s", key, exc_info=True)
 
 # ── 邮箱服务默认 API 地址（统一维护，需要时在此修改） ──
 # ── Default mailbox service API URLs (maintained centrally, edit here when needed) ──
@@ -111,7 +122,7 @@ class FallbackMailbox(BaseMailbox):
         mailbox = self._accounts.get(str(account.email or "").strip())
         if mailbox is not None:
             return mailbox
-        _raise_keyed(RuntimeError, "core.b16e5e4d", email=account.email)
+        _raise_keyed(RuntimeError, "core.b16e5e4d", email=str(account.email))
 
     def get_email(self, *, log_key_fn: Callable[[str, dict], None] | None = None) -> MailboxAccount:
         errors: list[str] = []
@@ -121,7 +132,7 @@ class FallbackMailbox(BaseMailbox):
                 account = mailbox.get_email(log_key_fn=log_key_fn)
                 self._accounts[str(account.email or "").strip()] = mailbox
                 self._inject_provider_metadata(account, provider_key)
-                _log_key_or_print(log_key_fn, "core.2e383f53", provider=provider_key, email=account.email)
+                _log_key_or_print(log_key_fn, "core.2e383f53", provider=provider_key, email=str(account.email))
                 return account
             except Exception as exc:
                 message = str(exc).strip() or exc.__class__.__name__
@@ -857,7 +868,7 @@ class TempMailWebMailbox(BaseMailbox):
     def _fetch_messages(self, account: MailboxAccount, *, log_key_fn: Callable[[str, dict], None] | None = None) -> list[dict]:
         token = str(account.account_id or self._accounts.get(account.email) or "").strip()
         if not token:
-            _raise_keyed(RuntimeError, "core.e72e9c2b", email=account.email)
+            _raise_keyed(RuntimeError, "core.e72e9c2b", email=str(account.email))
         data = self._request_json("GET", "/messages", auth_header=f"Bearer {token}", log_key_fn=log_key_fn)
         if isinstance(data, dict) and isinstance(data.get("messages"), list):
             return list(data.get("messages") or [])
@@ -1161,7 +1172,7 @@ class CFWorkerMailbox(BaseMailbox):
         email = data.get("email", data.get("address", ""))
         token = data.get("token", data.get("jwt", ""))
         self._token = token
-        _log_key_or_print(log_key_fn, "core.b34cfcc0", email=email, token_preview=token[:40] if token else "NONE")
+        _log_key_or_print(log_key_fn, "core.b34cfcc0", email=str(email), token_preview=str(token)[:40] if token else "NONE")
         return MailboxAccount(
             email=email,
             account_id=token,
@@ -1593,7 +1604,7 @@ class FreemailMailbox(BaseMailbox):
         data = r.json()
         email = data.get("email", "")
         self._email = email
-        _log_key_or_print(log_key_fn, "core.b4792cb2", email=email)
+        _log_key_or_print(log_key_fn, "core.b4792cb2", email=str(email))
         provider_account = {
             "provider_type": "mailbox",
             "provider_name": "freemail",

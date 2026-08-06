@@ -324,3 +324,98 @@ def test_fallback_mailbox_get_email_survives_a_raising_log_key_fn():
     account = mailbox.get_email(log_key_fn=raising_log_key_fn)
 
     assert account.email == "ok@example.com"
+
+
+# --- The empty-list diagnostic signal survives the migration.            ---
+# --- Before this story these messages interpolated the list itself, so   ---
+# --- an unconfigured plugin read `当前支持: []`. project-context.md names ---
+# --- that exact string as the tell for a plugin shipped without          ---
+# --- capability class attributes; a `", ".join(...)` renders it as a     ---
+# --- bare trailing colon instead, which reads as truncation.             ---
+
+
+@pytest.mark.parametrize(
+    "key, params, tail",
+    [
+        ("core.a8fadb96", {"display_name": "X", "executor_type": "protocol", "supported": str([])}, "[]"),
+        ("core.d7a7c4ef", {"display_name": "X", "mode": "mailbox", "supported": str([])}, "[]"),
+        ("core.d761dd77", {"name": "nope", "registered": str([])}, "[]"),
+    ],
+)
+def test_empty_capability_lists_still_render_as_a_list_literal(key, params, tail):
+    for lang in ("zh", "en"):
+        rendered = t(key, lang, **params)
+        assert rendered != key, f"{key} degraded to a bare key in {lang}"
+        assert rendered.rstrip().endswith(tail), rendered
+
+
+def test_unregistered_platform_error_lists_the_registered_platforms():
+    from core import registry
+
+    with pytest.raises(KeyError) as excinfo:
+        registry.get("definitely_not_a_platform")
+
+    exc = excinfo.value
+    assert exc.i18n_key == "core.d761dd77"
+    assert exc.i18n_params["registered"].startswith("[")
+
+
+# --- A non-scalar param (a third-party JSON field that came back as a    ---
+# --- dict/list instead of a string) must not collapse the whole line to  ---
+# --- a bare key. Every such value is str()-wrapped at the call site.     ---
+
+
+def test_non_scalar_email_param_would_collapse_the_render_so_it_is_wrapped():
+    # The hazard, demonstrated: t() rejects a non-scalar and returns the key.
+    assert t("core.b4792cb2", "zh", email={"unexpected": "dict"}) == "core.b4792cb2"
+    # The guard: str() at the call site keeps the line renderable.
+    assert t("core.b4792cb2", "zh", email=str({"unexpected": "dict"})) != "core.b4792cb2"
+
+
+# --- core/base_sms.py's PhoneCallbackController.log_key is a sixth,      ---
+# --- independently written log_key implementation. It must invoke its    ---
+# --- sink as fn(key, params_dict) -- the raw (key, params) shape -- not  ---
+# --- fn(key, **params), the mismatch that crashed three call sites       ---
+# --- during this story (see the Spec Change Log). And the reused/new     ---
+# --- rented-number branch keys must carry no Chinese into the en render. ---
+
+
+def test_phone_callback_controller_log_key_calls_its_sink_positionally():
+    from core.base_sms import PhoneCallbackController
+
+    recorded: list[tuple[str, dict]] = []
+    controller = PhoneCallbackController(
+        provider_key="herosms",
+        config={},
+        service="chatgpt",
+        country="0",
+        log_key_fn=lambda key, params: recorded.append((key, params)),
+    )
+    controller.log_key("core.d9817248", activation_id="abc123")
+
+    assert recorded == [("core.d9817248", {"activation_id": "abc123"})]
+
+
+def test_phone_callback_controller_log_key_falls_back_to_log_fn():
+    from core.base_sms import PhoneCallbackController
+
+    lines: list[str] = []
+    controller = PhoneCallbackController(
+        provider_key="herosms",
+        config={},
+        service="chatgpt",
+        country="0",
+        log_fn=lines.append,
+    )
+    controller.log_key("core.d9817248", activation_id="abc123")
+
+    assert lines == [t("core.d9817248", "zh", activation_id="abc123")]
+
+
+@pytest.mark.parametrize("key", ["core.b5e03c6e", "core.cb52a8e0"])
+def test_rented_number_branch_keys_render_without_chinese_in_english(key):
+    params = {"phone": "+62811", "activation_id": "abc123"}
+    rendered = t(key, "en", **params)
+    assert rendered != key
+    assert not any("一" <= ch <= "鿿" for ch in rendered), rendered
+    assert t(key, "zh", **params) != t(key, "en", **params)
