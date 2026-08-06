@@ -277,3 +277,50 @@ def test_otp_spec_and_link_spec_defaults_are_none():
     assert OtpSpec().success_label is None
     assert LinkSpec().wait_message is None
     assert LinkSpec().success_label is None
+
+
+# --- Reserved-name guard: a template param must never shadow t()'s/       ---
+# --- _raise_keyed()'s own `key`/`lang` positional parameters (DW-44/45)  ---
+# --- Review-round regression: 4 call sites minted `key=...` as a param   ---
+# --- name, colliding with `_raise_keyed(exc_cls, key: str, **params)`'s ---
+# --- and `t(key: str, lang: str, **params)`'s own `key` parameter --     ---
+# --- `TypeError: got multiple values for argument 'key'` on every call. ---
+
+
+def test_create_captcha_solver_unknown_provider_raises_keyed_not_typeerror():
+    from core.base_captcha import create_captcha_solver
+
+    with pytest.raises(RuntimeError) as excinfo:
+        create_captcha_solver("nonexistent_captcha_provider_xyz")
+
+    exc = excinfo.value
+    assert exc.i18n_key == "core.293461f5"
+    assert exc.i18n_params == {"provider": "nonexistent_captcha_provider_xyz"}
+    assert t(exc.i18n_key, "zh", **exc.i18n_params) == str(exc)
+
+
+def test_create_mailbox_unknown_provider_raises_keyed_not_typeerror():
+    from core.base_mailbox import create_mailbox
+
+    with pytest.raises(RuntimeError) as excinfo:
+        create_mailbox("nonexistent_mailbox_provider_xyz")
+
+    exc = excinfo.value
+    assert exc.i18n_key == "core.2d7459e5"
+    assert exc.i18n_params == {"provider": "nonexistent_mailbox_provider_xyz"}
+    assert t(exc.i18n_key, "zh", **exc.i18n_params) == str(exc)
+
+
+# --- _log_key_or_print never lets a sink failure mask the caller's real ---
+# --- outcome: a success miscast as a failure, or an intended raise that ---
+# --- never fires (review-round regression). -----------------------------
+
+
+def test_fallback_mailbox_get_email_survives_a_raising_log_key_fn():
+    def raising_log_key_fn(key: str, params: dict) -> None:
+        raise ValueError("sink is broken")
+
+    mailbox = _build_fallback_mailbox()
+    account = mailbox.get_email(log_key_fn=raising_log_key_fn)
+
+    assert account.email == "ok@example.com"

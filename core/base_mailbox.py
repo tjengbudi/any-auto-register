@@ -28,10 +28,15 @@ def _log_key_or_print(log_key_fn: Callable[[str, dict], None] | None, key: str, 
     print(zh text) output for an unwired caller (the "[Prefix] " tag lives
     inside the minted zh template itself, so the fallback is byte-identical).
     """
-    if log_key_fn is not None:
-        log_key_fn(key, params)
-    else:
-        print(t(key, "zh", **params))
+    try:
+        if log_key_fn is not None:
+            log_key_fn(key, params)
+        else:
+            print(t(key, "zh", **params))
+    except Exception:
+        # Fire-and-forget: a rendering/logging failure here must never mask
+        # a caller's real success/failure outcome or swallow an intended raise.
+        pass
 
 # ── 邮箱服务默认 API 地址（统一维护，需要时在此修改） ──
 # ── Default mailbox service API URLs (maintained centrally, edit here when needed) ──
@@ -330,7 +335,7 @@ def create_mailbox(provider: str, extra: dict = None, proxy: str = None) -> 'Bas
         _raise_keyed(RuntimeError, "core.eb8c6f6f")
     definition = definitions_repo.get_by_key("mailbox", provider_key)
     if not definition or not definition.enabled:
-        _raise_keyed(RuntimeError, "core.2d7459e5", key=provider_key)
+        _raise_keyed(RuntimeError, "core.2d7459e5", provider=provider_key)
     base_extra = dict(extra or {})
 
     raw_fallbacks = base_extra.get("mail_provider_fallbacks")
@@ -369,11 +374,11 @@ def create_mailbox(provider: str, extra: dict = None, proxy: str = None) -> 'Bas
                 providers.append((key, factory(resolved_extra, proxy)))
         except Exception as exc:
             if key == provider_key:
-                keyed_exc = RuntimeError(t("core.153598a2", "zh", key=key, exc=str(exc)))
+                keyed_exc = RuntimeError(t("core.153598a2", "zh", provider=key, exc=str(exc)))
                 keyed_exc.i18n_key = "core.153598a2"
-                keyed_exc.i18n_params = {"key": key, "exc": str(exc)}
+                keyed_exc.i18n_params = {"provider": key, "exc": str(exc)}
                 raise keyed_exc from exc
-            logger.warning(t("core.07296478", "zh", key=key, error=str(exc)))
+            logger.warning(t("core.07296478", "zh", provider=key, error=str(exc)))
 
     if not providers:
         _raise_keyed(RuntimeError, "core.612d220d")

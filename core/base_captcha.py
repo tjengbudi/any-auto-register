@@ -90,7 +90,7 @@ def create_captcha_solver(provider_key: str, extra: dict | None = None) -> BaseC
 
     definition = ProviderDefinitionsRepository().get_by_key("captcha", key)
     if not definition or not definition.enabled:
-        _raise_keyed(RuntimeError, "core.293461f5", key=key)
+        _raise_keyed(RuntimeError, "core.293461f5", provider=key)
     merged = ProviderSettingsRepository().resolve_runtime_settings("captcha", key, extra or {})
     driver_type = (definition.driver_type if definition else key).lower()
 
